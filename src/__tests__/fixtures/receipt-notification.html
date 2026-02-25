@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Order Confirmed — Haven</title>
+<!--
+  Showcase-quality e-commerce receipt.
+  Exercises every CSS feature that breaks across email clients:
+    @font-face, <svg>, <style>, @media dark, @media responsive,
+    display:flex, display:grid + gap, border-radius, box-shadow,
+    max-width, overflow:hidden, text-transform, letter-spacing,
+    transition, opacity, position:relative
+-->
+<!--[if mso]>
+<style>
+  * { font-family: Arial, sans-serif !important; }
+</style>
+<![endif]-->
+<style>
+  @font-face {
+    font-family: 'Geist';
+    font-style: normal;
+    font-weight: 400;
+    src: url('https://fonts.example.com/geist-regular.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Geist';
+    font-style: normal;
+    font-weight: 700;
+    src: url('https://fonts.example.com/geist-bold.woff2') format('woff2');
+  }
+  @media (prefers-color-scheme: dark) {
+    .body-wrap { background-color: #0a0b0e !important; }
+    .card { background-color: #141519 !important; border-color: #1e1f26 !important; }
+    .text-primary { color: #eae6de !important; }
+    .text-muted { color: #807b75 !important; }
+    .divider { border-color: #1e1f26 !important; }
+  }
+  @media only screen and (max-width: 560px) {
+    .container { width: 100% !important; padding: 12px !important; }
+    .info-grid { display: block !important; }
+    .info-col { display: block !important; width: 100% !important; margin-bottom: 16px !important; }
+    .card-header { padding: 24px 20px 20px !important; }
+    .card-body { padding: 20px !important; }
+  }
+</style>
+</head>
+<body class="body-wrap" style="margin: 0; padding: 32px 16px; background-color: #f4f2ed; font-family: 'Geist', -apple-system, 'Segoe UI', Roboto, sans-serif;">
+  <div class="container" style="max-width: 540px; margin: 0 auto;">
+
+    <!-- Logo with SVG -->
+    <div style="text-align: center; margin-bottom: 28px;">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="36" height="36" rx="10" fill="#1a1714"/>
+        <path d="M11 18L16 23L25 14" stroke="#c49a6c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- Main card -->
+    <div class="card" style="background-color: #ffffff; border-radius: 16px; border: 1px solid #e8e4dd; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+
+      <!-- Card header — dark background + position:relative -->
+      <div class="card-header" style="background-color: #1a1714; padding: 32px 32px 24px; text-align: center; position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -30px; left: -30px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(196,154,108,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
+        <div style="position: relative;">
+          <div style="display: inline-block; background: rgba(196,154,108,0.12); border-radius: 20px; padding: 4px 12px; margin-bottom: 14px; border: 1px solid rgba(196,154,108,0.2);">
+            <span style="color: #c49a6c; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;">Order confirmed</span>
+          </div>
+          <h1 class="text-primary" style="font-size: 22px; font-weight: 700; color: #f0ece4; margin: 0 0 4px; letter-spacing: -0.02em;">Thanks for your order</h1>
+          <p class="text-muted" style="font-size: 13px; color: #807b75; margin: 0;">#HVN-20260224 &middot; February 24, 2026</p>
+        </div>
+      </div>
+
+      <!-- Card body -->
+      <div class="card-body" style="padding: 32px;">
+
+        <!-- Order items table -->
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #807b75; padding: 0 0 12px; border-bottom: 1px solid #e8e4dd;">Item</th>
+              <th style="text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #807b75; padding: 0 0 12px; border-bottom: 1px solid #e8e4dd;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 14px 0; font-size: 14px; color: #1a1714; border-bottom: 1px solid #f4f2ed;">
+                <div style="font-weight: 600; margin-bottom: 2px;">Archival Linen Notebook</div>
+                <div style="font-size: 12px; color: #807b75;">A5 &middot; Ivory &middot; Qty: 2</div>
+              </td>
+              <td style="padding: 14px 0; text-align: right; font-weight: 600; font-size: 14px; color: #1a1714; border-bottom: 1px solid #f4f2ed; white-space: nowrap;">$48.00</td>
+            </tr>
+            <tr>
+              <td style="padding: 14px 0; font-size: 14px; color: #1a1714; border-bottom: 1px solid #f4f2ed;">
+                <div style="font-weight: 600; margin-bottom: 2px;">Brass Pen Stand</div>
+                <div style="font-size: 12px; color: #807b75;">Single &middot; Qty: 1</div>
+              </td>
+              <td style="padding: 14px 0; text-align: right; font-weight: 600; font-size: 14px; color: #1a1714; border-bottom: 1px solid #f4f2ed; white-space: nowrap;">$32.00</td>
+            </tr>
+            <tr>
+              <td style="padding: 14px 0; font-size: 14px; color: #1a1714;">
+                <div style="font-weight: 600; margin-bottom: 2px;">Walnut Desk Tray</div>
+                <div style="font-size: 12px; color: #807b75;">Large &middot; Qty: 1</div>
+              </td>
+              <td style="padding: 14px 0; text-align: right; font-weight: 600; font-size: 14px; color: #1a1714; white-space: nowrap;">$65.00</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Totals — display:flex -->
+        <div style="margin-top: 20px; border-top: 2px solid #1a1714; padding-top: 14px;">
+          <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #807b75;">
+            <span>Subtotal</span>
+            <span>$145.00</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #807b75;">
+            <span>Shipping</span>
+            <span>Free</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; color: #807b75;">
+            <span>Tax</span>
+            <span>$12.18</span>
+          </div>
+          <div class="divider" style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 700; color: #1a1714; padding-top: 10px; margin-top: 8px; border-top: 1px solid #e8e4dd;">
+            <span>Total</span>
+            <span>$157.18</span>
+          </div>
+        </div>
+
+        <!-- Shipping / Payment info — display:grid + gap -->
+        <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #e8e4dd;">
+          <div class="info-col">
+            <h3 style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #807b75; margin: 0 0 8px;">Shipping to</h3>
+            <p style="font-size: 13px; color: #1a1714; line-height: 1.5; margin: 0;">
+              Alex Chen<br>
+              789 Elm Street<br>
+              Portland, OR 97205
+            </p>
+          </div>
+          <div class="info-col">
+            <h3 style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #807b75; margin: 0 0 8px;">Payment</h3>
+            <p style="font-size: 13px; color: #1a1714; line-height: 1.5; margin: 0;">
+              Visa ending in 4242<br>
+              Billed to Alex Chen
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA — box-shadow + border-radius + transition -->
+      <div style="text-align: center; padding: 0 32px 32px;">
+        <a href="#" style="display: inline-block; background-color: #1a1714; color: #f0ece4; font-size: 13px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 8px rgba(26,23,20,0.15); transition: background-color 0.15s ease; letter-spacing: 0.01em;">Track Your Order &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Help links — border-radius + transition -->
+    <div style="margin-top: 20px; text-align: center;">
+      <a href="#" style="display: inline-block; font-size: 12px; color: #807b75; text-decoration: none; padding: 8px 16px; border: 1px solid #e8e4dd; border-radius: 6px; margin: 0 4px; transition: border-color 0.15s ease;">Help Center</a>
+      <a href="#" style="display: inline-block; font-size: 12px; color: #807b75; text-decoration: none; padding: 8px 16px; border: 1px solid #e8e4dd; border-radius: 6px; margin: 0 4px; transition: border-color 0.15s ease;">Returns</a>
+      <a href="#" style="display: inline-block; font-size: 12px; color: #807b75; text-decoration: none; padding: 8px 16px; border: 1px solid #e8e4dd; border-radius: 6px; margin: 0 4px; transition: border-color 0.15s ease;">Contact</a>
+    </div>
+
+    <!-- Footer — opacity -->
+    <div style="text-align: center; padding: 28px 4px 0;">
+      <p style="font-size: 10px; color: #b8b3ad; margin: 0 0 4px; opacity: 0.7;">Haven &middot; Thoughtful goods for your workspace</p>
+      <p style="font-size: 10px; color: #b8b3ad; margin: 0;">
+        <a href="#" style="color: #c49a6c; text-decoration: none;">Unsubscribe</a> &middot;
+        <a href="#" style="color: #c49a6c; text-decoration: none;">Privacy</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

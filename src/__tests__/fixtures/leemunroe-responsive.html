@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Welcome to Attic</title>
+<!--
+  Showcase-quality transactional welcome email.
+  Exercises every CSS feature that breaks across email clients:
+    <style> block, @media dark, @media responsive, linear-gradient,
+    radial-gradient, display:flex + gap, display:grid, border-radius,
+    box-shadow, max-width, position:relative, position:absolute,
+    overflow:hidden, text-transform, letter-spacing, opacity, transition
+-->
+<!--[if mso]>
+<style>
+  * { font-family: Arial, sans-serif !important; }
+</style>
+<![endif]-->
+<style>
+  @media (prefers-color-scheme: dark) {
+    .body-wrap { background-color: #0a0b0e !important; }
+    .card { background-color: #141519 !important; border-color: #1e1f26 !important; }
+    .text-primary { color: #eae6de !important; }
+    .text-muted { color: #807b75 !important; }
+    .stat-border { border-color: #1e1f26 !important; }
+    .step-card { background-color: #1a1b20 !important; }
+  }
+  @media only screen and (max-width: 580px) {
+    .container { width: 100% !important; padding: 12px !important; }
+    .cols { display: block !important; }
+    .col { display: block !important; width: 100% !important; margin-bottom: 12px !important; }
+    .hero { padding: 32px 20px !important; }
+    .stats-row { display: block !important; }
+    .stat { display: block !important; width: 100% !important; border-right: none !important; border-bottom: 1px solid #e8e4dd !important; }
+  }
+</style>
+</head>
+<body class="body-wrap" style="margin: 0; padding: 32px 16px; background-color: #f4f2ed; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;">
+  <div class="container" style="max-width: 540px; margin: 0 auto;">
+
+    <!-- Header — logo + nav with flex + gap -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px 24px; gap: 20px;">
+      <span class="text-primary" style="font-size: 15px; font-weight: 700; color: #1a1714; letter-spacing: -0.03em;">Attic</span>
+      <div style="display: flex; gap: 18px;">
+        <a href="#" style="color: #807b75; font-size: 11px; text-decoration: none; letter-spacing: 0.02em;">Docs</a>
+        <a href="#" style="color: #807b75; font-size: 11px; text-decoration: none; letter-spacing: 0.02em;">Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Hero — linear-gradient + radial-gradient + position + overflow + border-radius -->
+    <div class="hero card" style="background: linear-gradient(145deg, #1a1714 0%, #2c261e 40%, #3d342a 100%); padding: 44px 32px; border-radius: 12px 12px 0 0; position: relative; overflow: hidden;">
+      <div style="position: absolute; top: -40px; right: -40px; width: 140px; height: 140px; background: radial-gradient(circle, rgba(196,154,108,0.18) 0%, transparent 70%); border-radius: 50%;"></div>
+      <div style="position: relative;">
+        <div style="display: inline-block; background: rgba(196,154,108,0.12); border-radius: 20px; padding: 5px 14px; margin-bottom: 18px; border: 1px solid rgba(196,154,108,0.2);">
+          <span style="color: #c49a6c; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;">Welcome aboard</span>
+        </div>
+        <h1 class="text-primary" style="color: #f0ece4; margin: 0 0 10px; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2;">Your Attic workspace is ready</h1>
+        <p class="text-muted" style="color: rgba(240,236,228,0.55); margin: 0; font-size: 14px; line-height: 1.6; opacity: 0.85;">Start building, deploying, and monitoring your applications in minutes.</p>
+      </div>
+    </div>
+
+    <!-- Stats row — flex + text-transform + letter-spacing -->
+    <div class="stats-row" style="display: flex; gap: 0;">
+      <div class="stat" style="flex: 1; background-color: #ffffff; padding: 22px 16px; text-align: center; border-right: 1px solid #e8e4dd;" >
+        <div class="text-primary" style="font-size: 26px; font-weight: 700; color: #1a1714; letter-spacing: -0.03em;">3</div>
+        <div class="text-muted" style="font-size: 10px; color: #807b75; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">Projects</div>
+      </div>
+      <div class="stat" style="flex: 1; background-color: #ffffff; padding: 22px 16px; text-align: center; border-right: 1px solid #e8e4dd;">
+        <div class="text-primary" style="font-size: 26px; font-weight: 700; color: #1a1714; letter-spacing: -0.03em;">∞</div>
+        <div class="text-muted" style="font-size: 10px; color: #807b75; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">Deploys</div>
+      </div>
+      <div class="stat" style="flex: 1; background-color: #ffffff; padding: 22px 16px; text-align: center;">
+        <div class="text-primary" style="font-size: 26px; font-weight: 700; color: #1a1714; letter-spacing: -0.03em;">0ms</div>
+        <div class="text-muted" style="font-size: 10px; color: #807b75; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">Cold start</div>
+      </div>
+    </div>
+
+    <!-- Getting started — editorial with code block (box-shadow + border-radius + overflow) -->
+    <div class="card" style="background-color: #ffffff; margin-top: 2px; padding: 32px;">
+      <p class="text-primary" style="margin: 0 0 14px; font-size: 15px; color: #1a1714; line-height: 1.7;">Here&rsquo;s how to deploy your first project in under a minute:</p>
+      <div style="background-color: #111318; border-radius: 8px; padding: 18px 22px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-bottom: 20px;">
+        <code style="color: #c49a6c; font-family: 'SF Mono', 'Fira Code', Consolas, monospace; font-size: 12px; line-height: 1.9; white-space: pre; display: block;"><span style="color: #5a5752;">$ </span>npx attic init my-app
+<span style="color: #5a5752;">$ </span>attic deploy --prod</code>
+      </div>
+      <p class="text-muted" style="margin: 0; font-size: 13px; color: #807b75; line-height: 1.6;">That&rsquo;s it. Zero config needed &mdash; Attic detects your framework and builds from source.</p>
+    </div>
+
+    <!-- Feature grid — display:grid + grid-template-columns (broken in most clients) -->
+    <div class="card" style="background-color: #ffffff; margin-top: 2px; padding: 32px; border-radius: 0 0 12px 12px;">
+      <p class="text-muted" style="margin: 0 0 18px; font-size: 11px; color: #807b75; text-transform: uppercase; letter-spacing: 0.1em;">Next steps</p>
+      <div class="cols" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="col step-card" style="background-color: #f9f7f4; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s ease;">
+          <div class="text-primary" style="font-size: 13px; font-weight: 600; color: #1a1714; margin-bottom: 5px;">Connect Git</div>
+          <div class="text-muted" style="font-size: 12px; color: #807b75; line-height: 1.5;">Push to deploy. Every branch gets a preview URL.</div>
+        </div>
+        <div class="col step-card" style="background-color: #f9f7f4; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s ease;">
+          <div class="text-primary" style="font-size: 13px; font-weight: 600; color: #1a1714; margin-bottom: 5px;">Add a Domain</div>
+          <div class="text-muted" style="font-size: 12px; color: #807b75; line-height: 1.5;">Free SSL, auto-renewing. DNS verified in seconds.</div>
+        </div>
+        <div class="col step-card" style="background-color: #f9f7f4; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s ease;">
+          <div class="text-primary" style="font-size: 13px; font-weight: 600; color: #1a1714; margin-bottom: 5px;">Invite Team</div>
+          <div class="text-muted" style="font-size: 12px; color: #807b75; line-height: 1.5;">Collaborate with role-based permissions.</div>
+        </div>
+        <div class="col step-card" style="background-color: #f9f7f4; border-radius: 8px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s ease;">
+          <div class="text-primary" style="font-size: 13px; font-weight: 600; color: #1a1714; margin-bottom: 5px;">Set Up Alerts</div>
+          <div class="text-muted" style="font-size: 12px; color: #807b75; line-height: 1.5;">Slack, email, or webhook &mdash; your call.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA — linear-gradient + box-shadow + border-radius + transition -->
+    <div style="margin-top: 16px; text-align: center; background-color: #ffffff; padding: 28px; border-radius: 12px;">
+      <p class="text-primary" style="margin: 0 0 14px; font-size: 15px; color: #1a1714; line-height: 1.5;">Ready to ship?</p>
+      <a href="#" style="display: inline-block; background: linear-gradient(135deg, #1a1714, #3d342a); color: #f0ece4; padding: 13px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; letter-spacing: 0.01em; box-shadow: 0 4px 16px rgba(26,23,20,0.2); transition: opacity 0.15s ease;">Open Dashboard &rarr;</a>
+      <p class="text-muted" style="margin: 10px 0 0; font-size: 11px; color: #807b75;">No credit card required. Free tier includes 100k requests/mo.</p>
+    </div>
+
+    <!-- Footer — flex layout + opacity -->
+    <div style="margin-top: 28px; padding: 0 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="text-muted" style="color: #807b75; font-size: 11px;">Attic &middot; San Francisco</span>
+        <div style="display: flex; gap: 14px;">
+          <a href="#" style="color: #807b75; font-size: 11px; text-decoration: none;">Twitter</a>
+          <a href="#" style="color: #807b75; font-size: 11px; text-decoration: none;">GitHub</a>
+        </div>
+      </div>
+      <div style="border-top: 1px solid #e8e4dd; margin-top: 14px; padding-top: 14px; text-align: center;">
+        <p style="color: #b8b3ad; margin: 0; font-size: 10px; opacity: 0.7;">You&rsquo;re receiving this because you signed up for Attic. <a href="#" style="color: #c49a6c;">Unsubscribe</a></p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>Craft Weekly — Issue 42</title>
+<!--
+  Showcase-quality editorial newsletter.
+  Exercises every CSS feature that breaks across email clients:
+    @font-face, <style>, @media dark, @media responsive, linear-gradient,
+    radial-gradient, display:flex + gap, display:grid, border-radius,
+    box-shadow, max-width, position:relative, position:absolute,
+    overflow:hidden, text-transform, letter-spacing, opacity, transition
+-->
+<!--[if mso]>
+<style>
+  * { font-family: Georgia, serif !important; }
+</style>
+<![endif]-->
+<style>
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    src: url('https://fonts.example.com/inter-regular.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    src: url('https://fonts.example.com/inter-bold.woff2') format('woff2');
+  }
+  @media (prefers-color-scheme: dark) {
+    .body-wrap { background-color: #08090c !important; }
+    .card { background-color: #111318 !important; border-color: #1e1f26 !important; }
+    .text-primary { color: #f0ece4 !important; }
+    .text-muted { color: #8a8681 !important; }
+  }
+  @media only screen and (max-width: 600px) {
+    .container { width: 100% !important; padding: 12px !important; }
+    .cols { display: block !important; }
+    .col { display: block !important; width: 100% !important; margin-bottom: 12px !important; }
+    .hero { padding: 32px 20px !important; }
+  }
+</style>
+</head>
+<body class="body-wrap" style="margin: 0; padding: 32px 16px; background-color: #f4f2ed; font-family: Georgia, 'Times New Roman', serif;">
+  <div class="container" style="max-width: 560px; margin: 0 auto;">
+
+    <!-- Header — flex + gap + letter-spacing -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px 28px; gap: 20px;">
+      <span class="text-primary" style="font-size: 15px; font-weight: 700; color: #1a1714; letter-spacing: -0.02em; font-family: 'Inter', -apple-system, sans-serif;">Craft Weekly</span>
+      <div style="display: flex; gap: 18px;">
+        <a href="#" style="color: #8a8681; font-size: 11px; text-decoration: none; font-family: 'Inter', -apple-system, sans-serif; letter-spacing: 0.02em;">Archive</a>
+        <a href="#" style="color: #8a8681; font-size: 11px; text-decoration: none; font-family: 'Inter', -apple-system, sans-serif; letter-spacing: 0.02em;">Subscribe</a>
+      </div>
+    </div>
+
+    <!-- Hero — linear-gradient + radial-gradient + position + overflow + border-radius -->
+    <div class="hero card" style="background: linear-gradient(145deg, #2d1b4e 0%, #1a1032 50%, #0f0a1f 100%); padding: 48px 36px; border-radius: 12px 12px 0 0; position: relative; overflow: hidden;">
+      <div style="position: absolute; top: -50px; right: -30px; width: 160px; height: 160px; background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%); border-radius: 50%;"></div>
+      <div style="position: relative;">
+        <div style="display: inline-block; background: rgba(139,92,246,0.15); border-radius: 20px; padding: 5px 14px; margin-bottom: 20px; border: 1px solid rgba(139,92,246,0.25);">
+          <span style="color: #a78bfa; font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; font-family: 'Inter', -apple-system, sans-serif;">Issue 42</span>
+        </div>
+        <h1 class="text-primary" style="color: #f0ece4; margin: 0 0 12px; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2;">The State of CSS in Email, 2026</h1>
+        <p style="color: rgba(240,236,228,0.5); margin: 0; font-size: 14px; line-height: 1.6; font-family: 'Inter', -apple-system, sans-serif;">What changed, what still breaks, and what you can finally use.</p>
+      </div>
+    </div>
+
+    <!-- Lead editorial section -->
+    <div class="card" style="background-color: #ffffff; margin-top: 2px; padding: 36px;">
+      <p class="text-primary" style="margin: 0 0 16px; font-size: 16px; color: #1a1714; line-height: 1.8;">Every year we audit the top 20 email clients against the full CSS spec. This year&rsquo;s results are encouraging &mdash; and surprising.</p>
+      <p class="text-muted" style="margin: 0 0 20px; font-size: 14px; color: #8a8681; line-height: 1.7; font-family: 'Inter', -apple-system, sans-serif;">Gmail quietly rolled out <code style="background: #f4f2ed; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', Consolas, monospace;">background-image</code> support in August 2023, and Outlook Web now handles <code style="background: #f4f2ed; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', Consolas, monospace;">box-shadow</code>. But Outlook Windows&rsquo;s Word engine remains the elephant in the inbox.</p>
+
+      <!-- Inline stat highlight — box-shadow + border-radius -->
+      <div style="background-color: #faf8f5; border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 3px solid #a78bfa;">
+        <div style="font-size: 32px; font-weight: 700; color: #2d1b4e; letter-spacing: -0.03em; font-family: 'Inter', -apple-system, sans-serif;">68%</div>
+        <div style="font-size: 12px; color: #8a8681; margin-top: 4px; font-family: 'Inter', -apple-system, sans-serif;">of CSS properties are now supported across 8+ major clients</div>
+      </div>
+
+      <p class="text-muted" style="margin: 0; font-size: 14px; color: #8a8681; line-height: 1.7; font-family: 'Inter', -apple-system, sans-serif;">The biggest gap? Layout. Flexbox works in 7 of 12 clients, grid in only 3. Tables are still the only universal layout primitive.</p>
+    </div>
+
+    <!-- Article grid — display:grid + grid-template-columns -->
+    <div class="card" style="background-color: #ffffff; margin-top: 2px; padding: 36px; border-radius: 0 0 12px 12px;">
+      <p class="text-muted" style="margin: 0 0 20px; font-size: 11px; color: #8a8681; text-transform: uppercase; letter-spacing: 0.1em; font-family: 'Inter', -apple-system, sans-serif;">Also this week</p>
+      <div class="cols" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="col" style="background-color: #f9f7f4; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s ease;">
+          <div style="font-size: 10px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'Inter', -apple-system, sans-serif;">Tutorial</div>
+          <div class="text-primary" style="font-size: 14px; font-weight: 600; color: #1a1714; margin-bottom: 6px; line-height: 1.3;">VML Buttons Without the Pain</div>
+          <div class="text-muted" style="font-size: 12px; color: #8a8681; line-height: 1.5; font-family: 'Inter', -apple-system, sans-serif;">Generate bulletproof Outlook buttons with one helper.</div>
+        </div>
+        <div class="col" style="background-color: #f9f7f4; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s ease;">
+          <div style="font-size: 10px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'Inter', -apple-system, sans-serif;">Deep dive</div>
+          <div class="text-primary" style="font-size: 14px; font-weight: 600; color: #1a1714; margin-bottom: 6px; line-height: 1.3;">Dark Mode Across 12 Clients</div>
+          <div class="text-muted" style="font-size: 12px; color: #8a8681; line-height: 1.5; font-family: 'Inter', -apple-system, sans-serif;">A complete matrix of how each client handles prefers-color-scheme.</div>
+        </div>
+        <div class="col" style="background-color: #f9f7f4; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s ease;">
+          <div style="font-size: 10px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'Inter', -apple-system, sans-serif;">Opinion</div>
+          <div class="text-primary" style="font-size: 14px; font-weight: 600; color: #1a1714; margin-bottom: 6px; line-height: 1.3;">Stop Testing in Litmus</div>
+          <div class="text-muted" style="font-size: 12px; color: #8a8681; line-height: 1.5; font-family: 'Inter', -apple-system, sans-serif;">Why simulation-first testing is faster and cheaper than screenshots.</div>
+        </div>
+        <div class="col" style="background-color: #f9f7f4; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s ease;">
+          <div style="font-size: 10px; font-weight: 600; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; font-family: 'Inter', -apple-system, sans-serif;">Release</div>
+          <div class="text-primary" style="font-size: 14px; font-weight: 600; color: #1a1714; margin-bottom: 6px; line-height: 1.3;">React Email 3.0</div>
+          <div class="text-muted" style="font-size: 12px; color: #8a8681; line-height: 1.5; font-family: 'Inter', -apple-system, sans-serif;">New Tailwind plugin, better Outlook compat, native dark mode.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA — linear-gradient + box-shadow + border-radius + transition -->
+    <div style="margin-top: 16px; text-align: center; background-color: #ffffff; padding: 32px; border-radius: 12px;">
+      <p class="text-primary" style="margin: 0 0 16px; font-size: 15px; color: #1a1714; line-height: 1.5;">Want the full CSS compatibility matrix?</p>
+      <a href="#" style="display: inline-block; background: linear-gradient(135deg, #2d1b4e, #4c1d95); color: #f0ece4; padding: 14px 36px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; letter-spacing: 0.01em; box-shadow: 0 4px 16px rgba(45,27,78,0.25); font-family: 'Inter', -apple-system, sans-serif; transition: opacity 0.15s ease;">Read the Full Report &rarr;</a>
+      <p class="text-muted" style="margin: 12px 0 0; font-size: 11px; color: #8a8681; font-family: 'Inter', -apple-system, sans-serif; opacity: 0.8;">Free for Craft Weekly subscribers.</p>
+    </div>
+
+    <!-- Footer — flex + opacity -->
+    <div style="margin-top: 32px; padding: 0 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="text-muted" style="color: #8a8681; font-size: 11px; font-family: 'Inter', -apple-system, sans-serif;">Craft Weekly &middot; Portland, OR</span>
+        <div style="display: flex; gap: 16px;">
+          <a href="#" style="color: #8a8681; font-size: 11px; text-decoration: none; font-family: 'Inter', -apple-system, sans-serif;">Twitter</a>
+          <a href="#" style="color: #8a8681; font-size: 11px; text-decoration: none; font-family: 'Inter', -apple-system, sans-serif;">RSS</a>
+        </div>
+      </div>
+      <div style="border-top: 1px solid #e8e4dd; margin-top: 16px; padding-top: 16px; text-align: center;">
+        <p style="color: #b8b3ad; margin: 0; font-size: 10px; font-family: 'Inter', -apple-system, sans-serif; opacity: 0.7;">You&rsquo;re receiving this because you subscribed to Craft Weekly. <a href="#" style="color: #a78bfa;">Unsubscribe</a></p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
