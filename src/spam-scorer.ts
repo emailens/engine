@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { SpamIssue, SpamReport } from "./types";
+import type { SpamAnalysisOptions, SpamIssue, SpamReport } from "./types";
 
 const SPAM_TRIGGER_PHRASES = [
   "act now", "limited time", "click here", "buy now", "order now",
@@ -14,11 +14,54 @@ const SPAM_TRIGGER_PHRASES = [
   "cancel anytime", "no strings attached", "no questions asked",
 ];
 
+// Fix #6: Pre-compiled word-boundary regexes for spam phrases
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const SPAM_PHRASE_PATTERNS: Map<string, RegExp> = new Map(
+  SPAM_TRIGGER_PHRASES.map((phrase) => [
+    phrase,
+    new RegExp("\\b" + escapeRegex(phrase) + "\\b"),
+  ]),
+);
+
 const URL_SHORTENERS = [
   "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly",
   "is.gd", "buff.ly", "rebrand.ly", "bl.ink", "short.io",
   "cutt.ly", "rb.gy",
 ];
+
+// Fix #2: Known ESP tracking domains
+const ESP_TRACKING_DOMAINS = [
+  "mailchi.mp", "list-manage.com", "click.mailchimp.com",
+  "sendgrid.net", "click.sendgrid.net", "ct.sendgrid.net",
+  "click.klaviyomail.com", "trk.klaviyo.com",
+  "click.hubspotemail.net",
+  "links.iterable.com", "track.customer.io",
+  "go.pardot.com", "mailgun.org",
+  "em.salesforce.com", "click.marketingcloud.com",
+  "r.mail.yahoo.com", "t.dripemail2.com",
+];
+
+// Fix #4: Transactional email signal phrases
+const TRANSACTIONAL_SIGNALS = [
+  "reset your password", "password reset",
+  "verify your email", "email verification",
+  "order confirmation", "your order",
+  "your receipt", "purchase confirmation",
+  "verification code", "confirm your account",
+  "your invoice", "shipping confirmation",
+  "account activation", "security alert",
+];
+
+const TRANSACTIONAL_SIGNAL_PATTERN = new RegExp(
+  TRANSACTIONAL_SIGNALS.map(escapeRegex).join("|"),
+  "i",
+);
+
+// OTP-like pattern: standalone 4-8 digit codes
+const OTP_PATTERN = /\b\d{4,8}\b/;
 
 const WEIGHTS: Record<string, number> = {
   "caps-ratio": 15,
@@ -57,12 +100,16 @@ function checkCapsRatio(text: string): SpamIssue | null {
   return null;
 }
 
+// Fix #5: Scale punctuation threshold by text length, exclude $digit patterns
 function checkExcessivePunctuation(text: string): SpamIssue | null {
   const exclamations = (text.match(/!/g) || []).length;
-  const dollars = (text.match(/\$/g) || []).length;
+  // Only count $ NOT followed by a digit (skip price patterns like $29)
+  const dollars = (text.match(/\$(?!\d)/g) || []).length;
   const total = exclamations + dollars;
 
-  if (total > 5) {
+  const threshold = Math.max(5, Math.floor(text.length / 200));
+
+  if (total > threshold) {
     return {
       rule: "excessive-punctuation",
       severity: "warning",
@@ -72,12 +119,13 @@ function checkExcessivePunctuation(text: string): SpamIssue | null {
   return null;
 }
 
+// Fix #6: Word-boundary matching for spam phrases
 function checkSpamPhrases(text: string): SpamIssue[] {
   const lower = text.toLowerCase();
   const found: SpamIssue[] = [];
 
-  for (const phrase of SPAM_TRIGGER_PHRASES) {
-    if (lower.includes(phrase)) {
+  for (const [phrase, pattern] of SPAM_PHRASE_PATTERNS) {
+    if (pattern.test(lower)) {
       found.push({
         rule: "spam-phrases",
         severity: "info",
@@ -88,17 +136,28 @@ function checkSpamPhrases(text: string): SpamIssue[] {
   return found;
 }
 
-function checkUnsubscribe($: cheerio.CheerioAPI): SpamIssue | null {
+// Fix #4: Transactional exemption + options API for unsubscribe
+function checkUnsubscribe(
+  $: cheerio.CheerioAPI,
+  text: string,
+  options?: SpamAnalysisOptions,
+): SpamIssue | null {
+  // Explicit transactional type → skip entirely
+  if (options?.emailType === "transactional") return null;
+
+  // List-Unsubscribe header provided → satisfied
+  if (options?.listUnsubscribeHeader?.trim()) return null;
+
   let hasUnsubscribe = false;
 
   $("a").each((_, el) => {
     const href = $(el).attr("href") || "";
-    const text = $(el).text().toLowerCase();
+    const linkText = $(el).text().toLowerCase();
     if (
-      text.includes("unsubscribe") ||
+      linkText.includes("unsubscribe") ||
       href.toLowerCase().includes("unsubscribe") ||
-      text.includes("opt out") ||
-      text.includes("opt-out") ||
+      linkText.includes("opt out") ||
+      linkText.includes("opt-out") ||
       href.toLowerCase().includes("opt-out") ||
       href.toLowerCase().includes("optout")
     ) {
@@ -107,14 +166,54 @@ function checkUnsubscribe($: cheerio.CheerioAPI): SpamIssue | null {
   });
 
   if (!hasUnsubscribe) {
+    // Auto-detect transactional signals
+    const lower = text.toLowerCase();
+    const signalMatches = TRANSACTIONAL_SIGNALS.filter((s) =>
+      lower.includes(s.toLowerCase()),
+    );
+    const hasOtp = OTP_PATTERN.test(text);
+    const signalCount = signalMatches.length + (hasOtp ? 1 : 0);
+
+    if (signalCount >= 2) {
+      // Looks transactional — downgrade to info instead of error
+      return {
+        rule: "missing-unsubscribe",
+        severity: "info",
+        message:
+          "No unsubscribe link found, but email appears transactional — may not be required.",
+        detail: `Detected transactional signals: ${signalMatches.join(", ")}${hasOtp ? ", OTP code" : ""}`,
+      };
+    }
+
     return {
       rule: "missing-unsubscribe",
       severity: "error",
-      message: "No unsubscribe link found — required by CAN-SPAM and GDPR. Most spam filters penalize this.",
+      message:
+        "No unsubscribe link found — required by CAN-SPAM and GDPR. Most spam filters penalize this.",
       detail: 'Add an <a> link with "unsubscribe" text or href.',
     };
   }
   return null;
+}
+
+// Fix #1: Preheader exemption for hidden text
+const PREHEADER_ACCESSORY_PATTERNS = [
+  /max-height\s*:\s*0/,
+  /overflow\s*:\s*hidden/,
+  /mso-hide\s*:\s*all/,
+  /opacity\s*:\s*0/,
+  /color\s*:\s*transparent/,
+  /line-height\s*:\s*0/,
+];
+
+function isLikelyPreheader(
+  style: string,
+  text: string,
+): boolean {
+  if (text.length > 200) return false;
+
+  // Exempt only when preheader-specific accessory patterns are present
+  return PREHEADER_ACCESSORY_PATTERNS.some((p) => p.test(style));
 }
 
 function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
@@ -126,20 +225,27 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
     const text = $(el).text().trim();
     if (!text) return;
 
-    if (/font-size\s*:\s*0(?:px|em|rem|pt)?(?:\s|;|$)/.test(style)) {
-      found = true;
-      detail = "font-size:0 on element with text content";
-      return false;
-    }
+    // visibility:hidden is always flagged — no legitimate preheader use
     if (/visibility\s*:\s*hidden/.test(style)) {
       found = true;
       detail = "visibility:hidden on element with text content";
       return false;
     }
+
+    if (/font-size\s*:\s*0(?:px|em|rem|pt)?(?:\s|;|$)/.test(style)) {
+      if (!isLikelyPreheader(style, text)) {
+        found = true;
+        detail = "font-size:0 on element with text content";
+        return false;
+      }
+    }
+
     if (/display\s*:\s*none/.test(style)) {
-      found = true;
-      detail = "display:none on element with text content";
-      return false;
+      if (!isLikelyPreheader(style, text)) {
+        found = true;
+        detail = "display:none on element with text content";
+        return false;
+      }
     }
   });
 
@@ -154,14 +260,25 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
   return null;
 }
 
+// Fix #3: Hostname matching instead of substring for URL shorteners
 function checkUrlShorteners($: cheerio.CheerioAPI): SpamIssue[] {
   const issues: SpamIssue[] = [];
   const seen = new Set<string>();
 
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") || "";
+    let hostname: string;
+    try {
+      hostname = new URL(href).hostname.toLowerCase();
+    } catch {
+      return; // malformed URL, skip
+    }
+
     for (const shortener of URL_SHORTENERS) {
-      if (href.includes(shortener) && !seen.has(shortener)) {
+      if (
+        (hostname === shortener || hostname.endsWith("." + shortener)) &&
+        !seen.has(shortener)
+      ) {
         seen.add(shortener);
         issues.push({
           rule: "url-shortener",
@@ -175,8 +292,11 @@ function checkUrlShorteners($: cheerio.CheerioAPI): SpamIssue[] {
   return issues;
 }
 
-function checkImageToTextRatio($: cheerio.CheerioAPI): SpamIssue | null {
-  const text = extractVisibleText($);
+// Fix #7: Accept pre-extracted text to avoid duplicate extractVisibleText call
+function checkImageToTextRatio(
+  $: cheerio.CheerioAPI,
+  text: string,
+): SpamIssue | null {
   const images = $("img").length;
   if (images === 0) return null;
 
@@ -199,6 +319,19 @@ function checkImageToTextRatio($: cheerio.CheerioAPI): SpamIssue | null {
   return null;
 }
 
+// Fix #2: ESP tracking domain allowlist + encoded destination heuristic
+function isEspTrackingDomain(hostname: string): boolean {
+  return ESP_TRACKING_DOMAINS.some(
+    (esp) => hostname === esp || hostname.endsWith("." + esp),
+  );
+}
+
+function hasEncodedDestination(href: string, textDomain: string): boolean {
+  // Check if the href path/query contains the text domain URL-encoded
+  const encoded = encodeURIComponent(textDomain);
+  return href.includes(encoded) || href.includes(textDomain);
+}
+
 function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
   const issues: SpamIssue[] = [];
 
@@ -209,11 +342,17 @@ function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
     if (/^https?:\/\/\S+/i.test(text) || /^www\.\S+/i.test(text)) {
       try {
         const textDomain = new URL(
-          text.startsWith("www.") ? `https://${text}` : text
+          text.startsWith("www.") ? `https://${text}` : text,
         ).hostname.replace(/^www\./, "");
         const hrefDomain = new URL(href).hostname.replace(/^www\./, "");
 
         if (textDomain !== hrefDomain) {
+          // Skip known ESP tracking domains
+          if (isEspTrackingDomain(hrefDomain)) return;
+
+          // Skip if href contains encoded destination (redirect wrapper)
+          if (hasEncodedDestination(href, textDomain)) return;
+
           issues.push({
             rule: "deceptive-link",
             severity: "error",
@@ -244,11 +383,14 @@ function checkAllCapsTitle($: cheerio.CheerioAPI): SpamIssue | null {
 /**
  * Analyze an HTML email for spam indicators.
  *
- * Returns a 0–100 score (100 = clean, 0 = very spammy) and an array
+ * Returns a 0-100 score (100 = clean, 0 = very spammy) and an array
  * of issues found. Uses heuristic rules modeled after common spam
  * filter triggers (CAN-SPAM, GDPR, SpamAssassin patterns).
  */
-export function analyzeSpam(html: string): SpamReport {
+export function analyzeSpam(
+  html: string,
+  options?: SpamAnalysisOptions,
+): SpamReport {
   if (!html || !html.trim()) {
     return { score: 100, level: "low", issues: [] };
   }
@@ -265,7 +407,7 @@ export function analyzeSpam(html: string): SpamReport {
 
   issues.push(...checkSpamPhrases(text));
 
-  const unsubIssue = checkUnsubscribe($);
+  const unsubIssue = checkUnsubscribe($, text, options);
   if (unsubIssue) issues.push(unsubIssue);
 
   const hiddenIssue = checkHiddenText($);
@@ -273,7 +415,8 @@ export function analyzeSpam(html: string): SpamReport {
 
   issues.push(...checkUrlShorteners($));
 
-  const imageRatioIssue = checkImageToTextRatio($);
+  // Fix #7: pass pre-extracted text instead of calling extractVisibleText again
+  const imageRatioIssue = checkImageToTextRatio($, text);
   if (imageRatioIssue) issues.push(imageRatioIssue);
 
   issues.push(...checkDeceptiveLinks($));
@@ -295,7 +438,10 @@ export function analyzeSpam(html: string): SpamReport {
     } else if (issue.rule === "url-shortener" || issue.rule === "deceptive-link") {
       if (count <= 2) penalty += weight;
     } else {
-      penalty += weight;
+      // info-level issues don't penalize score
+      if (issue.severity !== "info") {
+        penalty += weight;
+      }
     }
   }
 

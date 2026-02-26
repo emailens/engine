@@ -98,6 +98,13 @@ export interface SpamReport {
   issues: SpamIssue[];
 }
 
+export interface SpamAnalysisOptions {
+  /** Value of the List-Unsubscribe header, if present */
+  listUnsubscribeHeader?: string;
+  /** Type of email — transactional emails are exempt from unsubscribe requirements */
+  emailType?: "marketing" | "transactional";
+}
+
 // ─── Link validation ─────────────────────────────────────────────────────────
 
 export interface LinkIssue {

@@ -30,6 +30,7 @@ export type {
   AiFixResult,
   SpamIssue,
   SpamReport,
+  SpamAnalysisOptions,
   LinkIssue,
   LinkReport,
   AccessibilityIssue,
