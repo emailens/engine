@@ -99,7 +99,11 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
 
       for (const w of group) {
         const clientName = getClient(w.client)?.name ?? w.client;
-        issueSection += `\n- **${w.property}** (${clientName}): ${w.message}`;
+        const fixTypeLabel = w.fixType === "structural" ? " [STRUCTURAL]" : "";
+        issueSection += `\n- **${w.property}** (${clientName})${fixTypeLabel}: ${w.message}`;
+        if (w.fixType === "structural") {
+          issueSection += `\n  - **Fix type: structural** — CSS-only changes will NOT work. HTML restructuring required.`;
+        }
         if (w.suggestion) {
           issueSection += `\n  - Suggestion: ${w.suggestion}`;
         }

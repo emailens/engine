@@ -218,9 +218,107 @@ Look up a client by ID.
 | HEY Mail | `hey-mail` | Webmail | WebKit | Yes |
 | Superhuman | `superhuman` | Desktop | Blink | Yes |
 
+## AI-Powered Fixes (v0.2.0)
+
+The engine classifies every warning as either `css` (CSS-only swap) or `structural` (requires HTML restructuring — tables, VML, conditionals). For structural issues that static snippets can't solve, the engine can generate a structured prompt and delegate to an LLM.
+
+The engine is **provider-agnostic** — you bring your own AI provider via a simple callback.
+
+### `generateAiFix(options): Promise<AiFixResult>`
+
+Builds a fix prompt from the engine's analysis, sends it to your AI provider, and extracts the fixed code.
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import {
+  analyzeEmail,
+  generateCompatibilityScore,
+  generateAiFix,
+  AI_FIX_SYSTEM_PROMPT,
+} from "@emailens/engine";
+
+const anthropic = new Anthropic();
+const warnings = analyzeEmail(html, "jsx");
+const scores = generateCompatibilityScore(warnings);
+
+const result = await generateAiFix({
+  originalHtml: html,
+  warnings,
+  scores,
+  scope: "all",        // or "current" with selectedClientId
+  format: "jsx",
+  provider: async (prompt) => {
+    const msg = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8192,
+      system: AI_FIX_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return msg.content[0].type === "text" ? msg.content[0].text : "";
+  },
+});
+
+console.log(result.code);              // Fixed email code
+console.log(result.targetedWarnings);  // 23
+console.log(result.structuralCount);   // 5
+```
+
+### `estimateAiFixTokens(options): Promise<TokenEstimate>`
+
+Estimate tokens **before** making an API call. Use for cost estimates, limit checks, and UI feedback.
+
+```typescript
+import { estimateAiFixTokens } from "@emailens/engine";
+
+const estimate = await estimateAiFixTokens({
+  originalHtml: html,
+  warnings,
+  scores,
+  scope: "all",
+  format: "jsx",
+  maxInputTokens: 16000,  // optional, triggers smart truncation
+});
+
+console.log(`~${estimate.inputTokens} input tokens`);
+console.log(`~${estimate.estimatedOutputTokens} output tokens`);
+console.log(`${estimate.warningCount} warnings (${estimate.structuralCount} structural)`);
+console.log(`Truncated: ${estimate.truncated}`);
+```
+
+**Smart truncation** kicks in when the prompt exceeds `maxInputTokens`:
+1. Deduplicates warnings (same property × severity)
+2. Removes `info`-level warnings
+3. Removes CSS-only warnings (keeps structural + errors)
+4. Trims long fix snippets
+
+### `heuristicTokenCount(text): number`
+
+Instant synchronous token estimate (~3.5 chars/token). Within ~10-15% of real Claude tokenizer for HTML/CSS.
+
+```typescript
+import { heuristicTokenCount } from "@emailens/engine";
+const tokens = heuristicTokenCount(html); // instant, no deps
+```
+
+### `AI_FIX_SYSTEM_PROMPT`
+
+Expert system prompt for email compatibility fixes. Pass as the `system` parameter to your LLM call for best results. Includes structural fix patterns (table layouts, VML, MSO conditionals).
+
+### `STRUCTURAL_FIX_PROPERTIES`
+
+`Set<string>` of CSS properties that require HTML restructuring (not just CSS swaps). Includes `display:flex`, `display:grid`, `word-break`, `position`, `border-radius` (Outlook), `background-image` (Outlook), and more.
+
+```typescript
+import { STRUCTURAL_FIX_PROPERTIES } from "@emailens/engine";
+STRUCTURAL_FIX_PROPERTIES.has("word-break"); // true
+STRUCTURAL_FIX_PROPERTIES.has("color");      // false
+```
+
 ## CSS Support Matrix
 
-The engine includes a comprehensive CSS support matrix (`src/rules/css-support.ts`) covering 30+ CSS properties and HTML elements across all 12 clients. Data sourced from [caniemail.com](https://www.caniemail.com/) with inferred values for HEY Mail and Superhuman based on their rendering engines.
+The engine includes a comprehensive CSS support matrix (`src/rules/css-support.ts`) covering 45+ CSS properties and HTML elements across all 12 clients. Data sourced from [caniemail.com](https://www.caniemail.com/) with inferred values for HEY Mail and Superhuman based on their rendering engines.
+
+Properties added in v0.2.0: `word-break`, `overflow-wrap`, `white-space`, `text-overflow`, `vertical-align`, `border-spacing`, `min-width`, `min-height`, `max-height`, `text-shadow`, `background-size`, `background-position`.
 
 ## Types
 
@@ -228,6 +326,8 @@ The engine includes a comprehensive CSS support matrix (`src/rules/css-support.t
 type SupportLevel = "supported" | "partial" | "unsupported" | "unknown";
 type Framework = "jsx" | "mjml" | "maizzle";
 type InputFormat = "html" | Framework;
+type FixType = "css" | "structural";
+type AiProvider = (prompt: string) => Promise<string>;
 
 interface EmailClient {
   id: string;
@@ -246,6 +346,7 @@ interface CSSWarning {
   suggestion?: string;
   fix?: CodeFix;
   fixIsGenericFallback?: boolean;
+  fixType?: FixType;           // "css" or "structural" (v0.2.0)
 }
 
 interface CodeFix {
@@ -253,6 +354,25 @@ interface CodeFix {
   after: string;
   language: "html" | "css" | "jsx" | "mjml" | "maizzle";
   description: string;
+}
+
+interface AiFixResult {
+  code: string;
+  prompt: string;
+  targetedWarnings: number;
+  structuralCount: number;
+  tokenEstimate: TokenEstimate;
+}
+
+interface TokenEstimate {
+  inputTokens: number;
+  estimatedOutputTokens: number;
+  promptCharacters: number;
+  htmlCharacters: number;
+  warningCount: number;
+  structuralCount: number;
+  truncated: boolean;
+  warningsRemoved: number;
 }
 
 interface TransformResult {
@@ -278,7 +398,7 @@ interface DiffResult {
 bun test
 ```
 
-95 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, edge cases, and accuracy benchmarks against real-world email templates.
+166 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, smart truncation, fixType classification, and accuracy benchmarks against real-world email templates.
 
 ## License
 

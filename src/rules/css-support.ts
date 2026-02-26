@@ -576,6 +576,184 @@ export const CSS_SUPPORT: Record<
     "superhuman": "unsupported", // Superhuman strips forms for security
   },
 
+  // --- Text Wrapping ---
+  "word-break": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported", // Word engine ignores word-break entirely
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "partial", // break-all partially works; break-word unreliable
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "overflow-wrap": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported", // Word engine ignores overflow-wrap
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "partial", // inconsistent support
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "white-space": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "partial", // only normal and nowrap
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "text-overflow": {
+    "gmail-web": "unsupported", // Gmail strips overflow, so text-overflow is useless
+    "gmail-android": "unsupported",
+    "gmail-ios": "unsupported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "partial",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+
+  // --- Table Layout ---
+  "vertical-align": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "partial", // only on <td> elements via valign attribute
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "border-spacing": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported", // use cellspacing attribute instead
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+
+  // --- Sizing ---
+  "min-width": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported", // Word engine ignores min-width
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "min-height": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported", // Word engine ignores min-height
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "max-height": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "supported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+
+  // --- Shadows ---
+  "text-shadow": {
+    "gmail-web": "unsupported",
+    "gmail-android": "unsupported",
+    "gmail-ios": "unsupported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "unsupported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+
+  // --- Background Sub-properties ---
+  "background-size": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "partial",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+  "background-position": {
+    "gmail-web": "supported",
+    "gmail-android": "supported",
+    "gmail-ios": "supported",
+    "outlook-web": "supported",
+    "outlook-windows": "unsupported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "partial",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "superhuman": "supported",
+  },
+
   // --- Misc ---
   "opacity": {
     "gmail-web": "unsupported",
@@ -675,6 +853,8 @@ export const OUTLOOK_WORD_UNSUPPORTED = new Set([
   "text-shadow",
   "max-width",
   "max-height",
+  "min-width",
+  "min-height",
   "float",
   "position",
   "display",
@@ -688,4 +868,32 @@ export const OUTLOOK_WORD_UNSUPPORTED = new Set([
   "box-sizing",
   "object-fit",
   "gap",
+  "word-break",
+  "overflow-wrap",
+  "text-overflow",
+  "border-spacing",
+]);
+
+/**
+ * Properties that require HTML structural changes (not just CSS swaps)
+ * to fix. These cannot be solved by replacing one CSS value with another.
+ */
+export const STRUCTURAL_FIX_PROPERTIES = new Set([
+  "display:flex",
+  "display:grid",
+  "word-break",
+  "overflow-wrap",
+  "text-overflow",
+  "position",
+  "float",
+  "gap",
+  "max-width",
+  "border-radius",
+  "background-image",
+  "background-size",
+  "background-position",
+  "<svg>",
+  "<video>",
+  "<form>",
+  "object-fit",
 ]);

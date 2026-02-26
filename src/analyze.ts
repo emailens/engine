@@ -1,10 +1,10 @@
 import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
-import { CSS_SUPPORT } from "./rules/css-support";
+import { CSS_SUPPORT, STRUCTURAL_FIX_PROPERTIES } from "./rules/css-support";
 import { EMAIL_CLIENTS } from "./clients";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue } from "./style-utils";
-import type { CSSWarning, Framework, SupportLevel } from "./types";
+import type { CSSWarning, FixType, Framework, SupportLevel } from "./types";
 
 /**
  * Analyze an HTML email and return CSS compatibility warnings
@@ -47,6 +47,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} strips <style> blocks. Styles must be inlined.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<style>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<style>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -60,6 +61,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} has partial <style> support (head only, with limitations). Inline styles recommended.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<style>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<style>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -81,6 +83,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} does not support external stylesheets.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<link>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<link>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -102,6 +105,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} does not support inline SVG.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<svg>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<svg>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -123,6 +127,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} does not support <video> elements.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<video>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<video>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -144,6 +149,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} strips form elements.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("<form>"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<form>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -199,6 +205,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} does not support web fonts (@font-face).`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("@font-face"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("@font-face", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -220,6 +227,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           message: `${client.name} does not support @media queries.`,
           suggestion: sug.text,
           fix,
+          fixType: getFixType("@media"),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("@media", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -273,6 +281,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
           client: client.id,
           property: prop,
           message: `${client.name} does not support "${prop}" in <style> blocks.`,
+          fixType: getFixType(prop),
         });
       }
     }
@@ -292,6 +301,10 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
   return warnings;
 }
 
+function getFixType(prop: string): FixType {
+  return STRUCTURAL_FIX_PROPERTIES.has(prop) ? "structural" : "css";
+}
+
 function checkPropertySupport(
   prop: string,
   addWarning: (w: CSSWarning) => void,
@@ -299,6 +312,8 @@ function checkPropertySupport(
 ) {
   const supportData = CSS_SUPPORT[prop];
   if (!supportData) return;
+
+  const fixType = getFixType(prop);
 
   for (const client of EMAIL_CLIENTS) {
     const support: SupportLevel = supportData[client.id] || "unknown";
@@ -312,6 +327,7 @@ function checkPropertySupport(
         message: `${client.name} does not support "${prop}".`,
         suggestion: sug.text,
         fix,
+        fixType,
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -325,6 +341,7 @@ function checkPropertySupport(
         message: `${client.name} has partial support for "${prop}".`,
         suggestion: sug.text,
         fix,
+        fixType,
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });

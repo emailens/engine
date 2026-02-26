@@ -5,6 +5,7 @@ import {
   CSS_SUPPORT,
   GMAIL_STRIPPED_PROPERTIES,
   OUTLOOK_WORD_UNSUPPORTED,
+  STRUCTURAL_FIX_PROPERTIES,
 } from "./rules/css-support";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
@@ -64,7 +65,7 @@ function inlineStyles($: cheerio.CheerioAPI): void {
 
 /** Build a CSSWarning with framework-aware suggestion + fix + fallback flag. */
 function makeWarning(
-  base: Omit<CSSWarning, "suggestion" | "fix" | "fixIsGenericFallback">,
+  base: Omit<CSSWarning, "suggestion" | "fix" | "fixIsGenericFallback" | "fixType">,
   prop: string,
   clientId: string,
   framework?: Framework,
@@ -80,6 +81,7 @@ function makeWarning(
     ...(sug ? { suggestion: sug.text } : {}),
     ...(fix ? { fix } : {}),
     ...(isFallback ? { fixIsGenericFallback: true } : {}),
+    fixType: STRUCTURAL_FIX_PROPERTIES.has(prop) ? "structural" : "css",
   };
 }
 

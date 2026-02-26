@@ -540,6 +540,156 @@ h1 {
 </div>`,
   },
 
+  // ── word-break → table cell wrapping ─────────────────────────────────────
+  "word-break": {
+    language: "html",
+    description: "Wrap long text in a table cell to force line breaks without word-break",
+    before: `<span style="word-break: break-all;">
+  https://example.com/very/long/url?token=abc123def456
+</span>`,
+    after: `<!-- Table cells force text wrapping in all clients including Outlook -->
+<table role="presentation" width="100%" cellpadding="0"
+  cellspacing="0" border="0">
+  <tr>
+    <td style="word-break: break-all; overflow-wrap: break-word;
+               word-wrap: break-word;">
+      https://example.com/very/long/url?token=abc123def456
+    </td>
+  </tr>
+</table>`,
+  },
+
+  "word-break::jsx": {
+    language: "jsx",
+    description: "Wrap long text in a table cell for Outlook-safe word breaking",
+    before: `<span style={{ wordBreak: "break-all" }}>{url}</span>`,
+    after: `{/* Table cells force text wrapping in Outlook and Yahoo */}
+<table width="100%" cellPadding={0} cellSpacing={0}
+  role="presentation" style={{ borderCollapse: "collapse" }}>
+  <tr>
+    <td style={{
+      wordBreak: "break-all" as const,
+      overflowWrap: "break-word" as const,
+      wordWrap: "break-word" as const,
+    }}>
+      {url}
+    </td>
+  </tr>
+</table>`,
+  },
+
+  "word-break::mjml": {
+    language: "mjml",
+    description: "MJML renders text in table cells by default — word-break works via mj-text",
+    before: `<mj-text>
+  <span style="word-break: break-all;">Long URL here</span>
+</mj-text>`,
+    after: `<!-- mj-text already renders inside a <td>, so add word-break
+     to the mj-text css-class or inline style -->
+<mj-text css-class="break-words"
+  padding="0">
+  Long URL here
+</mj-text>
+<mj-style>
+  .break-words td { word-break: break-all; word-wrap: break-word; }
+</mj-style>`,
+  },
+
+  // ── overflow-wrap → table cell wrapping ────────────────────────────────
+  "overflow-wrap": {
+    language: "html",
+    description: "Use a table cell to force word wrapping without overflow-wrap",
+    before: `<p style="overflow-wrap: break-word;">
+  https://example.com/very/long/url?token=abc123def456
+</p>`,
+    after: `<table role="presentation" width="100%" cellpadding="0"
+  cellspacing="0" border="0">
+  <tr>
+    <td style="overflow-wrap: break-word; word-wrap: break-word;
+               word-break: break-all;">
+      https://example.com/very/long/url?token=abc123def456
+    </td>
+  </tr>
+</table>`,
+  },
+
+  "overflow-wrap::jsx": {
+    language: "jsx",
+    description: "Wrap text in a table cell for Outlook-safe overflow wrapping",
+    before: `<p style={{ overflowWrap: "break-word" }}>{longText}</p>`,
+    after: `<table width="100%" cellPadding={0} cellSpacing={0}
+  role="presentation" style={{ borderCollapse: "collapse" }}>
+  <tr>
+    <td style={{
+      overflowWrap: "break-word" as const,
+      wordWrap: "break-word" as const,
+      wordBreak: "break-all" as const,
+    }}>
+      {longText}
+    </td>
+  </tr>
+</table>`,
+  },
+
+  // ── text-shadow → border/font-weight alternative ───────────────────────
+  "text-shadow": {
+    language: "css",
+    description: "Use font-weight or border-bottom as alternatives to text-shadow",
+    before: `.glow {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}`,
+    after: `.glow {
+  /* text-shadow is not supported in Gmail, Outlook, Yahoo.
+     Use font-weight or letter-spacing for emphasis instead. */
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}`,
+  },
+
+  // ── border-spacing → cellspacing attribute ─────────────────────────────
+  "border-spacing": {
+    language: "html",
+    description: "Use the cellspacing HTML attribute instead of border-spacing CSS",
+    before: `<table style="border-spacing: 8px; border-collapse: separate;">
+  <tr><td>Cell</td></tr>
+</table>`,
+    after: `<table cellspacing="8" style="border-collapse: separate;">
+  <tr><td>Cell</td></tr>
+</table>`,
+  },
+
+  // ── min-width → fixed width ────────────────────────────────────────────
+  "min-width": {
+    language: "html",
+    description: "Use a fixed width instead of min-width for Outlook compatibility",
+    before: `<td style="min-width: 200px;">Content</td>`,
+    after: `<!-- Outlook ignores min-width. Use a fixed width or a spacer. -->
+<td width="200" style="width: 200px;">Content</td>`,
+  },
+
+  // ── min-height → fixed height ──────────────────────────────────────────
+  "min-height": {
+    language: "html",
+    description: "Use a fixed height or spacer instead of min-height",
+    before: `<td style="min-height: 100px;">Content</td>`,
+    after: `<!-- Outlook ignores min-height. Use height or a spacer image. -->
+<td height="100" style="height: 100px;">Content</td>`,
+  },
+
+  // ── max-height → fixed height ──────────────────────────────────────────
+  "max-height": {
+    language: "html",
+    description: "Outlook ignores max-height — truncate content server-side",
+    before: `<div style="max-height: 200px; overflow: hidden;">
+  Long content...
+</div>`,
+    after: `<!-- Outlook ignores max-height. Truncate content server-side. -->
+<div style="height: 200px;">
+  Shortened content...
+  <a href="https://example.com/full">Read more</a>
+</div>`,
+  },
+
   // ── REACT EMAIL (jsx) framework-specific fixes ────────────────────────────
 
   "display:flex::outlook::jsx": {
@@ -1346,6 +1496,8 @@ function getClientPrefix(clientId: string): string | null {
   if (clientId.startsWith("outlook")) return null; // Outlook web is more standards-compliant
   if (clientId.startsWith("gmail")) return "gmail";
   if (clientId.startsWith("apple-mail")) return "apple";
+  if (clientId === "yahoo-mail") return "yahoo";
+  if (clientId === "samsung-mail") return "samsung";
   return null;
 }
 
@@ -1562,6 +1714,56 @@ const SUGGESTION_DATABASE: Record<string, string> = {
   "opacity::maizzle":
     "Use solid Tailwind color classes instead of opacity.",
 
+  // ── word-break ──────────────────────────────────────────────────────
+  "word-break":
+    "Wrap long text in a <table><td> to force wrapping in clients that don't support word-break.",
+  "word-break::outlook":
+    "Outlook's Word engine ignores word-break. Place text inside a <td> with a constrained width — tables always wrap.",
+  "word-break::jsx":
+    "Wrap long text in a <table><tr><td> element. Outlook ignores wordBreak but respects table cell widths.",
+  "word-break::mjml":
+    "mj-text renders inside a <td>, which helps. Add word-wrap: break-word to the td via mj-style.",
+
+  // ── overflow-wrap ──────────────────────────────────────────────────
+  "overflow-wrap":
+    "Wrap text in a <table><td> to force wrapping. overflow-wrap is ignored by Outlook and unreliable in Yahoo.",
+  "overflow-wrap::jsx":
+    "Wrap text in a <table><tr><td> element. Outlook ignores overflowWrap but respects table cell widths.",
+
+  // ── white-space ────────────────────────────────────────────────────
+  "white-space":
+    "Outlook only supports 'normal' and 'nowrap'. Use &nbsp; for non-breaking spaces.",
+
+  // ── text-overflow ──────────────────────────────────────────────────
+  "text-overflow":
+    "text-overflow requires overflow:hidden which is stripped by Gmail. Truncate content server-side.",
+
+  // ── vertical-align ─────────────────────────────────────────────────
+  "vertical-align":
+    'Use the valign HTML attribute on <td> elements for Outlook (e.g., valign="top").',
+
+  // ── border-spacing ─────────────────────────────────────────────────
+  "border-spacing":
+    'Use the cellspacing HTML attribute instead (e.g., <table cellspacing="8">).',
+
+  // ── min-width / min-height ─────────────────────────────────────────
+  "min-width":
+    "Outlook ignores min-width. Use a fixed width attribute on <td> or <table>.",
+  "min-height":
+    "Outlook ignores min-height. Use a fixed height or a spacer image.",
+  "max-height":
+    "Outlook ignores max-height. Truncate content server-side or use a fixed height.",
+
+  // ── text-shadow ────────────────────────────────────────────────────
+  "text-shadow":
+    "text-shadow is stripped by Gmail, Outlook, and Yahoo. Use font-weight for emphasis.",
+
+  // ── background-size / background-position ──────────────────────────
+  "background-size":
+    "Not supported in many clients. Set image dimensions directly.",
+  "background-position":
+    "Not supported in many clients. Use VML for positioning.",
+
   // ── Additional properties covered by transform helpers ────────────────
   "overflow":
     "Content will always be visible. Design accordingly.",
@@ -1577,12 +1779,6 @@ const SUGGESTION_DATABASE: Record<string, string> = {
     "Account for padding in your width calculations (use padding on a nested element).",
   "object-fit":
     "Use width/height attributes on <img> directly.",
-  "max-height":
-    "Use fixed height instead.",
-  "background-size":
-    "Not supported in many clients. Set image dimensions directly.",
-  "background-position":
-    "Not supported in many clients. Use VML for positioning.",
   "display":
     "Use tables for layout in email clients.",
 };

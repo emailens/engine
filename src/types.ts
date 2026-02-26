@@ -25,6 +25,8 @@ export interface CodeFix {
   description: string;
 }
 
+export type FixType = "css" | "structural";
+
 export interface CSSWarning {
   severity: "error" | "warning" | "info";
   client: string;
@@ -33,8 +35,28 @@ export interface CSSWarning {
   suggestion?: string;
   fix?: CodeFix;
   fixIsGenericFallback?: boolean;
+  fixType?: FixType;
   line?: number;
   selector?: string;
+}
+
+/**
+ * Callback that sends a prompt to an LLM and returns the text response.
+ * Consumers bring their own AI provider (Anthropic SDK, Vercel AI, etc.).
+ */
+export type AiProvider = (prompt: string) => Promise<string>;
+
+export interface AiFixResult {
+  /** The fixed email code returned by the AI */
+  code: string;
+  /** The raw prompt that was sent to the AI */
+  prompt: string;
+  /** Number of warnings the fix was targeting */
+  targetedWarnings: number;
+  /** How many of those had fixType: "structural" */
+  structuralCount: number;
+  /** Token estimate for the AI call */
+  tokenEstimate: import("./token-utils").TokenEstimate;
 }
 
 export interface TransformResult {
