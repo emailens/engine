@@ -1,10 +1,6 @@
 import * as cheerio from "cheerio";
 import type { LinkIssue, LinkReport } from "./types";
-
-const GENERIC_LINK_TEXT = new Set([
-  "click here", "here", "read more", "learn more", "more",
-  "link", "this link", "click", "tap here", "this",
-]);
+import { GENERIC_LINK_TEXT } from "./constants";
 
 function classifyHref(href: string): string {
   if (!href || !href.trim()) return "empty";
@@ -36,13 +32,13 @@ export function validateLinks(html: string): LinkReport {
     return {
       totalLinks: 0,
       issues: [],
-      breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, other: 0 },
+      breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 },
     };
   }
 
   const $ = cheerio.load(html);
   const issues: LinkIssue[] = [];
-  const breakdown = { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, other: 0 };
+  const breakdown = { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 };
 
   const links = $("a");
   const totalLinks = links.length;
@@ -56,6 +52,8 @@ export function validateLinks(html: string): LinkReport {
     return { totalLinks: 0, issues, breakdown };
   }
 
+  const hrefCounts = new Map<string, number>();
+
   links.each((_, el) => {
     const href = $(el).attr("href") || "";
     const text = $(el).text().trim();
@@ -68,7 +66,14 @@ export function validateLinks(html: string): LinkReport {
       case "mailto": breakdown.mailto++; break;
       case "tel": breakdown.tel++; break;
       case "anchor": breakdown.anchor++; break;
+      case "javascript": breakdown.javascript++; break;
+      case "protocol-relative": breakdown.protocolRelative++; break;
       default: breakdown.other++; break;
+    }
+
+    // Track href occurrences for duplicate detection
+    if (href && href.trim()) {
+      hrefCounts.set(href, (hrefCounts.get(href) || 0) + 1);
     }
 
     // Empty or missing href
@@ -117,6 +122,17 @@ export function validateLinks(html: string): LinkReport {
       });
     }
 
+    // Protocol-relative URL
+    if (category === "protocol-relative") {
+      issues.push({
+        severity: "warning",
+        rule: "protocol-relative",
+        message: "Protocol-relative URL may break in email clients — use https:// explicitly",
+        href: href.slice(0, 120),
+        text: text.slice(0, 80) || "(no text)",
+      });
+    }
+
     // Generic link text
     if (text && GENERIC_LINK_TEXT.has(text.toLowerCase())) {
       issues.push({
@@ -149,6 +165,17 @@ export function validateLinks(html: string): LinkReport {
       });
     }
 
+    // tel: without number
+    if (category === "tel" && href.trim().toLowerCase() === "tel:") {
+      issues.push({
+        severity: "error",
+        rule: "empty-tel",
+        message: "tel: link has no phone number",
+        href,
+        text: text.slice(0, 80) || "(no text)",
+      });
+    }
+
     // Very long URL
     if (href.length > 2000) {
       issues.push({
@@ -160,6 +187,18 @@ export function validateLinks(html: string): LinkReport {
       });
     }
   });
+
+  // Duplicate link detection
+  for (const [href, count] of hrefCounts) {
+    if (count > 5) {
+      issues.push({
+        severity: "info",
+        rule: "duplicate-links",
+        message: `URL appears ${count} times — consider consolidating`,
+        href: href.slice(0, 120),
+      });
+    }
+  }
 
   return { totalLinks, issues, breakdown };
 }

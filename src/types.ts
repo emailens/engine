@@ -124,6 +124,8 @@ export interface LinkReport {
     mailto: number;
     tel: number;
     anchor: number;
+    javascript: number;
+    protocolRelative: number;
     other: number;
   };
 }

@@ -222,3 +222,93 @@ describe("link validator — resilience", () => {
     expect(() => validateLinks(html)).not.toThrow();
   });
 });
+
+// ============================================================================
+// Protocol-relative URLs
+// ============================================================================
+
+describe("link validator — protocol-relative URLs", () => {
+  test("protocol-relative URL flagged as warning", () => {
+    const html = `<html><body><a href="//cdn.example.com/page">Link</a></body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "protocol-relative");
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe("warning");
+  });
+
+  test("protocol-relative counted in breakdown.protocolRelative", () => {
+    const html = `<html><body><a href="//cdn.example.com/page">Link</a></body></html>`;
+    const report = validateLinks(html);
+    expect(report.breakdown.protocolRelative).toBe(1);
+  });
+});
+
+// ============================================================================
+// javascript: breakdown
+// ============================================================================
+
+describe("link validator — javascript breakdown", () => {
+  test("javascript: counted in breakdown.javascript", () => {
+    const html = `<html><body><a href="javascript:alert(1)">X</a></body></html>`;
+    const report = validateLinks(html);
+    expect(report.breakdown.javascript).toBe(1);
+  });
+});
+
+// ============================================================================
+// Empty tel:
+// ============================================================================
+
+describe("link validator — empty tel", () => {
+  test("empty tel: flagged as error", () => {
+    const html = `<html><body><a href="tel:">Call us</a></body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "empty-tel");
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe("error");
+  });
+
+  test("valid tel:+15551234567 not flagged", () => {
+    const html = `<html><body><a href="tel:+15551234567">Call us</a></body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "empty-tel");
+    expect(rule).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// Duplicate links
+// ============================================================================
+
+describe("link validator — duplicate links", () => {
+  test("6x same URL triggers duplicate-links info issue", () => {
+    const links = Array.from({ length: 6 }, () =>
+      `<a href="https://example.com/same">Link</a>`
+    ).join("\n");
+    const html = `<html><body>${links}</body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "duplicate-links");
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe("info");
+  });
+
+  test("5x same URL does not trigger duplicate issue", () => {
+    const links = Array.from({ length: 5 }, () =>
+      `<a href="https://example.com/same">Link</a>`
+    ).join("\n");
+    const html = `<html><body>${links}</body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "duplicate-links");
+    expect(rule).toBeUndefined();
+  });
+
+  test("10 unique URLs does not trigger duplicate issue", () => {
+    const links = Array.from({ length: 10 }, (_, i) =>
+      `<a href="https://example.com/page${i}">Link ${i}</a>`
+    ).join("\n");
+    const html = `<html><body>${links}</body></html>`;
+    const report = validateLinks(html);
+    const rule = report.issues.find((i) => i.rule === "duplicate-links");
+    expect(rule).toBeUndefined();
+  });
+});

@@ -265,3 +265,138 @@ describe("accessibility checker — resilience", () => {
     expect(() => checkAccessibility(html)).not.toThrow();
   });
 });
+
+// ============================================================================
+// Per-rule penalty capping
+// ============================================================================
+
+describe("accessibility checker — penalty capping", () => {
+  test("8 missing alt images score >= 50 (capped), all 8 issues reported", () => {
+    const images = Array.from({ length: 8 }, (_, i) => `<img src="img${i}.jpg">`).join("\n");
+    const html = `<html lang="en"><head><title>T</title></head><body>${images}</body></html>`;
+    const report = checkAccessibility(html);
+    const altIssues = report.issues.filter((i) => i.rule === "img-missing-alt");
+    expect(altIssues.length).toBe(8);
+    expect(report.score).toBeGreaterThanOrEqual(50);
+  });
+});
+
+// ============================================================================
+// Color contrast detection
+// ============================================================================
+
+describe("accessibility checker — color contrast", () => {
+  test("white text on white bg flagged as low-contrast error", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <div style="background-color: #ffffff;">
+        <p style="color: #ffffff; font-size: 14px;">Invisible text</p>
+      </div>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "low-contrast");
+    expect(rule).toBeDefined();
+    expect(rule!.severity).toBe("error");
+  });
+
+  test("black text on white bg has no low-contrast issue", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <div style="background-color: #ffffff;">
+        <p style="color: #000000; font-size: 14px;">Visible text</p>
+      </div>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "low-contrast");
+    expect(rule).toBeUndefined();
+  });
+
+  test("light gray (#999) on white flagged (ratio ~2.85:1)", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <p style="color: #999999; font-size: 14px;">Gray text</p>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "low-contrast");
+    expect(rule).toBeDefined();
+  });
+
+  test("named color white on white flagged", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <div style="background-color: white;">
+        <span style="color: white; font-size: 14px;">Hidden</span>
+      </div>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "low-contrast");
+    expect(rule).toBeDefined();
+  });
+});
+
+// ============================================================================
+// Small text threshold (lowered to 9px)
+// ============================================================================
+
+describe("accessibility checker — small text threshold", () => {
+  test("9px text is NOT flagged (lowered threshold)", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <p style="font-size: 9px;">Footer text</p>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "small-text");
+    expect(rule).toBeUndefined();
+  });
+
+  test("8px text is still flagged", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <p style="font-size: 8px;">Tiny text</p>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "small-text");
+    expect(rule).toBeDefined();
+  });
+});
+
+// ============================================================================
+// Table ancestor skip (presentation/none)
+// ============================================================================
+
+describe("accessibility checker — table ancestor skip", () => {
+  test('inner table inside role="presentation" ancestor NOT flagged', () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <table role="presentation">
+        <tr><td>
+          <table>
+            <tr><td>A</td><td>B</td><td>C</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "table-missing-role");
+    expect(rule).toBeUndefined();
+  });
+
+  test('inner table inside role="none" ancestor NOT flagged', () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <table role="none">
+        <tr><td>
+          <table>
+            <tr><td>A</td><td>B</td><td>C</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "table-missing-role");
+    expect(rule).toBeUndefined();
+  });
+
+  test("standalone layout table without role still flagged", () => {
+    const html = `<html lang="en"><head><title>T</title></head><body>
+      <table>
+        <tr><td>A</td><td>B</td><td>C</td></tr>
+      </table>
+    </body></html>`;
+    const report = checkAccessibility(html);
+    const rule = report.issues.find((i) => i.rule === "table-missing-role");
+    expect(rule).toBeDefined();
+  });
+});

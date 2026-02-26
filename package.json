@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link, and image quality analysis.",
   "type": "module",
   "exports": {

@@ -1,10 +1,17 @@
 import * as cheerio from "cheerio";
 import type { AccessibilityIssue, AccessibilityReport } from "./types";
+import { GENERIC_LINK_TEXT } from "./constants";
+import { getStyleValue } from "./style-utils";
+import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 
-const GENERIC_LINK_TEXT = new Set([
-  "click here", "here", "read more", "learn more", "more",
-  "link", "this link", "click", "tap here", "this",
-]);
+// Per-rule penalty caps — only the score penalty is capped, all issues are still reported
+const RULE_PENALTY_CAPS: Record<string, number> = {
+  "img-missing-alt": 3,
+  "link-generic-text": 3,
+  "link-no-accessible-name": 3,
+  "table-missing-role": 2,
+  "low-contrast": 3,
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function describeElement($: cheerio.CheerioAPI, el: any): string {
@@ -131,6 +138,9 @@ function checkTableAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
 
   $("table").each((_, el) => {
+    // Skip inner tables that are inside a presentation/none ancestor
+    if ($(el).parents('table[role="presentation"], table[role="none"]').length > 0) return;
+
     const role = $(el).attr("role");
     const hasHeaders = $(el).find("th").length > 0;
     const looksLikeLayout = !hasHeaders;
@@ -152,20 +162,21 @@ function checkTableAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
   return issues;
 }
 
-function checkColorContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
+function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
   let smallTextCount = 0;
 
   $("[style]").each((_, el) => {
     const style = $(el).attr("style") || "";
 
+    // --- Small text check (threshold lowered to 9px) ---
     const fontSizeMatch = style.match(/font-size\s*:\s*(\d+(?:\.\d+)?)(px|pt)/i);
     if (fontSizeMatch) {
       const size = parseFloat(fontSizeMatch[1]);
       const unit = fontSizeMatch[2].toLowerCase();
       const pxSize = unit === "pt" ? size * 1.333 : size;
 
-      if (pxSize < 10 && pxSize > 0) {
+      if (pxSize < 9 && pxSize > 0) {
         smallTextCount++;
         if (smallTextCount <= 3) {
           issues.push({
@@ -173,7 +184,80 @@ function checkColorContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
             rule: "small-text",
             message: `Very small text (${fontSizeMatch[0].trim()})`,
             element: describeElement($, el),
-            details: "Text smaller than 10px is difficult to read, especially on mobile devices.",
+            details: "Text smaller than 9px is difficult to read, especially on mobile devices.",
+          });
+        }
+      }
+    }
+
+    // --- Color contrast check ---
+    const colorValue = getStyleValue(style, "color");
+    if (colorValue) {
+      const fg = parseColor(colorValue);
+      if (fg) {
+        // Find nearest ancestor background-color, default white
+        let bgR = 255, bgG = 255, bgB = 255;
+        let current = $(el);
+        let foundBg = false;
+
+        // Check own background first, then walk ancestors
+        const elements = [current, ...$(el).parents("[style]").toArray().map((p) => $(p))];
+        for (const ancestor of elements) {
+          const ancestorStyle = (typeof ancestor === "function" ? ancestor : $(ancestor)).attr("style") || "";
+          const bgValue = getStyleValue(ancestorStyle, "background-color");
+          if (bgValue) {
+            const bg = parseColor(bgValue);
+            if (bg && bg.a > 0) {
+              if (bg.a < 1) {
+                // Semi-transparent bg — blend against white
+                [bgR, bgG, bgB] = alphaBlend(bg, 255, 255, 255);
+              } else {
+                bgR = bg.r;
+                bgG = bg.g;
+                bgB = bg.b;
+              }
+              foundBg = true;
+              break;
+            }
+          }
+        }
+
+        // Alpha-blend foreground if needed
+        const [fR, fG, fB] = fg.a < 1 ? alphaBlend(fg, bgR, bgG, bgB) : [fg.r, fg.g, fg.b];
+
+        const fgLum = relativeLuminance(fR, fG, fB);
+        const bgLum = relativeLuminance(bgR, bgG, bgB);
+        const ratio = contrastRatio(fgLum, bgLum);
+
+        // Determine if text is "large" (≥18px, or ≥14px bold)
+        let isLargeText = false;
+        if (fontSizeMatch) {
+          const size = parseFloat(fontSizeMatch[1]);
+          const unit = fontSizeMatch[2].toLowerCase();
+          const pxSize = unit === "pt" ? size * 1.333 : size;
+          const fontWeight = getStyleValue(style, "font-weight");
+          const isBold = fontWeight === "bold" || fontWeight === "bolder" || (fontWeight && parseInt(fontWeight, 10) >= 700);
+          isLargeText = pxSize >= 18 || (pxSize >= 14 && !!isBold);
+        }
+
+        const grade = wcagGrade(ratio);
+        if (grade === "Fail") {
+          // ratio < 3:1 — error for all text
+          issues.push({
+            severity: "error",
+            rule: "low-contrast",
+            message: `Low contrast ratio ${ratio.toFixed(1)}:1 — fails WCAG minimum`,
+            element: describeElement($, el),
+            details: `Foreground ${colorValue} on background needs at least ${isLargeText ? "3:1" : "4.5:1"} contrast ratio.`,
+          });
+        } else if (!isLargeText && grade === "AA Large") {
+          // ratio 3:1–4.5:1 — only passes for large text, so flag normal text
+          issues.push({
+            severity: "warning",
+            rule: "low-contrast",
+            message: `Low contrast ratio ${ratio.toFixed(1)}:1 — fails WCAG AA for normal text`,
+            element: describeElement($, el),
+            details: `Foreground ${colorValue} on background needs at least 4.5:1 for normal-sized text.`,
           });
         }
       }
@@ -184,7 +268,7 @@ function checkColorContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
     issues.push({
       severity: "warning",
       rule: "small-text-multiple",
-      message: `${smallTextCount} elements with text smaller than 10px`,
+      message: `${smallTextCount} elements with text smaller than 9px`,
       details: "Consider using a minimum font size of 12-14px for readability.",
     });
   }
@@ -241,11 +325,20 @@ export function checkAccessibility(html: string): AccessibilityReport {
   issues.push(...checkImageAlt($));
   issues.push(...checkLinkAccessibility($));
   issues.push(...checkTableAccessibility($));
-  issues.push(...checkColorContrast($));
+  issues.push(...checkTextSizeAndContrast($));
   issues.push(...checkSemanticStructure($));
 
+  // Calculate score with per-rule penalty capping
   let penalty = 0;
+  const seenRules = new Map<string, number>();
+
   for (const issue of issues) {
+    const count = (seenRules.get(issue.rule) || 0) + 1;
+    seenRules.set(issue.rule, count);
+
+    const cap = RULE_PENALTY_CAPS[issue.rule];
+    if (cap !== undefined && count > cap) continue; // skip penalty but keep the issue
+
     switch (issue.severity) {
       case "error": penalty += 12; break;
       case "warning": penalty += 6; break;
