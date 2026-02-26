@@ -1,7 +1,7 @@
 {
   "name": "@emailens/engine",
-  "version": "0.2.0",
-  "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, and suggests fixes.",
+  "version": "0.3.0",
+  "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link, and image quality analysis.",
   "type": "module",
   "exports": {
     ".": {
@@ -42,7 +42,11 @@
     "outlook",
     "apple-mail",
     "dark-mode",
-    "email-testing"
+    "email-testing",
+    "spam-scoring",
+    "accessibility",
+    "link-validation",
+    "image-analysis"
   ],
   "license": "MIT",
   "repository": {

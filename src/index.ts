@@ -8,6 +8,10 @@ export { generateFixPrompt } from "./export-prompt";
 export { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "./ai-fix";
 export { estimateAiFixTokens, heuristicTokenCount } from "./token-utils";
 export { STRUCTURAL_FIX_PROPERTIES } from "./rules/css-support";
+export { analyzeSpam } from "./spam-scorer";
+export { validateLinks } from "./link-validator";
+export { checkAccessibility } from "./accessibility-checker";
+export { analyzeImages } from "./image-analyzer";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";
@@ -24,4 +28,13 @@ export type {
   SupportLevel,
   AiProvider,
   AiFixResult,
+  SpamIssue,
+  SpamReport,
+  LinkIssue,
+  LinkReport,
+  AccessibilityIssue,
+  AccessibilityReport,
+  ImageIssue,
+  ImageInfo,
+  ImageReport,
 } from "./types";

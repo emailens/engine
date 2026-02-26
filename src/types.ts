@@ -82,3 +82,82 @@ export interface DiffResult {
   introduced: CSSWarning[];
   unchanged: CSSWarning[];
 }
+
+// ─── Spam scoring ────────────────────────────────────────────────────────────
+
+export interface SpamIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  detail?: string;
+}
+
+export interface SpamReport {
+  score: number;
+  level: "low" | "medium" | "high";
+  issues: SpamIssue[];
+}
+
+// ─── Link validation ─────────────────────────────────────────────────────────
+
+export interface LinkIssue {
+  severity: "error" | "warning" | "info";
+  rule: string;
+  message: string;
+  href?: string;
+  text?: string;
+}
+
+export interface LinkReport {
+  totalLinks: number;
+  issues: LinkIssue[];
+  breakdown: {
+    https: number;
+    http: number;
+    mailto: number;
+    tel: number;
+    anchor: number;
+    other: number;
+  };
+}
+
+// ─── Accessibility checking ──────────────────────────────────────────────────
+
+export interface AccessibilityIssue {
+  severity: "error" | "warning" | "info";
+  rule: string;
+  message: string;
+  element?: string;
+  details?: string;
+}
+
+export interface AccessibilityReport {
+  score: number;
+  issues: AccessibilityIssue[];
+}
+
+// ─── Image analysis ──────────────────────────────────────────────────────────
+
+export interface ImageIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  src?: string;
+}
+
+export interface ImageInfo {
+  src: string;
+  alt: string | null;
+  width: string | null;
+  height: string | null;
+  isTrackingPixel: boolean;
+  dataUriBytes: number;
+  issues: string[];
+}
+
+export interface ImageReport {
+  total: number;
+  totalDataUriBytes: number;
+  issues: ImageIssue[];
+  images: ImageInfo[];
+}
