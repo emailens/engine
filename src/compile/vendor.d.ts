@@ -10,6 +10,8 @@ declare module "isolated-vm" {
 
   export class Context {
     global: Reference<Record<string, unknown>>;
+    /** Evaluate code string inside the V8 isolate context (isolated-vm API). */
+    eval(code: string, options?: { timeout?: number }): Promise<unknown>;
     evalClosureSync(code: string, args: unknown[], options?: { timeout?: number }): unknown;
   }
 

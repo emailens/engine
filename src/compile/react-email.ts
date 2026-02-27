@@ -251,17 +251,21 @@ function executeInVm(
 // ─── Sandbox: isolated-vm ──────────────────────────────────────────────────
 
 /**
- * Execute transpiled code in a separate V8 isolate via `isolated-vm`.
+ * Validate code in a separate V8 isolate, then execute in `node:vm`.
  *
- * True heap isolation — the user code runs in a distinct V8 isolate with
- * no access to the host process. Module requires and globals must be
- * explicitly transferred. Escape requires exploiting a V8 engine bug.
+ * Two-phase approach:
+ *  1. **Validate** — run the transpiled code in a true V8 isolate with stub
+ *     React/component implementations. This catches disallowed imports and
+ *     structural errors inside a genuine security boundary (separate heap,
+ *     128 MB memory cap, timeout). Escape requires a V8 engine bug.
+ *  2. **Execute** — run the validated code in `node:vm` with real React
+ *     objects for actual rendering.
  *
- * Implementation note: React Email components create complex object graphs
- * (React elements, component refs) that cannot be serialized across isolate
- * boundaries. We use a callback-based approach where the isolate calls back
- * into the host for module resolution, and the code runs with a strict
- * timeout and memory limit.
+ * Why two phases: React's internal type system uses Symbols
+ * (`Symbol(react.forward_ref)`, `Symbol(react.element)`, etc.) which cannot
+ * be transferred across V8 isolate boundaries — the structured clone
+ * algorithm does not support Symbols. Running React code directly inside
+ * `isolated-vm` is not possible.
  */
 async function executeInIsolatedVm(
   code: string,
@@ -281,55 +285,54 @@ async function executeInIsolatedVm(
     );
   }
 
+  // ── Phase 1: Validate in a true V8 isolate ─────────────────────────────
   const isolate = new ivm.Isolate({ memoryLimit: 128 });
   try {
     const ivmContext = await isolate.createContext();
-    const jail = ivmContext.global;
 
-    const ALLOWED_MODULES: Record<string, unknown> = {
-      react: React,
-      "@react-email/components": ReactEmailComponents,
-    };
-
-    // Set up host callbacks for module resolution
-    const hostRequire = new ivm.Reference(function (name: string) {
-      if (name in ALLOWED_MODULES) {
-        return ALLOWED_MODULES[name];
-      }
-      throw new Error(
-        `Import of "${name}" is not allowed. Only "react" and "@react-email/components" can be imported.`,
-      );
-    });
-
-    await jail.set("__hostRequire", hostRequire);
-    await jail.set("__hostReact", new ivm.Reference(React));
-
-    // Run code in the isolate with host callbacks for module resolution
-    const wrapperCode = `
+    // Stub implementations let the code parse and execute structurally
+    // without needing real React objects (which contain non-cloneable Symbols).
+    const validationCode = `
       (function() {
-        const module = { exports: {} };
-        const exports = module.exports;
-
-        const React = __hostReact.derefInto();
+        var module = { exports: {} };
+        var exports = module.exports;
+        var React = {
+          createElement: function() { return {}; },
+          forwardRef: function(fn) { return fn; },
+          Fragment: "Fragment",
+        };
         function require(name) {
-          return __hostRequire.applySync(undefined, [name], { result: { copy: true }, arguments: { copy: true } });
+          if (name === "react" || name === "@react-email/components") {
+            return React;
+          }
+          throw new Error('Import of "' + name + '" is not allowed. Only "react" and "@react-email/components" can be imported.');
         }
-
-        ${code}
-
-        return module.exports;
+        try {
+          ${code}
+          return JSON.stringify({ ok: true });
+        } catch(e) {
+          return JSON.stringify({ ok: false, error: e.message || "Unknown error" });
+        }
       })()
     `;
 
     try {
-      const result = await ivmContext.evalClosureSync(wrapperCode, [], {
+      const result = await ivmContext.eval(validationCode, {
         timeout: EXECUTION_TIMEOUT_MS,
       });
 
-      return typeof result === "object" && result !== null
-        ? (result as Record<string, unknown>)
-        : { default: result };
+      if (typeof result === "string") {
+        const parsed = JSON.parse(result) as { ok: boolean; error?: string };
+        if (!parsed.ok) {
+          throw new CompileError(
+            `JSX execution error: ${parsed.error ?? "Unknown error"}`,
+            "jsx",
+            "execution",
+          );
+        }
+      }
     } catch (err: unknown) {
+      if (err instanceof CompileError) throw err;
       const message = err instanceof Error ? err.message : "Unknown execution error";
       if (message.includes("timed out") || message.includes("Timeout")) {
         throw new CompileError("JSX execution timed out (possible infinite loop).", "jsx", "execution");
@@ -339,6 +342,9 @@ async function executeInIsolatedVm(
   } finally {
     isolate.dispose();
   }
+
+  // ── Phase 2: Execute validated code in node:vm with real React ──────────
+  return executeInVm(code, React, ReactEmailComponents);
 }
 
 // ─── Sandbox: QuickJS (WASM) ──────────────────────────────────────────────
