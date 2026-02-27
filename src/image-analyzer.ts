@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { MAX_HTML_SIZE } from "./constants";
 import type { ImageIssue, ImageInfo, ImageReport } from "./types";
 
 const DATA_URI_WARN_BYTES = 100 * 1024;
@@ -57,6 +58,9 @@ function truncateSrc(src: string, max = 60): string {
 export function analyzeImages(html: string): ImageReport {
   if (!html || !html.trim()) {
     return { total: 0, totalDataUriBytes: 0, issues: [], images: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
   const $ = cheerio.load(html);

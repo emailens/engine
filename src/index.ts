@@ -1,6 +1,6 @@
 export { EMAIL_CLIENTS, getClient } from "./clients";
 export { transformForClient, transformForAllClients } from "./transform";
-export { analyzeEmail, generateCompatibilityScore } from "./analyze";
+export { analyzeEmail, generateCompatibilityScore, warningsForClient, errorWarnings, structuralWarnings } from "./analyze";
 export { simulateDarkMode } from "./dark-mode";
 export { getCodeFix, getSuggestion } from "./fix-snippets";
 export { diffResults } from "./diff";
@@ -12,12 +12,16 @@ export { analyzeSpam } from "./spam-scorer";
 export { validateLinks } from "./link-validator";
 export { checkAccessibility } from "./accessibility-checker";
 export { analyzeImages } from "./image-analyzer";
-export { GENERIC_LINK_TEXT } from "./constants";
+export { auditEmail } from "./audit";
+export { CompileError } from "./compile/errors";
+export { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
 export { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";
+export type { AuditOptions, AuditReport } from "./audit";
+export type { SandboxStrategy, CompileReactEmailOptions } from "./compile/react-email";
 export type {
   EmailClient,
   CSSWarning,

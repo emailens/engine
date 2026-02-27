@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { LinkIssue, LinkReport } from "./types";
-import { GENERIC_LINK_TEXT } from "./constants";
+import { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
 
 function classifyHref(href: string): string {
   if (!href || !href.trim()) return "empty";
@@ -34,6 +34,9 @@ export function validateLinks(html: string): LinkReport {
       issues: [],
       breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 },
     };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
   const $ = cheerio.load(html);

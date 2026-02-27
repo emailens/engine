@@ -1,5 +1,14 @@
 import * as cheerio from "cheerio";
+import * as csstree from "css-tree";
+import { MAX_HTML_SIZE } from "./constants";
+import { parseColor, relativeLuminance } from "./color-utils";
+import { parseInlineStyle, serializeStyle } from "./style-utils";
 import type { CSSWarning } from "./types";
+
+/** Luminance threshold — colors above this are considered "light" */
+const LIGHT_THRESHOLD = 0.7;
+/** Luminance threshold — colors below this are considered "dark" */
+const DARK_THRESHOLD = 0.15;
 
 /**
  * Simulate dark mode rendering for an email.
@@ -14,6 +23,9 @@ export function simulateDarkMode(
 ): { html: string; warnings: CSSWarning[] } {
   if (!html || !html.trim()) {
     return { html: html || "", warnings: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
   const $ = cheerio.load(html);
@@ -119,46 +131,141 @@ export function simulateDarkMode(
   return { html: $.html(), warnings };
 }
 
+/**
+ * Invert a color value for dark mode.
+ * Returns null if the color can't be parsed or shouldn't be inverted.
+ */
+function invertColor(value: string, mode: "full" | "partial"): string | null {
+  const parsed = parseColor(value);
+  if (!parsed || parsed.a === 0) return null;
+
+  const lum = relativeLuminance(parsed.r, parsed.g, parsed.b);
+
+  if (mode === "full") {
+    // Full inversion: invert both light and dark colors
+    if (lum > LIGHT_THRESHOLD) {
+      // Light color → dark
+      return "#1a1a1a";
+    }
+    if (lum < DARK_THRESHOLD) {
+      // Dark color → light
+      return "#e0e0e0";
+    }
+    return null; // mid-range colors left alone
+  } else {
+    // Partial inversion: only invert very light backgrounds/very dark text
+    if (lum > 0.85) {
+      return "#2d2d2d";
+    }
+    if (lum < 0.05) {
+      return "#d4d4d4";
+    }
+    return null;
+  }
+}
+
+/** Color-bearing CSS properties */
+const COLOR_PROPS = new Set([
+  "color", "background-color", "border-color",
+  "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+  "outline-color",
+]);
+
+/** Background shorthand — extract color portion */
+function extractBackgroundColor(value: string): string | null {
+  // Simple heuristic: if background value starts with a color, extract it
+  const trimmed = value.trim();
+  if (trimmed.startsWith("#") || trimmed.startsWith("rgb") || /^[a-z]+$/i.test(trimmed.split(/\s/)[0])) {
+    const firstToken = trimmed.split(/\s/)[0];
+    if (parseColor(firstToken)) return firstToken;
+  }
+  return null;
+}
+
 function applyColorInversion(
   $: cheerio.CheerioAPI,
   mode: "full" | "partial"
 ): void {
-  // Simulate dark mode by inverting light background colors
+  // Process inline styles using parseColor for accurate detection
   $("[style]").each((_, el) => {
     const style = $(el).attr("style") || "";
+    const props = parseInlineStyle(style);
+    let changed = false;
 
-    if (mode === "full") {
-      // Full inversion: swap all light backgrounds to dark
-      const updated = style
-        .replace(/background-color:\s*(#fff|#ffffff|white|#fafafa|#f5f5f5|#f0f0f0|#fefefe)/gi, "background-color: #1a1a1a")
-        .replace(/background:\s*(#fff|#ffffff|white|#fafafa|#f5f5f5|#f0f0f0|#fefefe)/gi, "background: #1a1a1a")
-        .replace(/color:\s*(#000|#000000|black|#111|#222|#333)/gi, "color: #e0e0e0")
-        .replace(/color:\s*(#fff|#ffffff|white)/gi, "color: #e0e0e0")
-        .replace(/border(?:-[a-z]+)?:\s*[^;]*(?:#000|#111|#222|#333|black)/gi, (match) =>
-          match.replace(/#000|#111|#222|#333|black/gi, "#555")
-        );
-      $(el).attr("style", updated);
-    } else {
-      // Partial inversion: only invert very light backgrounds
-      const updated = style
-        .replace(/background-color:\s*(#fff|#ffffff|white)/gi, "background-color: #2d2d2d")
-        .replace(/background:\s*(#fff|#ffffff|white)/gi, "background: #2d2d2d")
-        .replace(/color:\s*(#000|#000000|black)/gi, "color: #d4d4d4");
-      $(el).attr("style", updated);
+    props.forEach((value, prop) => {
+      if (COLOR_PROPS.has(prop)) {
+        const inverted = invertColor(value, mode);
+        if (inverted) {
+          props.set(prop, inverted);
+          changed = true;
+        }
+      }
+      // Handle background shorthand
+      if (prop === "background") {
+        const bgColor = extractBackgroundColor(value);
+        if (bgColor) {
+          const inverted = invertColor(bgColor, mode);
+          if (inverted) {
+            props.set(prop, value.replace(bgColor, inverted));
+            changed = true;
+          }
+        }
+      }
+    });
+
+    if (changed) {
+      $(el).attr("style", serializeStyle(props));
+    }
+  });
+
+  // Process <style> blocks
+  $("style").each((_, el) => {
+    const cssText = $(el).text();
+    try {
+      const ast = csstree.parse(cssText, { parseCustomProperty: true });
+      let modified = false;
+
+      csstree.walk(ast, {
+        enter(node: csstree.CssNode) {
+          if (node.type !== "Declaration") return;
+          const prop = node.property.toLowerCase();
+          if (!COLOR_PROPS.has(prop) && prop !== "background") return;
+
+          const valueStr = csstree.generate(node.value);
+          if (prop === "background") {
+            const bgColor = extractBackgroundColor(valueStr);
+            if (bgColor) {
+              const inverted = invertColor(bgColor, mode);
+              if (inverted) {
+                const newValue = valueStr.replace(bgColor, inverted);
+                node.value = csstree.parse(newValue, { context: "value" }) as csstree.Value;
+                modified = true;
+              }
+            }
+          } else {
+            const inverted = invertColor(valueStr, mode);
+            if (inverted) {
+              node.value = csstree.parse(inverted, { context: "value" }) as csstree.Value;
+              modified = true;
+            }
+          }
+        },
+      });
+
+      if (modified) {
+        $(el).text(csstree.generate(ast));
+      }
+    } catch {
+      // If css-tree can't parse it, skip
     }
   });
 
   // Also handle bgcolor attributes on table elements
   $("[bgcolor]").each((_, el) => {
-    const bgcolor = ($(el).attr("bgcolor") || "").toLowerCase();
-    if (
-      bgcolor === "#ffffff" ||
-      bgcolor === "#fff" ||
-      bgcolor === "white" ||
-      bgcolor === "#fafafa" ||
-      bgcolor === "#f5f5f5"
-    ) {
-      $(el).attr("bgcolor", mode === "full" ? "#1a1a1a" : "#2d2d2d");
+    const bgcolor = $(el).attr("bgcolor") || "";
+    const inverted = invertColor(bgcolor, mode);
+    if (inverted) {
+      $(el).attr("bgcolor", inverted);
     }
   });
 }

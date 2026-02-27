@@ -4,6 +4,7 @@ import { CSS_SUPPORT, STRUCTURAL_FIX_PROPERTIES } from "./rules/css-support";
 import { EMAIL_CLIENTS } from "./clients";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue } from "./style-utils";
+import { MAX_HTML_SIZE } from "./constants";
 import type { CSSWarning, FixType, Framework, SupportLevel } from "./types";
 
 /**
@@ -20,17 +21,34 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
   if (!html || !html.trim()) {
     return [];
   }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
 
   const $ = cheerio.load(html);
   const warnings: CSSWarning[] = [];
   const seenWarnings = new Set<string>();
 
   function addWarning(w: CSSWarning) {
-    const key = `${w.client}:${w.property}:${w.severity}`;
+    const key = `${w.client}:${w.property}:${w.severity}:${w.selector || ""}`;
     if (!seenWarnings.has(key)) {
       seenWarnings.add(key);
       warnings.push(w);
     }
+  }
+
+  /** Build a selector description for an element (e.g., "div.card", "a[href]") */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function describeSelector(el: any): string {
+    const $el = $(el);
+    const tag = (el.tagName as string)?.toLowerCase() || "";
+    const cls = $el.attr("class");
+    const id = $el.attr("id");
+    if (id) return `${tag}#${id}`;
+    if (cls) return `${tag}.${cls.split(/\s+/)[0]}`;
+    const href = $el.attr("href");
+    if (href) return `${tag}[href]`;
+    return tag;
   }
 
   // 1. Check for <style> block usage
@@ -160,28 +178,47 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
   // 6-7. Parse <style> blocks with css-tree for accurate at-rule and property detection
   const parsedAtRules = new Set<string>();
   const parsedProperties = new Set<string>();
+  /** Track first line number for each property found in <style> blocks */
+  const propertyLines = new Map<string, number>();
 
   $("style").each((_, el) => {
     const cssText = $(el).text();
     try {
-      const ast = csstree.parse(cssText, { parseCustomProperty: true });
+      const ast = csstree.parse(cssText, { parseCustomProperty: true, positions: true });
       csstree.walk(ast, {
         enter(node: csstree.CssNode) {
           if (node.type === "Atrule") {
             parsedAtRules.add(`@${node.name}`);
           }
           if (node.type === "Declaration") {
-            parsedProperties.add(node.property.toLowerCase());
+            const prop = node.property.toLowerCase();
+            parsedProperties.add(prop);
+            if (node.loc && !propertyLines.has(prop)) {
+              propertyLines.set(prop, node.loc.start.line);
+            }
             // Check for display:flex / display:grid values
-            if (node.property.toLowerCase() === "display") {
+            if (prop === "display") {
               const value = csstree.generate(node.value);
-              if (value.includes("flex")) parsedProperties.add("display:flex");
-              if (value.includes("grid")) parsedProperties.add("display:grid");
+              if (value.includes("flex")) {
+                parsedProperties.add("display:flex");
+                if (node.loc && !propertyLines.has("display:flex")) {
+                  propertyLines.set("display:flex", node.loc.start.line);
+                }
+              }
+              if (value.includes("grid")) {
+                parsedProperties.add("display:grid");
+                if (node.loc && !propertyLines.has("display:grid")) {
+                  propertyLines.set("display:grid", node.loc.start.line);
+                }
+              }
             }
             // Check for gradient values
             const valueStr = csstree.generate(node.value);
             if (valueStr.includes("linear-gradient") || valueStr.includes("radial-gradient")) {
               parsedProperties.add("linear-gradient");
+              if (node.loc && !propertyLines.has("linear-gradient")) {
+                propertyLines.set("linear-gradient", node.loc.start.line);
+              }
             }
           }
         },
@@ -243,27 +280,28 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
   $("[style]").each((_, el) => {
     const style = $(el).attr("style") || "";
     const props = parseStyleProperties(style);
+    const selector = describeSelector(el);
 
     for (const prop of props) {
       // Check for flex/grid in display value
       if (prop === "display") {
         const value = getStyleValue(style, "display");
         if (value?.includes("flex")) {
-          checkPropertySupport("display:flex", addWarning, framework);
+          checkPropertySupport("display:flex", addWarning, framework, selector);
         } else if (value?.includes("grid")) {
-          checkPropertySupport("display:grid", addWarning, framework);
+          checkPropertySupport("display:grid", addWarning, framework, selector);
         }
       }
 
       // Check the property itself
       if (cssPropertiesToCheck.includes(prop)) {
-        checkPropertySupport(prop, addWarning, framework);
+        checkPropertySupport(prop, addWarning, framework, selector);
       }
 
       // Check for gradient values in the property value
       const value = getStyleValue(style, prop);
       if (value && (value.includes("linear-gradient") || value.includes("radial-gradient"))) {
-        checkPropertySupport("linear-gradient", addWarning, framework);
+        checkPropertySupport("linear-gradient", addWarning, framework, selector);
       }
     }
   });
@@ -273,24 +311,13 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     if (prop.includes(":")) continue; // skip compound like display:flex (handled separately)
     if (!cssPropertiesToCheck.includes(prop)) continue;
 
-    for (const client of EMAIL_CLIENTS) {
-      const support = CSS_SUPPORT[prop]?.[client.id];
-      if (support === "unsupported") {
-        addWarning({
-          severity: "warning",
-          client: client.id,
-          property: prop,
-          message: `${client.name} does not support "${prop}" in <style> blocks.`,
-          fixType: getFixType(prop),
-        });
-      }
-    }
+    checkPropertySupport(prop, addWarning, framework, undefined, propertyLines.get(prop));
   }
 
   // Check compound properties from <style> blocks
   for (const compound of ["display:flex", "display:grid", "linear-gradient"]) {
     if (parsedProperties.has(compound)) {
-      checkPropertySupport(compound, addWarning, framework);
+      checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound));
     }
   }
 
@@ -308,7 +335,9 @@ function getFixType(prop: string): FixType {
 function checkPropertySupport(
   prop: string,
   addWarning: (w: CSSWarning) => void,
-  framework?: Framework
+  framework?: Framework,
+  selector?: string,
+  line?: number,
 ) {
   const supportData = CSS_SUPPORT[prop];
   if (!supportData) return;
@@ -328,6 +357,8 @@ function checkPropertySupport(
         suggestion: sug.text,
         fix,
         fixType,
+        ...(selector ? { selector } : {}),
+        ...(line !== undefined ? { line } : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -342,6 +373,8 @@ function checkPropertySupport(
         suggestion: sug.text,
         fix,
         fixType,
+        ...(selector ? { selector } : {}),
+        ...(line !== undefined ? { line } : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -371,4 +404,19 @@ export function generateCompatibilityScore(
   }
 
   return result;
+}
+
+/** Filter warnings for a specific client. */
+export function warningsForClient(warnings: CSSWarning[], clientId: string): CSSWarning[] {
+  return warnings.filter(w => w.client === clientId);
+}
+
+/** Get only error-severity warnings. */
+export function errorWarnings(warnings: CSSWarning[]): CSSWarning[] {
+  return warnings.filter(w => w.severity === "error");
+}
+
+/** Get only structural fix warnings. */
+export function structuralWarnings(warnings: CSSWarning[]): CSSWarning[] {
+  return warnings.filter(w => w.fixType === "structural");
 }

@@ -9,8 +9,13 @@ import {
 } from "./rules/css-support";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
+import { MAX_HTML_SIZE } from "./constants";
 
-// --- Inline <style> blocks into elements using css-tree ---
+// =============================================================================
+// Shared helpers
+// =============================================================================
+
+/** Inline <style> blocks into elements using css-tree. */
 function inlineStyles($: cheerio.CheerioAPI): void {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
@@ -24,7 +29,6 @@ function inlineStyles($: cheerio.CheerioAPI): void {
     try {
       ast = csstree.parse(block, { parseCustomProperty: true });
     } catch {
-      // If css-tree can't parse it, skip this block
       continue;
     }
 
@@ -33,16 +37,12 @@ function inlineStyles($: cheerio.CheerioAPI): void {
       enter(node: csstree.CssNode) {
         if (node.type !== "Rule" || node.prelude.type !== "SelectorList") return;
 
-        // Generate the declarations string from the block
         const declarations = csstree.generate(node.block);
-        // Strip the outer braces: "{ color: red; }" -> "color: red;"
         const declText = declarations.slice(1, -1).trim();
         if (!declText) return;
 
-        // Get the selector text
         const selectorText = csstree.generate(node.prelude);
 
-        // Skip pseudo-selectors for inlining (can't be applied as inline styles)
         if (selectorText.includes(":hover") ||
             selectorText.includes(":focus") ||
             selectorText.includes(":active") ||
@@ -85,19 +85,85 @@ function makeWarning(
   };
 }
 
+/** Detect animation/transition usage in inline styles and <style> blocks. */
+function detectAnimations($: cheerio.CheerioAPI): boolean {
+  let found = false;
+
+  $("[style]").each((_, el) => {
+    const style = $(el).attr("style") || "";
+    const props = parseInlineStyle(style);
+    props.forEach((_, prop) => {
+      if (
+        prop === "animation" || prop === "transition" ||
+        prop.startsWith("animation-") || prop.startsWith("transition-")
+      ) {
+        found = true;
+      }
+    });
+  });
+
+  if (!found) {
+    $("style").each((_, el) => {
+      try {
+        const ast = csstree.parse($(el).text());
+        csstree.walk(ast, {
+          enter(node: csstree.CssNode) {
+            if (node.type === "Declaration") {
+              const prop = node.property.toLowerCase();
+              if (prop === "animation" || prop === "transition" ||
+                  prop.startsWith("animation-") || prop.startsWith("transition-")) {
+                found = true;
+              }
+            }
+          },
+        });
+      } catch { /* skip unparseable CSS */ }
+    });
+  }
+
+  return found;
+}
+
 // =============================================================================
-// Per-Client Transformers
+// Data-driven client config
 // =============================================================================
 
-function transformGmail(
-  html: string,
+interface ClientTransformConfig {
+  id: string;
+  /** CSS properties stripped from inline styles */
+  strippedProperties: Set<string>;
+  /** How stripped properties are treated: "strip" removes them, "info" just warns */
+  stripMode: "strip" | "info";
+  /** Custom value-level checks (e.g., display:grid but not display:flex) */
+  valueStrips?: Array<{ prop: string; pattern: RegExp }>;
+  /** Whether to inline <style> blocks and remove them */
+  inlineAndStripStyles: boolean;
+  /** Whether to strip <link rel="stylesheet"> */
+  stripExternalStylesheets: boolean;
+  /** Whether to strip <form> elements */
+  stripForms: boolean;
+  /** Whether to strip <svg> elements */
+  stripSvg: boolean;
+  /** Additional checks to run (animation detection, dark mode hints, etc.) */
+  additionalChecks?: (
+    $: cheerio.CheerioAPI,
+    clientId: string,
+    html: string,
+    framework?: Framework,
+  ) => CSSWarning[];
+}
+
+// -- Shared additional check functions --
+
+function gmailAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
+  _html: string,
   framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Check for @font-face BEFORE removing <style> blocks
+  // Check for @font-face (must happen before style removal — called pre-strip)
   let hasAtFontFace = false;
   $("style").each((_, el) => {
     try {
@@ -120,13 +186,18 @@ function transformGmail(
     }, "@font-face", clientId, framework));
   }
 
-  // Gmail strips <style> blocks — inline them first
-  inlineStyles($);
-  $("style").remove();
-  $("link[rel='stylesheet']").remove();
+  return warnings;
+}
 
-  // Gmail also strips MSO conditional comments (<!--[if mso]>...<![endif]-->)
-  // Cheerio treats these as HTML comments; remove any that contain <style>
+function gmailPostChecks(
+  $: cheerio.CheerioAPI,
+  clientId: string,
+  _html: string,
+  framework?: Framework,
+): CSSWarning[] {
+  const warnings: CSSWarning[] = [];
+
+  // Remove MSO conditional comments
   $("*")
     .contents()
     .filter(function () {
@@ -148,127 +219,27 @@ function transformGmail(
     suggestion: styleSug.text,
   });
 
-  // Strip unsupported CSS properties from inline styles
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    const removed: string[] = [];
-
-    props.forEach((value, prop) => {
-      if (GMAIL_STRIPPED_PROPERTIES.has(prop)) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-      // Gmail supports display:flex but NOT display:grid
-      if (prop === "display" && value.includes("grid")) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-      // Gmail strips gradient values from background shorthand
-      if ((prop === "background") &&
-          (value.includes("linear-gradient") || value.includes("radial-gradient"))) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-    });
-
-    if (removed.length > 0) {
-      $(el).attr("style", serializeStyle(props));
-      for (const prop of removed) {
-        warnings.push(makeWarning({
-          severity: "warning",
-          client: clientId,
-          property: prop,
-          message: `Gmail strips "${prop}" from inline styles.`,
-        }, prop, clientId, framework));
-      }
-    }
-  });
-
-  // Gmail removes <svg> elements
-  if ($("svg").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<svg>",
-      message: "Gmail does not support inline SVG elements.",
-    }, "<svg>", clientId, framework));
-    $("svg").each((_, el) => {
-      $(el).replaceWith('<img alt="[SVG not supported]" />');
-    });
-  }
-
-  // Gmail removes <form> elements
-  if ($("form").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<form>",
-      message: "Gmail strips all form elements.",
-    }, "<form>", clientId, framework));
-    $("form").each((_, el) => {
-      $(el).replaceWith($(el).html() || "");
-    });
-  }
-
-  return { clientId, html: $.html(), warnings };
+  return warnings;
 }
 
-function transformOutlookWindows(
-  html: string,
+function outlookWindowsAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
+  _html: string,
   framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Outlook Windows uses Word rendering — keep <style> blocks but strip unsupported properties
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    const removed: string[] = [];
-
-    props.forEach((value, prop) => {
-      if (OUTLOOK_WORD_UNSUPPORTED.has(prop)) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-      // Outlook doesn't support gradient values in background shorthand
-      if ((prop === "background" || prop === "background-image") &&
-          (value.includes("linear-gradient") || value.includes("radial-gradient"))) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-    });
-
-    if (removed.length > 0) {
-      $(el).attr("style", serializeStyle(props));
-      for (const prop of removed) {
-        warnings.push(makeWarning({
-          severity: "warning",
-          client: clientId,
-          property: prop,
-          message: `Outlook Windows (Word engine) does not support "${prop}".`,
-        }, prop, clientId, framework));
-      }
-    }
-  });
-
-  // Outlook doesn't support border-radius
-  const borderRadiusElements = $("[style*='border-radius']");
-  if (borderRadiusElements.length > 0) {
+  if ($("[style*='border-radius']").length > 0) {
     warnings.push(makeWarning({
       severity: "warning",
       client: clientId,
       property: "border-radius",
-      message:
-        "Outlook Windows ignores border-radius. Buttons and containers will have sharp corners.",
+      message: "Outlook Windows ignores border-radius. Buttons and containers will have sharp corners.",
     }, "border-radius", clientId, framework));
   }
 
-  // Outlook doesn't support max-width
-  const maxWidthElements = $("[style*='max-width']");
-  if (maxWidthElements.length > 0) {
+  if ($("[style*='max-width']").length > 0) {
     warnings.push(makeWarning({
       severity: "warning",
       client: clientId,
@@ -277,7 +248,6 @@ function transformOutlookWindows(
     }, "max-width", clientId, framework));
   }
 
-  // Check for div-based layouts (Outlook prefers tables)
   const hasDivLayout =
     $("div[style*='display']").length > 0 ||
     $("div[style*='flex']").length > 0 ||
@@ -288,12 +258,10 @@ function transformOutlookWindows(
       severity: "error",
       client: clientId,
       property: "display:flex",
-      message:
-        "Outlook Windows uses Microsoft Word for rendering. Flexbox and Grid layouts will break.",
+      message: "Outlook Windows uses Microsoft Word for rendering. Flexbox and Grid layouts will break.",
     }, "display:flex", clientId, framework));
   }
 
-  // Warn about background images needing VML
   if (
     $("[style*='background-image']").length > 0 ||
     $("[style*='background:']").filter((_, el) =>
@@ -304,70 +272,19 @@ function transformOutlookWindows(
       severity: "warning",
       client: clientId,
       property: "background-image",
-      message:
-        "Outlook Windows requires VML for background images.",
+      message: "Outlook Windows requires VML for background images.",
     }, "background-image", clientId, framework));
   }
 
-  return { clientId, html: $.html(), warnings };
+  return warnings;
 }
 
-function transformOutlookWeb(
-  html: string,
+function appleMailAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
-  framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Outlook.com supports <style> blocks but strips some properties
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    const removed: string[] = [];
-
-    const outlookWebUnsupported = new Set([
-      "position",
-      "transform",
-      "animation",
-      "transition",
-    ]);
-
-    props.forEach((_, prop) => {
-      if (outlookWebUnsupported.has(prop)) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-    });
-
-    if (removed.length > 0) {
-      $(el).attr("style", serializeStyle(props));
-      for (const prop of removed) {
-        warnings.push(makeWarning({
-          severity: "warning",
-          client: clientId,
-          property: prop,
-          message: `Outlook 365 Web does not support "${prop}".`,
-        }, prop, clientId, framework));
-      }
-    }
-  });
-
-  return { clientId, html: $.html(), warnings };
-}
-
-function transformAppleMail(
-  html: string,
-  clientId: string,
-  _framework?: Framework,
-): TransformResult {
-  const warnings: CSSWarning[] = [];
-
-  // Apple Mail is the most standards-compliant — minimal transformations needed
-  // Just flag potential dark mode issues
-  const $ = cheerio.load(html);
-
-  // Check for dark mode issues
   const imgsWithTransparentBg = $("img").filter((_, el) => {
     const src = $(el).attr("src") || "";
     return src.endsWith(".png") || src.endsWith(".svg");
@@ -378,34 +295,29 @@ function transformAppleMail(
       severity: "info",
       client: clientId,
       property: "dark-mode",
-      message:
-        "PNG/SVG images with transparent backgrounds may become invisible in Apple Mail dark mode.",
-      suggestion:
-        "Add a white background or padding around images, or use dark-mode-friendly image variants.",
+      message: "PNG/SVG images with transparent backgrounds may become invisible in Apple Mail dark mode.",
+      suggestion: "Add a white background or padding around images, or use dark-mode-friendly image variants.",
     });
   }
 
-  return { clientId, html: $.html(), warnings };
+  return warnings;
 }
 
-function transformYahooMail(
-  html: string,
+function yahooAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
+  _html: string,
   framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Yahoo rewrites CSS class names by prefixing them
   warnings.push({
     severity: "info",
     client: clientId,
     property: "class",
-    message:
-      "Yahoo Mail rewrites CSS class names with a prefix. Class-based selectors in <style> blocks will still work but the names change.",
+    message: "Yahoo Mail rewrites CSS class names with a prefix. Class-based selectors in <style> blocks will still work but the names change.",
   });
 
-  // Yahoo has limited support for background shorthand with images
   if (
     $("[style*='background']").filter((_, el) =>
       ($(el).attr("style") || "").includes("url(")
@@ -415,216 +327,35 @@ function transformYahooMail(
       severity: "warning",
       client: clientId,
       property: "background-image",
-      message:
-        "Yahoo Mail has inconsistent support for CSS background images.",
+      message: "Yahoo Mail has inconsistent support for CSS background images.",
     }, "background-image", clientId, framework));
   }
 
-  // Yahoo strips position, box-shadow, transform
-  const yahooStripped = new Set([
-    "position",
-    "box-shadow",
-    "transform",
-    "animation",
-    "transition",
-    "opacity",
-  ]);
-
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    const removed: string[] = [];
-
-    props.forEach((_, prop) => {
-      if (yahooStripped.has(prop)) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-    });
-
-    if (removed.length > 0) {
-      $(el).attr("style", serializeStyle(props));
-      for (const prop of removed) {
-        warnings.push(makeWarning({
-          severity: "warning",
-          client: clientId,
-          property: prop,
-          message: `Yahoo Mail strips "${prop}" from styles.`,
-        }, prop, clientId, framework));
-      }
-    }
-  });
-
-  return { clientId, html: $.html(), warnings };
+  return warnings;
 }
 
-function transformSamsungMail(
-  html: string,
+function thunderbirdAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
-  framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
-  const warnings: CSSWarning[] = [];
-
-  // Samsung Mail supports @media queries which is useful
-  // But has some quirks with certain CSS properties
-  const samsungPartial = new Set([
-    "box-shadow",
-    "transform",
-    "animation",
-    "transition",
-    "opacity",
-  ]);
-
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-
-    props.forEach((_, prop) => {
-      if (samsungPartial.has(prop)) {
-        warnings.push(makeWarning({
-          severity: "info",
-          client: clientId,
-          property: prop,
-          message: `Samsung Mail has limited support for "${prop}".`,
-        }, prop, clientId, framework));
-      }
-    });
-  });
-
-  return { clientId, html: $.html(), warnings };
-}
-
-function transformThunderbird(
-  html: string,
-  clientId: string,
-  _framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
-  const warnings: CSSWarning[] = [];
-
-  // Thunderbird is Gecko-based, very standards-compliant
-  // Check for animation/transition in inline styles and <style> blocks
-  let hasAnimationOrTransition = false;
-
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    props.forEach((_, prop) => {
-      if (
-        prop === "animation" ||
-        prop === "transition" ||
-        prop.startsWith("animation-") ||
-        prop.startsWith("transition-")
-      ) {
-        hasAnimationOrTransition = true;
-      }
-    });
-  });
-
-  if (!hasAnimationOrTransition) {
-    $("style").each((_, el) => {
-      try {
-        const ast = csstree.parse($(el).text());
-        csstree.walk(ast, {
-          enter(node: csstree.CssNode) {
-            if (node.type === "Declaration") {
-              const prop = node.property.toLowerCase();
-              if (prop === "animation" || prop === "transition" ||
-                  prop.startsWith("animation-") || prop.startsWith("transition-")) {
-                hasAnimationOrTransition = true;
-              }
-            }
-          },
-        });
-      } catch { /* skip unparseable CSS */ }
-    });
-  }
-
-  if (hasAnimationOrTransition) {
-    warnings.push({
+): CSSWarning[] {
+  if (detectAnimations($)) {
+    return [{
       severity: "info",
       client: clientId,
       property: "animation",
-      message:
-        "Thunderbird does not support CSS animations or transitions.",
-    });
+      message: "Thunderbird does not support CSS animations or transitions.",
+    }];
   }
-
-  return { clientId, html: $.html(), warnings };
+  return [];
 }
 
-function transformHeyMail(
-  html: string,
+function heyAdditionalChecks(
+  _$: cheerio.CheerioAPI,
   clientId: string,
-  framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+  html: string,
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // HEY Mail uses WebKit rendering and is standards-compliant
-  // but strips certain CSS properties and elements for security
-  const heyStripped = new Set([
-    "transform",
-    "animation",
-    "transition",
-  ]);
-
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    const removed: string[] = [];
-
-    props.forEach((value, prop) => {
-      if (heyStripped.has(prop)) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-      // HEY strips fixed/sticky positioning
-      if (prop === "position" && (value.includes("fixed") || value.includes("sticky"))) {
-        removed.push(prop);
-        props.delete(prop);
-      }
-    });
-
-    if (removed.length > 0) {
-      $(el).attr("style", serializeStyle(props));
-      for (const prop of removed) {
-        warnings.push(makeWarning({
-          severity: "warning",
-          client: clientId,
-          property: prop,
-          message: `HEY Mail strips "${prop}" for security and rendering consistency.`,
-        }, prop, clientId, framework));
-      }
-    }
-  });
-
-  // HEY strips <form> elements
-  if ($("form").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<form>",
-      message: "HEY Mail removes form elements for security.",
-    }, "<form>", clientId, framework));
-    $("form").each((_, el) => {
-      $(el).replaceWith($(el).html() || "");
-    });
-  }
-
-  // HEY strips external stylesheets
-  if ($("link[rel='stylesheet']").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<link>",
-      message: "HEY Mail does not load external stylesheets.",
-    }, "<link>", clientId, framework));
-    $("link[rel='stylesheet']").remove();
-  }
-
-  // HEY supports dark mode — warn if no dark mode styles present
   if (!html.includes("prefers-color-scheme")) {
     warnings.push({
       severity: "info",
@@ -635,82 +366,17 @@ function transformHeyMail(
     });
   }
 
-  return { clientId, html: $.html(), warnings };
+  return warnings;
 }
 
-function transformSuperhuman(
-  html: string,
+function superhumanAdditionalChecks(
+  $: cheerio.CheerioAPI,
   clientId: string,
-  framework?: Framework,
-): TransformResult {
-  const $ = cheerio.load(html);
+  html: string,
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Superhuman uses Blink/Chromium — very strong modern CSS support
-  // It strips <form> elements and external stylesheets for security
-
-  if ($("form").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<form>",
-      message: "Superhuman removes form elements.",
-    }, "<form>", clientId, framework));
-    $("form").each((_, el) => {
-      $(el).replaceWith($(el).html() || "");
-    });
-  }
-
-  if ($("link[rel='stylesheet']").length > 0) {
-    warnings.push(makeWarning({
-      severity: "error",
-      client: clientId,
-      property: "<link>",
-      message: "Superhuman does not load external stylesheets.",
-    }, "<link>", clientId, framework));
-    $("link[rel='stylesheet']").remove();
-  }
-
-  // Check for animation usage — may be disabled per OS accessibility settings.
-  // Both shorthand ("animation", "transition") and sub-properties
-  // ("animation-duration", "transition-delay", etc.) are checked so that
-  // elements using only sub-properties don't silently bypass the warning.
-  let hasAnimation = false;
-  $("[style]").each((_, el) => {
-    const style = $(el).attr("style") || "";
-    const props = parseInlineStyle(style);
-    props.forEach((_, prop) => {
-      if (
-        prop === "animation" ||
-        prop === "transition" ||
-        prop.startsWith("animation-") ||
-        prop.startsWith("transition-")
-      ) {
-        hasAnimation = true;
-      }
-    });
-  });
-
-  if (!hasAnimation) {
-    $("style").each((_, el) => {
-      try {
-        const ast = csstree.parse($(el).text());
-        csstree.walk(ast, {
-          enter(node: csstree.CssNode) {
-            if (node.type === "Declaration") {
-              const prop = node.property.toLowerCase();
-              if (prop === "animation" || prop === "transition" ||
-                  prop.startsWith("animation-") || prop.startsWith("transition-")) {
-                hasAnimation = true;
-              }
-            }
-          },
-        });
-      } catch { /* skip unparseable CSS */ }
-    });
-  }
-
-  if (hasAnimation) {
+  if (detectAnimations($)) {
     warnings.push({
       severity: "info",
       client: clientId,
@@ -727,30 +393,282 @@ function transformSuperhuman(
     message: "Superhuman uses Chromium rendering with excellent CSS support. Flexbox, Grid, CSS variables, and modern properties all work.",
   });
 
+  return warnings;
+}
+
+// =============================================================================
+// Per-client configurations (declarative data)
+// =============================================================================
+
+const EMPTY_SET: Set<string> = new Set();
+
+const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
+  "gmail-web": {
+    id: "gmail-web",
+    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
+    stripMode: "strip",
+    valueStrips: [
+      { prop: "display", pattern: /grid/ },
+      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+    ],
+    inlineAndStripStyles: true,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: true,
+    additionalChecks: gmailAdditionalChecks,
+  },
+  "gmail-android": {
+    id: "gmail-android",
+    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
+    stripMode: "strip",
+    valueStrips: [
+      { prop: "display", pattern: /grid/ },
+      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+    ],
+    inlineAndStripStyles: true,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: true,
+    additionalChecks: gmailAdditionalChecks,
+  },
+  "gmail-ios": {
+    id: "gmail-ios",
+    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
+    stripMode: "strip",
+    valueStrips: [
+      { prop: "display", pattern: /grid/ },
+      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+    ],
+    inlineAndStripStyles: true,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: true,
+    additionalChecks: gmailAdditionalChecks,
+  },
+  "outlook-windows": {
+    id: "outlook-windows",
+    strippedProperties: OUTLOOK_WORD_UNSUPPORTED,
+    stripMode: "strip",
+    valueStrips: [
+      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+      { prop: "background-image", pattern: /linear-gradient|radial-gradient/ },
+    ],
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: outlookWindowsAdditionalChecks,
+  },
+  "outlook-web": {
+    id: "outlook-web",
+    strippedProperties: new Set(["position", "transform", "animation", "transition"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
+  "apple-mail-macos": {
+    id: "apple-mail-macos",
+    strippedProperties: EMPTY_SET,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: appleMailAdditionalChecks,
+  },
+  "apple-mail-ios": {
+    id: "apple-mail-ios",
+    strippedProperties: EMPTY_SET,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: appleMailAdditionalChecks,
+  },
+  "yahoo-mail": {
+    id: "yahoo-mail",
+    strippedProperties: new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: yahooAdditionalChecks,
+  },
+  "samsung-mail": {
+    id: "samsung-mail",
+    strippedProperties: new Set(["box-shadow", "transform", "animation", "transition", "opacity"]),
+    stripMode: "info",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
+  "thunderbird": {
+    id: "thunderbird",
+    strippedProperties: EMPTY_SET,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: thunderbirdAdditionalChecks,
+  },
+  "hey-mail": {
+    id: "hey-mail",
+    strippedProperties: new Set(["transform", "animation", "transition"]),
+    stripMode: "strip",
+    valueStrips: [
+      { prop: "position", pattern: /fixed|sticky/ },
+    ],
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: false,
+    additionalChecks: heyAdditionalChecks,
+  },
+  "superhuman": {
+    id: "superhuman",
+    strippedProperties: EMPTY_SET,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: false,
+    additionalChecks: superhumanAdditionalChecks,
+  },
+};
+
+// =============================================================================
+// Shared transform engine
+// =============================================================================
+
+function applyTransform(
+  html: string,
+  config: ClientTransformConfig,
+  framework?: Framework,
+): TransformResult {
+  const $ = cheerio.load(html);
+  const warnings: CSSWarning[] = [];
+  const clientId = config.id;
+
+  // 0. Pre-strip additional checks (e.g., Gmail @font-face detection)
+  if (config.additionalChecks && config.inlineAndStripStyles) {
+    warnings.push(...config.additionalChecks($, clientId, html, framework));
+  }
+
+  // 1. Inline + strip <style> if needed
+  if (config.inlineAndStripStyles) {
+    inlineStyles($);
+    $("style").remove();
+  }
+
+  // 2. Strip external stylesheets
+  if (config.stripExternalStylesheets) {
+    if ($("link[rel='stylesheet']").length > 0) {
+      warnings.push(makeWarning({
+        severity: "error",
+        client: clientId,
+        property: "<link>",
+        message: `${clientId} does not load external stylesheets.`,
+      }, "<link>", clientId, framework));
+      $("link[rel='stylesheet']").remove();
+    }
+  }
+
+  // 3. Strip forms
+  if (config.stripForms && $("form").length > 0) {
+    warnings.push(makeWarning({
+      severity: "error",
+      client: clientId,
+      property: "<form>",
+      message: `${clientId} removes form elements.`,
+    }, "<form>", clientId, framework));
+    $("form").each((_, el) => {
+      $(el).replaceWith($(el).html() || "");
+    });
+  }
+
+  // 4. Strip SVG
+  if (config.stripSvg && $("svg").length > 0) {
+    warnings.push(makeWarning({
+      severity: "error",
+      client: clientId,
+      property: "<svg>",
+      message: `${clientId} does not support inline SVG elements.`,
+    }, "<svg>", clientId, framework));
+    $("svg").each((_, el) => {
+      $(el).replaceWith('<img alt="[SVG not supported]" />');
+    });
+  }
+
+  // 5. Strip/warn about unsupported CSS properties (shared loop)
+  if (config.strippedProperties.size > 0 || (config.valueStrips && config.valueStrips.length > 0)) {
+    $("[style]").each((_, el) => {
+      const style = $(el).attr("style") || "";
+      const props = parseInlineStyle(style);
+      const removed: string[] = [];
+
+      props.forEach((value, prop) => {
+        // Check stripped properties
+        if (config.strippedProperties.has(prop)) {
+          if (config.stripMode === "strip") {
+            removed.push(prop);
+            props.delete(prop);
+          } else {
+            warnings.push(makeWarning({
+              severity: "info",
+              client: clientId,
+              property: prop,
+              message: `${clientId} has limited support for "${prop}".`,
+            }, prop, clientId, framework));
+          }
+          return;
+        }
+
+        // Check value-level strips
+        for (const vs of config.valueStrips ?? []) {
+          if (prop === vs.prop && vs.pattern.test(value)) {
+            removed.push(prop);
+            props.delete(prop);
+            return;
+          }
+        }
+      });
+
+      if (removed.length > 0) {
+        $(el).attr("style", serializeStyle(props));
+        for (const prop of removed) {
+          warnings.push(makeWarning({
+            severity: "warning",
+            client: clientId,
+            property: prop,
+            message: `${clientId} strips "${prop}" from styles.`,
+          }, prop, clientId, framework));
+        }
+      }
+    });
+  }
+
+  // 6. Gmail-specific post-strip checks (MSO comments, partial style info)
+  if (config.inlineAndStripStyles) {
+    warnings.push(...gmailPostChecks($, clientId, html, framework));
+  }
+
+  // 7. Run additional checks (non-Gmail, or non-pre-strip)
+  if (config.additionalChecks && !config.inlineAndStripStyles) {
+    warnings.push(...config.additionalChecks($, clientId, html, framework));
+  }
+
   return { clientId, html: $.html(), warnings };
 }
 
 // =============================================================================
-// Main transform dispatcher
+// Public API
 // =============================================================================
-
-const TRANSFORMERS: Record<
-  string,
-  (html: string, clientId: string, framework?: Framework) => TransformResult
-> = {
-  "gmail-web": transformGmail,
-  "gmail-android": transformGmail,
-  "gmail-ios": transformGmail,
-  "outlook-web": transformOutlookWeb,
-  "outlook-windows": transformOutlookWindows,
-  "apple-mail-macos": transformAppleMail,
-  "apple-mail-ios": transformAppleMail,
-  "yahoo-mail": transformYahooMail,
-  "samsung-mail": transformSamsungMail,
-  "thunderbird": transformThunderbird,
-  "hey-mail": transformHeyMail,
-  "superhuman": transformSuperhuman,
-};
 
 export function transformForClient(
   html: string,
@@ -760,9 +678,12 @@ export function transformForClient(
   if (!html || !html.trim()) {
     return { clientId, html: html || "", warnings: [] };
   }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
 
-  const transformer = TRANSFORMERS[clientId];
-  if (!transformer) {
+  const config = CLIENT_CONFIGS[clientId];
+  if (!config) {
     return {
       clientId,
       html,
@@ -776,11 +697,11 @@ export function transformForClient(
       ],
     };
   }
-  return transformer(html, clientId, framework);
+  return applyTransform(html, config, framework);
 }
 
 export function transformForAllClients(html: string, framework?: Framework): TransformResult[] {
-  return Object.keys(TRANSFORMERS).map((clientId) =>
+  return Object.keys(CLIENT_CONFIGS).map((clientId) =>
     transformForClient(html, clientId, framework)
   );
 }

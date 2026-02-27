@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { AccessibilityIssue, AccessibilityReport } from "./types";
-import { GENERIC_LINK_TEXT } from "./constants";
+import { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
 import { getStyleValue } from "./style-utils";
 import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 
@@ -311,6 +311,9 @@ function checkSemanticStructure($: cheerio.CheerioAPI): AccessibilityIssue[] {
 export function checkAccessibility(html: string): AccessibilityReport {
   if (!html || !html.trim()) {
     return { score: 100, issues: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
   const $ = cheerio.load(html);
