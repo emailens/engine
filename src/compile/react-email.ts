@@ -274,7 +274,8 @@ async function executeInIsolatedVm(
 ): Promise<Record<string, unknown>> {
   let ivm: typeof import("isolated-vm");
   try {
-    ivm = await import("isolated-vm");
+    const ivmMod = await import("isolated-vm");
+    ivm = (ivmMod as any).default ?? ivmMod;
   } catch {
     throw new CompileError(
       'Sandbox strategy "isolated-vm" requires the "isolated-vm" package. Install it:\n' +
@@ -292,19 +293,34 @@ async function executeInIsolatedVm(
 
     // Stub implementations let the code parse and execute structurally
     // without needing real React objects (which contain non-cloneable Symbols).
+    // Stub React: createElement returns a plain object, forwardRef passes
+    // through, and any unknown property returns a no-op function. The Proxy
+    // on the components module ensures that any named import (Html, Head,
+    // Button, etc.) resolves to a dummy component function so the transpiled
+    // code can execute structurally without real React objects.
     const validationCode = `
       (function() {
         var module = { exports: {} };
         var exports = module.exports;
-        var React = {
-          createElement: function() { return {}; },
+        var noop = function() { return {}; };
+        var React = new Proxy({
+          createElement: noop,
           forwardRef: function(fn) { return fn; },
           Fragment: "Fragment",
-        };
+          createContext: function() { return { Provider: noop, Consumer: noop }; },
+          useState: function(v) { return [v, noop]; },
+          useRef: function() { return { current: null }; },
+          useEffect: noop,
+          useMemo: function(fn) { return fn(); },
+          useCallback: function(fn) { return fn; },
+          Children: { map: noop, forEach: noop, toArray: function() { return []; } },
+        }, { get: function(t, p) { return p in t ? t[p] : noop; } });
+        var componentsProxy = new Proxy({}, {
+          get: function() { return noop; }
+        });
         function require(name) {
-          if (name === "react" || name === "@react-email/components") {
-            return React;
-          }
+          if (name === "react") return React;
+          if (name === "@react-email/components") return componentsProxy;
           throw new Error('Import of "' + name + '" is not allowed. Only "react" and "@react-email/components" can be imported.');
         }
         try {
@@ -389,15 +405,35 @@ async function executeInQuickJs(
     // We provide stub implementations of React and the module system so
     // the code can execute without errors, but we only care that it
     // doesn't try to access anything dangerous.
+    // QuickJS (ES2020) does not support Proxy, so we enumerate known
+    // React Email component names as stub functions instead.
     const validationCode = `
       (function() {
         var module = { exports: {} };
         var exports = module.exports;
-        var React = { createElement: function() { return {}; } };
+        var noop = function() { return {}; };
+        var React = {
+          createElement: noop,
+          forwardRef: function(fn) { return fn; },
+          Fragment: "Fragment",
+          createContext: function() { return { Provider: noop, Consumer: noop }; },
+          useState: function(v) { return [v, noop]; },
+          useRef: function() { return { current: null }; },
+          useEffect: noop,
+          useMemo: function(fn) { return fn(); },
+          useCallback: function(fn) { return fn; },
+          Children: { map: noop, forEach: noop, toArray: function() { return []; } },
+        };
+        var components = {};
+        var names = [
+          "Html","Head","Body","Container","Section","Row","Column","Text",
+          "Link","Button","Img","Hr","Preview","Heading","Font","Style",
+          "CodeBlock","CodeInline","Markdown","Tailwind","Responsive",
+        ];
+        for (var i = 0; i < names.length; i++) components[names[i]] = noop;
         function require(name) {
-          if (name === "react" || name === "@react-email/components") {
-            return React;
-          }
+          if (name === "react") return React;
+          if (name === "@react-email/components") return components;
           throw new Error('Import of "' + name + '" is not allowed.');
         }
         try {
