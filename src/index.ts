@@ -13,6 +13,7 @@ export { validateLinks } from "./link-validator";
 export { checkAccessibility } from "./accessibility-checker";
 export { analyzeImages } from "./image-analyzer";
 export { auditEmail } from "./audit";
+export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
 export { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
@@ -21,6 +22,7 @@ export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";
 export type { AuditOptions, AuditReport } from "./audit";
+export type { EmailSession, CreateSessionOptions } from "./session";
 export type { SandboxStrategy, CompileReactEmailOptions } from "./compile/react-email";
 export type {
   EmailClient,

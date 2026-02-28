@@ -8,24 +8,14 @@ import { MAX_HTML_SIZE } from "./constants";
 import type { CSSWarning, FixType, Framework, SupportLevel } from "./types";
 
 /**
- * Analyze an HTML email and return CSS compatibility warnings
- * for all target email clients.
+ * Analyze a pre-parsed email DOM for CSS compatibility warnings.
  *
- * The `framework` parameter controls which fix snippets are attached
- * to warnings — it does NOT change which warnings fire. Analysis always
- * runs on compiled HTML (what email clients actually receive). Fix
- * snippets reference source-level constructs so users know how to
- * modify their framework source code.
+ * Accepts a Cheerio instance to avoid redundant HTML parsing when
+ * called from `auditEmail()` or `createSession()`.
+ *
+ * @internal
  */
-export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] {
-  if (!html || !html.trim()) {
-    return [];
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
+export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework): CSSWarning[] {
   const warnings: CSSWarning[] = [];
   const seenWarnings = new Set<string>();
 
@@ -37,7 +27,6 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     }
   }
 
-  /** Build a selector description for an element (e.g., "div.card", "a[href]") */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function describeSelector(el: any): string {
     const $el = $(el);
@@ -175,10 +164,9 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     }
   }
 
-  // 6-7. Parse <style> blocks with css-tree for accurate at-rule and property detection
+  // 6-7. Parse <style> blocks with css-tree
   const parsedAtRules = new Set<string>();
   const parsedProperties = new Set<string>();
-  /** Track first line number for each property found in <style> blocks */
   const propertyLines = new Map<string, number>();
 
   $("style").each((_, el) => {
@@ -196,7 +184,6 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
             if (node.loc && !propertyLines.has(prop)) {
               propertyLines.set(prop, node.loc.start.line);
             }
-            // Check for display:flex / display:grid values
             if (prop === "display") {
               const value = csstree.generate(node.value);
               if (value.includes("flex")) {
@@ -212,7 +199,6 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
                 }
               }
             }
-            // Check for gradient values
             const valueStr = csstree.generate(node.value);
             if (valueStr.includes("linear-gradient") || valueStr.includes("radial-gradient")) {
               parsedProperties.add("linear-gradient");
@@ -272,7 +258,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     }
   }
 
-  // 8. Scan inline styles for unsupported CSS properties
+  // 8. Scan inline styles
   const cssPropertiesToCheck = Object.keys(CSS_SUPPORT).filter(
     (k) => !k.startsWith("<") && !k.startsWith("@")
   );
@@ -283,7 +269,6 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     const selector = describeSelector(el);
 
     for (const prop of props) {
-      // Check for flex/grid in display value
       if (prop === "display") {
         const value = getStyleValue(style, "display");
         if (value?.includes("flex")) {
@@ -293,12 +278,10 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
         }
       }
 
-      // Check the property itself
       if (cssPropertiesToCheck.includes(prop)) {
         checkPropertySupport(prop, addWarning, framework, selector);
       }
 
-      // Check for gradient values in the property value
       const value = getStyleValue(style, prop);
       if (value && (value.includes("linear-gradient") || value.includes("radial-gradient"))) {
         checkPropertySupport("linear-gradient", addWarning, framework, selector);
@@ -306,15 +289,13 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     }
   });
 
-  // 9. Check CSS properties found in <style> blocks (via css-tree parsing)
+  // 9. Check CSS properties from <style> blocks
   for (const prop of parsedProperties) {
-    if (prop.includes(":")) continue; // skip compound like display:flex (handled separately)
+    if (prop.includes(":")) continue;
     if (!cssPropertiesToCheck.includes(prop)) continue;
-
     checkPropertySupport(prop, addWarning, framework, undefined, propertyLines.get(prop));
   }
 
-  // Check compound properties from <style> blocks
   for (const compound of ["display:flex", "display:grid", "linear-gradient"]) {
     if (parsedProperties.has(compound)) {
       checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound));
@@ -326,6 +307,28 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
   warnings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
   return warnings;
+}
+
+/**
+ * Analyze an HTML email and return CSS compatibility warnings
+ * for all target email clients.
+ *
+ * The `framework` parameter controls which fix snippets are attached
+ * to warnings — it does NOT change which warnings fire. Analysis always
+ * runs on compiled HTML (what email clients actually receive). Fix
+ * snippets reference source-level constructs so users know how to
+ * modify their framework source code.
+ */
+export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] {
+  if (!html || !html.trim()) {
+    return [];
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  const $ = cheerio.load(html);
+  return analyzeEmailFromDom($, framework);
 }
 
 function getFixType(prop: string): FixType {

@@ -49,21 +49,14 @@ function truncateSrc(src: string, max = 60): string {
 }
 
 /**
- * Analyze images in an HTML email for best practices.
+ * Analyze images from a pre-parsed email DOM.
  *
- * Checks for missing dimensions, oversized data URIs, missing alt
- * attributes, unsupported formats (WebP, SVG), tracking pixels,
- * missing display:block, and overall image heaviness.
+ * Accepts a Cheerio instance to avoid redundant HTML parsing when
+ * called from `auditEmail()` or `createSession()`.
+ *
+ * @internal
  */
-export function analyzeImages(html: string): ImageReport {
-  if (!html || !html.trim()) {
-    return { total: 0, totalDataUriBytes: 0, issues: [], images: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
+export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
   const issues: ImageIssue[] = [];
   const images: ImageInfo[] = [];
   let totalDataUriBytes = 0;
@@ -207,4 +200,23 @@ export function analyzeImages(html: string): ImageReport {
   }
 
   return { total: images.length, totalDataUriBytes, issues, images };
+}
+
+/**
+ * Analyze images in an HTML email for best practices.
+ *
+ * Checks for missing dimensions, oversized data URIs, missing alt
+ * attributes, unsupported formats (WebP, SVG), tracking pixels,
+ * missing display:block, and overall image heaviness.
+ */
+export function analyzeImages(html: string): ImageReport {
+  if (!html || !html.trim()) {
+    return { total: 0, totalDataUriBytes: 0, issues: [], images: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  const $ = cheerio.load(html);
+  return analyzeImagesFromDom($);
 }

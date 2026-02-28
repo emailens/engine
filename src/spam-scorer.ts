@@ -382,24 +382,17 @@ function checkAllCapsTitle($: cheerio.CheerioAPI): SpamIssue | null {
 }
 
 /**
- * Analyze an HTML email for spam indicators.
+ * Analyze a pre-parsed email DOM for spam indicators.
  *
- * Returns a 0-100 score (100 = clean, 0 = very spammy) and an array
- * of issues found. Uses heuristic rules modeled after common spam
- * filter triggers (CAN-SPAM, GDPR, SpamAssassin patterns).
+ * Accepts a Cheerio instance to avoid redundant HTML parsing when
+ * called from `auditEmail()` or `createSession()`.
+ *
+ * @internal
  */
-export function analyzeSpam(
-  html: string,
+export function analyzeSpamFromDom(
+  $: cheerio.CheerioAPI,
   options?: SpamAnalysisOptions,
 ): SpamReport {
-  if (!html || !html.trim()) {
-    return { score: 100, level: "low", issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
   const text = extractVisibleText($);
   const issues: SpamIssue[] = [];
 
@@ -419,7 +412,6 @@ export function analyzeSpam(
 
   issues.push(...checkUrlShorteners($));
 
-  // Fix #7: pass pre-extracted text instead of calling extractVisibleText again
   const imageRatioIssue = checkImageToTextRatio($, text);
   if (imageRatioIssue) issues.push(imageRatioIssue);
 
@@ -442,7 +434,6 @@ export function analyzeSpam(
     } else if (issue.rule === "url-shortener" || issue.rule === "deceptive-link") {
       if (count <= 2) penalty += weight;
     } else {
-      // info-level issues don't penalize score
       if (issue.severity !== "info") {
         penalty += weight;
       }
@@ -454,4 +445,26 @@ export function analyzeSpam(
     score >= 70 ? "low" : score >= 40 ? "medium" : "high";
 
   return { score, level, issues };
+}
+
+/**
+ * Analyze an HTML email for spam indicators.
+ *
+ * Returns a 0-100 score (100 = clean, 0 = very spammy) and an array
+ * of issues found. Uses heuristic rules modeled after common spam
+ * filter triggers (CAN-SPAM, GDPR, SpamAssassin patterns).
+ */
+export function analyzeSpam(
+  html: string,
+  options?: SpamAnalysisOptions,
+): SpamReport {
+  if (!html || !html.trim()) {
+    return { score: 100, level: "low", issues: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  const $ = cheerio.load(html);
+  return analyzeSpamFromDom($, options);
 }

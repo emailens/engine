@@ -21,25 +21,14 @@ function isPlaceholderHref(href: string): boolean {
 }
 
 /**
- * Extract and validate all links from an HTML email.
+ * Validate links from a pre-parsed email DOM.
  *
- * Performs static analysis only (no network requests). Checks for
- * empty/placeholder hrefs, javascript: protocol, insecure HTTP,
- * generic link text, accessibility issues, and more.
+ * Accepts a Cheerio instance to avoid redundant HTML parsing when
+ * called from `auditEmail()` or `createSession()`.
+ *
+ * @internal
  */
-export function validateLinks(html: string): LinkReport {
-  if (!html || !html.trim()) {
-    return {
-      totalLinks: 0,
-      issues: [],
-      breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 },
-    };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
+export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
   const issues: LinkIssue[] = [];
   const breakdown = { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 };
 
@@ -204,4 +193,27 @@ export function validateLinks(html: string): LinkReport {
   }
 
   return { totalLinks, issues, breakdown };
+}
+
+/**
+ * Extract and validate all links from an HTML email.
+ *
+ * Performs static analysis only (no network requests). Checks for
+ * empty/placeholder hrefs, javascript: protocol, insecure HTTP,
+ * generic link text, accessibility issues, and more.
+ */
+export function validateLinks(html: string): LinkReport {
+  if (!html || !html.trim()) {
+    return {
+      totalLinks: 0,
+      issues: [],
+      breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 },
+    };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  const $ = cheerio.load(html);
+  return validateLinksFromDom($);
 }

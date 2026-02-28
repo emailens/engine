@@ -137,7 +137,7 @@ export async function compileReactEmail(
       moduleExports = await executeInQuickJs(transpiledCode, React, ReactEmailComponents);
       break;
     case "vm":
-      moduleExports = executeInVm(transpiledCode, React, ReactEmailComponents);
+      moduleExports = await executeInVm(transpiledCode, React, ReactEmailComponents);
       break;
     default:
       throw new CompileError(
@@ -185,12 +185,12 @@ export async function compileReactEmail(
  * use where the user runs their own code. For server use, prefer
  * "isolated-vm" or "quickjs".
  */
-function executeInVm(
+async function executeInVm(
   code: string,
   React: typeof import("react"),
   ReactEmailComponents: typeof import("@react-email/components"),
-): Record<string, unknown> {
-  const { createContext, Script } = require("node:vm") as typeof import("node:vm");
+): Promise<Record<string, unknown>> {
+  const { createContext, Script } = await import("node:vm");
 
   const ALLOWED_MODULES: Record<string, unknown> = {
     react: React,

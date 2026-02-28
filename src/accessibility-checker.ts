@@ -302,21 +302,14 @@ function checkSemanticStructure($: cheerio.CheerioAPI): AccessibilityIssue[] {
 }
 
 /**
- * Audit an HTML email for accessibility issues.
+ * Audit a pre-parsed email DOM for accessibility issues.
  *
- * Checks for missing lang attributes, image alt text, small fonts,
- * layout table roles, link accessibility, heading hierarchy, and
- * color contrast. Returns a 0–100 score and detailed issues.
+ * Accepts a Cheerio instance to avoid redundant HTML parsing when
+ * called from `auditEmail()` or `createSession()`.
+ *
+ * @internal
  */
-export function checkAccessibility(html: string): AccessibilityReport {
-  if (!html || !html.trim()) {
-    return { score: 100, issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
+export function checkAccessibilityFromDom($: cheerio.CheerioAPI): AccessibilityReport {
   const issues: AccessibilityIssue[] = [];
 
   const langIssue = checkLangAttribute($);
@@ -340,7 +333,7 @@ export function checkAccessibility(html: string): AccessibilityReport {
     seenRules.set(issue.rule, count);
 
     const cap = RULE_PENALTY_CAPS[issue.rule];
-    if (cap !== undefined && count > cap) continue; // skip penalty but keep the issue
+    if (cap !== undefined && count > cap) continue;
 
     switch (issue.severity) {
       case "error": penalty += 12; break;
@@ -351,4 +344,23 @@ export function checkAccessibility(html: string): AccessibilityReport {
 
   const score = Math.max(0, 100 - penalty);
   return { score, issues };
+}
+
+/**
+ * Audit an HTML email for accessibility issues.
+ *
+ * Checks for missing lang attributes, image alt text, small fonts,
+ * layout table roles, link accessibility, heading hierarchy, and
+ * color contrast. Returns a 0–100 score and detailed issues.
+ */
+export function checkAccessibility(html: string): AccessibilityReport {
+  if (!html || !html.trim()) {
+    return { score: 100, issues: [] };
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  const $ = cheerio.load(html);
+  return checkAccessibilityFromDom($);
 }

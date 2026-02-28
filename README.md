@@ -57,6 +57,8 @@ console.log(report.images.total);
 
 **Unified API** — runs all email analysis checks in a single call. Returns compatibility warnings + scores, spam analysis, link validation, accessibility audit, and image analysis.
 
+Internally parses the HTML once and shares the DOM across all analyzers.
+
 ```typescript
 import { auditEmail } from "@emailens/engine";
 
@@ -78,6 +80,57 @@ const report = auditEmail(html, {
 - `framework?: "jsx" | "mjml" | "maizzle"` — attach framework-specific fix snippets
 - `spam?: SpamAnalysisOptions` — options for spam analysis
 - `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility">` — skip specific checks
+
+---
+
+### `createSession(html: string, options?: CreateSessionOptions): EmailSession`
+
+**Session API** — pre-parses the HTML once and exposes all analysis methods on the shared DOM. Use this when you need to call multiple analysis functions on the same HTML to avoid redundant parsing.
+
+```typescript
+import { createSession } from "@emailens/engine";
+
+const session = createSession(html, { framework: "jsx" });
+
+// All analysis methods share a single DOM parse:
+const warnings = session.analyze();
+const scores = session.score(warnings);
+const spam = session.analyzeSpam();
+const links = session.validateLinks();
+const a11y = session.checkAccessibility();
+const images = session.analyzeImages();
+
+// Or run everything at once:
+const report = session.audit();
+
+// Transforms and dark mode still work (parse internally per client):
+const transforms = session.transformForAllClients();
+const darkMode = session.simulateDarkMode("gmail-web");
+```
+
+**`CreateSessionOptions`:**
+- `framework?: "jsx" | "mjml" | "maizzle"` — framework for fix snippets (applies to all session methods)
+
+**`EmailSession` methods:**
+
+| Method | Shares DOM | Description |
+|---|---|---|
+| `audit(options?)` | Yes | Run all checks (equivalent to `auditEmail`) |
+| `analyze()` | Yes | CSS compatibility warnings |
+| `score(warnings)` | — | Generate per-client scores |
+| `analyzeSpam(options?)` | Yes | Spam indicator analysis |
+| `validateLinks()` | Yes | Link validation |
+| `checkAccessibility()` | Yes | Accessibility audit |
+| `analyzeImages()` | Yes | Image analysis |
+| `transformForClient(clientId)` | No | Transform for one client |
+| `transformForAllClients()` | No | Transform for all 12 clients |
+| `simulateDarkMode(clientId)` | No | Dark mode simulation |
+
+**When to use sessions vs standalone functions:**
+
+- **Multiple analysis calls on the same HTML** → use `createSession()` to avoid redundant parsing
+- **Single analysis call** → use standalone functions (`auditEmail`, `analyzeEmail`, etc.)
+- **Server-side batch processing** → use `createSession()` per email for best throughput
 
 ---
 
@@ -270,6 +323,50 @@ try {
 
 ---
 
+## Performance
+
+### Shared DOM parsing
+
+The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For a typical 50–100KB email, each `cheerio.load()` call takes 5–15ms. Without optimization, calling multiple analysis functions on the same HTML would parse it repeatedly.
+
+**`auditEmail()`** parses the HTML once and shares the DOM across all 5 analyzers (compatibility, spam, links, accessibility, images). Previously each analyzer parsed independently — this eliminates ~80% of parsing overhead in the audit path.
+
+**`createSession()`** extends this optimization to any combination of calls. When you need to call `analyzeEmail()` + `analyzeSpam()` + `validateLinks()` + other checks on the same HTML, a session shares a single parse across all of them.
+
+### Typical performance characteristics
+
+| Operation | Complexity | Notes |
+|---|---|---|
+| `auditEmail()` | 1 parse + 5 analyses | Shared DOM, most efficient for full reports |
+| `createSession()` | 1 parse upfront | Amortized across all subsequent analysis calls |
+| `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 12 clients |
+| `transformForAllClients()` | 12 parses (1 per client) | Each client mutates its own DOM copy |
+| `simulateDarkMode()` | 1 parse per call | Mutates DOM for color inversion |
+
+### Optimization tips for consumers
+
+```typescript
+// Instead of this (6 separate HTML parses):
+const warnings = analyzeEmail(html, "jsx");
+const scores = generateCompatibilityScore(warnings);
+const spam = analyzeSpam(html);
+const links = validateLinks(html);
+const a11y = checkAccessibility(html);
+const images = analyzeImages(html);
+
+// Do this (1 HTML parse):
+const report = auditEmail(html, { framework: "jsx" });
+
+// Or for selective analysis (1 HTML parse):
+const session = createSession(html, { framework: "jsx" });
+const warnings = session.analyze();
+const scores = session.score(warnings);
+const spam = session.analyzeSpam();
+// ... pick only what you need
+```
+
+---
+
 ## Security Considerations
 
 ### Input Size Limits
@@ -376,6 +473,21 @@ interface AuditReport {
   images: ImageReport;
 }
 
+interface EmailSession {
+  readonly html: string;
+  readonly framework: Framework | undefined;
+  audit(options?): AuditReport;
+  analyze(): CSSWarning[];
+  score(warnings): Record<string, ClientScore>;
+  analyzeSpam(options?): SpamReport;
+  validateLinks(): LinkReport;
+  checkAccessibility(): AccessibilityReport;
+  analyzeImages(): ImageReport;
+  transformForClient(clientId): TransformResult;
+  transformForAllClients(): TransformResult[];
+  simulateDarkMode(clientId): { html; warnings };
+}
+
 interface SpamReport {
   score: number;       // 0–100 (100 = clean)
   level: "low" | "medium" | "high";
@@ -407,7 +519,7 @@ interface ImageReport {
 bun test
 ```
 
-449 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, security hardening, integration pipelines, and accuracy benchmarks.
+467 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, session API, security hardening, integration pipelines, and accuracy benchmarks.
 
 ## License
 
