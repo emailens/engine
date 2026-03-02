@@ -4,7 +4,14 @@ import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom } from "./accessibility-checker";
 import { analyzeImagesFromDom } from "./image-analyzer";
-import { MAX_HTML_SIZE, EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES } from "./constants";
+import { extractInboxPreviewFromDom } from "./inbox-preview";
+import { checkSizeFromDom } from "./size-checker";
+import { checkTemplateVariablesFromDom } from "./template-checker";
+import {
+  MAX_HTML_SIZE,
+  EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE,
+} from "./constants";
 import type {
   CSSWarning,
   Framework,
@@ -13,6 +20,9 @@ import type {
   LinkReport,
   AccessibilityReport,
   ImageReport,
+  InboxPreview,
+  SizeReport,
+  TemplateReport,
 } from "./types";
 
 export interface AuditOptions {
@@ -20,7 +30,7 @@ export interface AuditOptions {
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">;
 }
 
 export interface AuditReport {
@@ -32,6 +42,9 @@ export interface AuditReport {
   links: LinkReport;
   accessibility: AccessibilityReport;
   images: ImageReport;
+  inboxPreview: InboxPreview;
+  size: SizeReport;
+  templateVariables: TemplateReport;
 }
 
 /**
@@ -52,6 +65,9 @@ export function auditEmail(html: string, options?: AuditOptions): AuditReport {
       links: EMPTY_LINKS,
       accessibility: EMPTY_ACCESSIBILITY,
       images: EMPTY_IMAGES,
+      inboxPreview: EMPTY_INBOX_PREVIEW,
+      size: EMPTY_SIZE,
+      templateVariables: EMPTY_TEMPLATE,
     };
   }
   if (html.length > MAX_HTML_SIZE) {
@@ -70,6 +86,9 @@ export function auditEmail(html: string, options?: AuditOptions): AuditReport {
   const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
   const accessibility = skip.has("accessibility") ? EMPTY_ACCESSIBILITY : checkAccessibilityFromDom($);
   const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
+  const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
+  const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
+  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images };
+  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables };
 }

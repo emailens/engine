@@ -75,6 +75,8 @@ const WEIGHTS: Record<string, number> = {
   "high-image-ratio": 10,
   "deceptive-link": 15,
   "all-caps-subject": 10,
+  "missing-physical-address": 8,
+  "missing-one-click-unsubscribe": 5,
 };
 
 function extractVisibleText($: cheerio.CheerioAPI): string {
@@ -369,6 +371,67 @@ function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
   return issues;
 }
 
+// CAN-SPAM physical address detection — US-centric patterns
+const STREET_ADDRESS_PATTERN = /\b\d{1,5}\s+[A-Za-z]+\s+(St(reet)?|Ave(nue)?|Blvd|Boulevard|Dr(ive)?|Rd|Road|Ln|Lane|Way|Ct|Court|Pl(ace)?|Pkwy|Parkway|Cir(cle)?|Terr(ace)?|Loop)\b/i;
+const PO_BOX_PATTERN = /\bP\.?\s*O\.?\s*Box\s+\d+/i;
+const ZIP_CODE_PATTERN = /\b\d{5}(-\d{4})?\b/;
+const ADDRESS_CLASS_PATTERN = /address|mailing|postal|footer-address|physical-address/i;
+
+function checkPhysicalAddress(
+  $: cheerio.CheerioAPI,
+  text: string,
+  options?: SpamAnalysisOptions,
+): SpamIssue | null {
+  // Transactional emails are exempt
+  if (options?.emailType === "transactional") return null;
+
+  // Check visible text for street address patterns
+  if (STREET_ADDRESS_PATTERN.test(text) && ZIP_CODE_PATTERN.test(text)) return null;
+  if (PO_BOX_PATTERN.test(text) && ZIP_CODE_PATTERN.test(text)) return null;
+
+  // Check for elements with address-related class names
+  let foundByClass = false;
+  $("[class]").each((_, el) => {
+    const cls = $(el).attr("class") || "";
+    if (ADDRESS_CLASS_PATTERN.test(cls)) {
+      const elText = $(el).text().trim();
+      if (elText.length > 5) {
+        foundByClass = true;
+        return false; // break
+      }
+    }
+  });
+  if (foundByClass) return null;
+
+  // Check <address> element
+  if ($("address").length > 0 && $("address").text().trim().length > 5) return null;
+
+  return {
+    rule: "missing-physical-address",
+    severity: "warning",
+    message: "No physical mailing address detected — required by CAN-SPAM for marketing emails.",
+    detail: "Include a street address or P.O. Box in the email footer.",
+  };
+}
+
+function checkOneClickUnsubscribe(
+  options?: SpamAnalysisOptions,
+): SpamIssue | null {
+  // Only relevant when List-Unsubscribe header is present
+  if (!options?.listUnsubscribeHeader?.trim()) return null;
+
+  // RFC 8058 requires List-Unsubscribe-Post header alongside List-Unsubscribe
+  if (!options?.listUnsubscribePostHeader?.trim()) {
+    return {
+      rule: "missing-one-click-unsubscribe",
+      severity: "warning",
+      message: "List-Unsubscribe header present but missing List-Unsubscribe-Post header (RFC 8058). Gmail and Yahoo require one-click unsubscribe.",
+      detail: 'Add "List-Unsubscribe-Post: List-Unsubscribe=One-Click" header.',
+    };
+  }
+  return null;
+}
+
 function checkAllCapsTitle($: cheerio.CheerioAPI): SpamIssue | null {
   const title = $("title").text().trim();
   if (title.length > 5 && title === title.toUpperCase() && /[A-Z]/.test(title)) {
@@ -419,6 +482,12 @@ export function analyzeSpamFromDom(
 
   const capsTitle = checkAllCapsTitle($);
   if (capsTitle) issues.push(capsTitle);
+
+  const addressIssue = checkPhysicalAddress($, text, options);
+  if (addressIssue) issues.push(addressIssue);
+
+  const oneClickIssue = checkOneClickUnsubscribe(options);
+  if (oneClickIssue) issues.push(oneClickIssue);
 
   // Calculate score
   let penalty = 0;

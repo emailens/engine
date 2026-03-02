@@ -12,6 +12,9 @@ export { analyzeSpam } from "./spam-scorer";
 export { validateLinks } from "./link-validator";
 export { checkAccessibility } from "./accessibility-checker";
 export { analyzeImages } from "./image-analyzer";
+export { extractInboxPreview } from "./inbox-preview";
+export { checkSize } from "./size-checker";
+export { checkTemplateVariables } from "./template-checker";
 export { auditEmail } from "./audit";
 export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
@@ -47,4 +50,11 @@ export type {
   ImageIssue,
   ImageInfo,
   ImageReport,
+  InboxPreviewIssue,
+  InboxPreview,
+  ClientTruncation,
+  SizeIssue,
+  SizeReport,
+  TemplateIssue,
+  TemplateReport,
 } from "./types";

@@ -6,6 +6,9 @@ import { analyzeSpam } from "../spam-scorer";
 import { validateLinks } from "../link-validator";
 import { checkAccessibility } from "../accessibility-checker";
 import { analyzeImages } from "../image-analyzer";
+import { extractInboxPreview } from "../inbox-preview";
+import { checkSize } from "../size-checker";
+import { checkTemplateVariables } from "../template-checker";
 import { transformForAllClients } from "../transform";
 import { simulateDarkMode } from "../dark-mode";
 
@@ -42,6 +45,9 @@ describe("createSession", () => {
     expect(sessionReport.links).toEqual(standaloneReport.links);
     expect(sessionReport.accessibility).toEqual(standaloneReport.accessibility);
     expect(sessionReport.images).toEqual(standaloneReport.images);
+    expect(sessionReport.inboxPreview).toEqual(standaloneReport.inboxPreview);
+    expect(sessionReport.size).toEqual(standaloneReport.size);
+    expect(sessionReport.templateVariables).toEqual(standaloneReport.templateVariables);
   });
 
   test("session.analyze() matches standalone analyzeEmail()", () => {
@@ -93,6 +99,30 @@ describe("createSession", () => {
     expect(sessionResult).toEqual(standaloneResult);
   });
 
+  test("session.extractInboxPreview() matches standalone extractInboxPreview()", () => {
+    const session = createSession(SAMPLE_HTML);
+    const sessionResult = session.extractInboxPreview();
+    const standaloneResult = extractInboxPreview(SAMPLE_HTML);
+
+    expect(sessionResult).toEqual(standaloneResult);
+  });
+
+  test("session.checkSize() matches standalone checkSize()", () => {
+    const session = createSession(SAMPLE_HTML);
+    const sessionResult = session.checkSize();
+    const standaloneResult = checkSize(SAMPLE_HTML);
+
+    expect(sessionResult).toEqual(standaloneResult);
+  });
+
+  test("session.checkTemplateVariables() matches standalone checkTemplateVariables()", () => {
+    const session = createSession(SAMPLE_HTML);
+    const sessionResult = session.checkTemplateVariables();
+    const standaloneResult = checkTemplateVariables(SAMPLE_HTML);
+
+    expect(sessionResult).toEqual(standaloneResult);
+  });
+
   test("session.transformForAllClients() matches standalone", () => {
     const session = createSession(SAMPLE_HTML, { framework: "jsx" });
     const sessionResult = session.transformForAllClients();
@@ -126,12 +156,18 @@ describe("createSession", () => {
 
   test("session.audit() skip option works", () => {
     const session = createSession(SAMPLE_HTML);
-    const report = session.audit({ skip: ["spam", "links", "images"] });
+    const report = session.audit({ skip: ["spam", "links", "images", "inboxPreview", "size", "templateVariables"] });
 
     expect(report.spam.score).toBe(100);
     expect(report.spam.issues).toHaveLength(0);
     expect(report.links.totalLinks).toBe(0);
     expect(report.images.total).toBe(0);
+    expect(report.inboxPreview.subject).toBeNull();
+    expect(report.inboxPreview.issues).toHaveLength(0);
+    expect(report.size.htmlBytes).toBe(0);
+    expect(report.size.issues).toHaveLength(0);
+    expect(report.templateVariables.unresolvedCount).toBe(0);
+    expect(report.templateVariables.issues).toHaveLength(0);
     expect(report.compatibility.warnings.length).toBeGreaterThan(0);
     expect(report.accessibility.score).toBeDefined();
   });
@@ -145,6 +181,9 @@ describe("createSession", () => {
     expect(session.validateLinks().totalLinks).toBe(0);
     expect(session.checkAccessibility().score).toBe(100);
     expect(session.analyzeImages().total).toBe(0);
+    expect(session.extractInboxPreview().subject).toBeNull();
+    expect(session.checkSize().htmlBytes).toBe(0);
+    expect(session.checkTemplateVariables().unresolvedCount).toBe(0);
     expect(session.transformForAllClients()).toEqual([]);
     expect(session.audit().spam.score).toBe(100);
   });

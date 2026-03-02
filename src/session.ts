@@ -4,9 +4,16 @@ import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom } from "./accessibility-checker";
 import { analyzeImagesFromDom } from "./image-analyzer";
+import { extractInboxPreviewFromDom } from "./inbox-preview";
+import { checkSizeFromDom } from "./size-checker";
+import { checkTemplateVariablesFromDom } from "./template-checker";
 import { transformForClient, transformForAllClients } from "./transform";
 import { simulateDarkMode } from "./dark-mode";
-import { MAX_HTML_SIZE, EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES } from "./constants";
+import {
+  MAX_HTML_SIZE,
+  EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE,
+} from "./constants";
 import type {
   CSSWarning,
   Framework,
@@ -15,6 +22,9 @@ import type {
   LinkReport,
   AccessibilityReport,
   ImageReport,
+  InboxPreview,
+  SizeReport,
+  TemplateReport,
   TransformResult,
 } from "./types";
 import type { AuditOptions, AuditReport } from "./audit";
@@ -73,6 +83,15 @@ export interface EmailSession {
 
   /** Analyze images (shares pre-parsed DOM). */
   analyzeImages(): ImageReport;
+
+  /** Extract subject line and preheader text (shares pre-parsed DOM). */
+  extractInboxPreview(): InboxPreview;
+
+  /** Check email size for Gmail clipping (needs raw HTML for byte count). */
+  checkSize(): SizeReport;
+
+  /** Scan for unresolved template/merge variables (shares pre-parsed DOM). */
+  checkTemplateVariables(): TemplateReport;
 
   /**
    * Transform HTML for a specific client.
@@ -142,6 +161,9 @@ export function createSession(
         links: EMPTY_LINKS,
         accessibility: EMPTY_ACCESSIBILITY,
         images: EMPTY_IMAGES,
+        inboxPreview: EMPTY_INBOX_PREVIEW,
+        size: EMPTY_SIZE,
+        templateVariables: EMPTY_TEMPLATE,
       }),
       analyze: () => [],
       score: () => ({}),
@@ -149,6 +171,9 @@ export function createSession(
       validateLinks: () => EMPTY_LINKS,
       checkAccessibility: () => EMPTY_ACCESSIBILITY,
       analyzeImages: () => EMPTY_IMAGES,
+      extractInboxPreview: () => EMPTY_INBOX_PREVIEW,
+      checkSize: () => EMPTY_SIZE,
+      checkTemplateVariables: () => EMPTY_TEMPLATE,
       transformForClient: (clientId) => ({ clientId, html: html || "", warnings: [] }),
       transformForAllClients: () => [],
       simulateDarkMode: (clientId) => ({ html: html || "", warnings: [] }),
@@ -176,8 +201,11 @@ export function createSession(
       const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
       const accessibility = skip.has("accessibility") ? EMPTY_ACCESSIBILITY : checkAccessibilityFromDom($);
       const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
+      const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
+      const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
+      const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
 
-      return { compatibility: { warnings, scores }, spam, links, accessibility, images };
+      return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables };
     },
 
     analyze() {
@@ -202,6 +230,18 @@ export function createSession(
 
     analyzeImages() {
       return analyzeImagesFromDom($);
+    },
+
+    extractInboxPreview() {
+      return extractInboxPreviewFromDom($);
+    },
+
+    checkSize() {
+      return checkSizeFromDom($, html);
+    },
+
+    checkTemplateVariables() {
+      return checkTemplateVariablesFromDom($);
     },
 
     // Transforms create isolated copies since they mutate the DOM

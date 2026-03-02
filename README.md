@@ -1,6 +1,6 @@
 # @emailens/engine
 
-Email compatibility engine that transforms CSS per email client, analyzes compatibility, scores results, simulates dark mode, provides framework-aware fix snippets, and runs spam, accessibility, link, and image quality analysis.
+Email compatibility engine that transforms CSS per email client, analyzes compatibility, scores results, simulates dark mode, provides framework-aware fix snippets, and runs spam, accessibility, link, image, inbox preview, size, and template variable analysis.
 
 Supports **12 email clients**: Gmail (Web, Android, iOS), Outlook (365, Windows), Apple Mail (macOS, iOS), Yahoo Mail, Samsung Mail, Thunderbird, HEY Mail, and Superhuman.
 
@@ -49,13 +49,22 @@ console.log(report.links.totalLinks);
 
 console.log(report.images.total);
 // 0
+
+console.log(report.inboxPreview.subject);
+// "Newsletter"
+
+console.log(report.size.clipped);
+// false
+
+console.log(report.templateVariables.unresolvedCount);
+// 0
 ```
 
 ## API Reference
 
 ### `auditEmail(html: string, options?: AuditOptions): AuditReport`
 
-**Unified API** — runs all email analysis checks in a single call. Returns compatibility warnings + scores, spam analysis, link validation, accessibility audit, and image analysis.
+**Unified API** — runs all 8 email analysis checks in a single call. Returns compatibility warnings + scores, spam analysis, link validation, accessibility audit, image analysis, inbox preview extraction, size checking, and template variable detection.
 
 Internally parses the HTML once and shares the DOM across all analyzers.
 
@@ -74,12 +83,15 @@ const report = auditEmail(html, {
 // report.links                   — LinkReport
 // report.accessibility           — AccessibilityReport
 // report.images                  — ImageReport
+// report.inboxPreview            — InboxPreview
+// report.size                    — SizeReport
+// report.templateVariables       — TemplateReport
 ```
 
 **`AuditOptions`:**
 - `framework?: "jsx" | "mjml" | "maizzle"` — attach framework-specific fix snippets
 - `spam?: SpamAnalysisOptions` — options for spam analysis
-- `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility">` — skip specific checks
+- `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">` — skip specific checks
 
 ---
 
@@ -99,6 +111,9 @@ const spam = session.analyzeSpam();
 const links = session.validateLinks();
 const a11y = session.checkAccessibility();
 const images = session.analyzeImages();
+const preview = session.extractInboxPreview();
+const size = session.checkSize();
+const templates = session.checkTemplateVariables();
 
 // Or run everything at once:
 const report = session.audit();
@@ -122,6 +137,9 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `validateLinks()` | Yes | Link validation |
 | `checkAccessibility()` | Yes | Accessibility audit |
 | `analyzeImages()` | Yes | Image analysis |
+| `extractInboxPreview()` | Yes | Subject line and preheader extraction |
+| `checkSize()` | Yes | Gmail clipping size check |
+| `checkTemplateVariables()` | Yes | Unresolved template variable detection |
 | `transformForClient(clientId)` | No | Transform for one client |
 | `transformForAllClients()` | No | Transform for all 12 clients |
 | `simulateDarkMode(clientId)` | No | Dark mode simulation |
@@ -218,6 +236,47 @@ const report = analyzeImages(html);
 ```
 
 **Checks:** missing dimensions, oversized data URIs, missing alt, WebP/SVG format, missing `display:block`, tracking pixels, high image count.
+
+### `extractInboxPreview(html: string): InboxPreview`
+
+Extracts subject line (from `<title>`) and preheader text from the email HTML. Returns per-client truncation data showing how subject and preheader will appear across 8 email clients.
+
+```typescript
+import { extractInboxPreview } from "@emailens/engine";
+
+const preview = extractInboxPreview(html);
+// { subject: "Newsletter", preheader: "This week's highlights...",
+//   subjectLength: 10, preheaderLength: 28,
+//   truncation: [...], issues: [...] }
+```
+
+**Checks:** missing `<title>`, subject too long, missing preheader, preheader too short/long, `&zwnj;&nbsp;` padding hack, emoji in subject.
+
+### `checkSize(html: string): SizeReport`
+
+Checks email HTML byte size for Gmail clipping issues. Gmail clips messages larger than ~102KB, hiding content behind a "View entire message" link.
+
+```typescript
+import { checkSize } from "@emailens/engine";
+
+const report = checkSize(html);
+// { htmlBytes: 45230, humanSize: "44.2 KB", clipped: false, issues: [] }
+```
+
+**Checks:** Gmail clipping threshold (102KB), approaching clip threshold warning (90KB).
+
+### `checkTemplateVariables(html: string): TemplateReport`
+
+Scans email HTML for unresolved template/merge variables in text content and key attributes (`href`, `src`, `alt`).
+
+```typescript
+import { checkTemplateVariables } from "@emailens/engine";
+
+const report = checkTemplateVariables(html);
+// { unresolvedCount: 0, issues: [] }
+```
+
+**Detects:** `{{var}}` (Handlebars/Mustache), `${var}` (ES template literals), `<%= %>` (ERB/EJS), `*|TAG|*` (Mailchimp), `%%tag%%` (Salesforce), `{merge_field}` (single-brace).
 
 ---
 
@@ -329,7 +388,7 @@ try {
 
 The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For a typical 50–100KB email, each `cheerio.load()` call takes 5–15ms. Without optimization, calling multiple analysis functions on the same HTML would parse it repeatedly.
 
-**`auditEmail()`** parses the HTML once and shares the DOM across all 5 analyzers (compatibility, spam, links, accessibility, images). Previously each analyzer parsed independently — this eliminates ~80% of parsing overhead in the audit path.
+**`auditEmail()`** parses the HTML once and shares the DOM across all 8 analyzers (compatibility, spam, links, accessibility, images, inbox preview, size, template variables). Previously each analyzer parsed independently — this eliminates ~80% of parsing overhead in the audit path.
 
 **`createSession()`** extends this optimization to any combination of calls. When you need to call `analyzeEmail()` + `analyzeSpam()` + `validateLinks()` + other checks on the same HTML, a session shares a single parse across all of them.
 
@@ -337,7 +396,7 @@ The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For 
 
 | Operation | Complexity | Notes |
 |---|---|---|
-| `auditEmail()` | 1 parse + 5 analyses | Shared DOM, most efficient for full reports |
+| `auditEmail()` | 1 parse + 8 analyses | Shared DOM, most efficient for full reports |
 | `createSession()` | 1 parse upfront | Amortized across all subsequent analysis calls |
 | `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 12 clients |
 | `transformForAllClients()` | 12 parses (1 per client) | Each client mutates its own DOM copy |
@@ -471,6 +530,9 @@ interface AuditReport {
   links: LinkReport;
   accessibility: AccessibilityReport;
   images: ImageReport;
+  inboxPreview: InboxPreview;
+  size: SizeReport;
+  templateVariables: TemplateReport;
 }
 
 interface EmailSession {
@@ -483,9 +545,33 @@ interface EmailSession {
   validateLinks(): LinkReport;
   checkAccessibility(): AccessibilityReport;
   analyzeImages(): ImageReport;
+  extractInboxPreview(): InboxPreview;
+  checkSize(): SizeReport;
+  checkTemplateVariables(): TemplateReport;
   transformForClient(clientId): TransformResult;
   transformForAllClients(): TransformResult[];
   simulateDarkMode(clientId): { html; warnings };
+}
+
+interface InboxPreview {
+  subject: string | null;
+  preheader: string | null;
+  subjectLength: number;
+  preheaderLength: number;
+  truncation: ClientTruncation[];
+  issues: InboxPreviewIssue[];
+}
+
+interface SizeReport {
+  htmlBytes: number;
+  humanSize: string;
+  clipped: boolean;
+  issues: SizeIssue[];
+}
+
+interface TemplateReport {
+  unresolvedCount: number;
+  issues: TemplateIssue[];
 }
 
 interface SpamReport {
@@ -519,7 +605,7 @@ interface ImageReport {
 bun test
 ```
 
-467 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, session API, security hardening, integration pipelines, and accuracy benchmarks.
+525 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, inbox preview extraction, size checking, template variable detection, session API, security hardening, integration pipelines, and accuracy benchmarks.
 
 ## License
 

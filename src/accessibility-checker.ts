@@ -276,6 +276,26 @@ function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
   return issues;
 }
 
+function checkCharsetDeclaration($: cheerio.CheerioAPI): AccessibilityIssue | null {
+  // Check for <meta charset="...">
+  const metaCharset = $('meta[charset]');
+  if (metaCharset.length > 0) return null;
+
+  // Check for <meta http-equiv="Content-Type" content="...charset=...">
+  const httpEquiv = $('meta[http-equiv="Content-Type"]');
+  if (httpEquiv.length > 0) {
+    const content = httpEquiv.attr("content") || "";
+    if (/charset\s*=/i.test(content)) return null;
+  }
+
+  return {
+    severity: "warning",
+    rule: "missing-charset",
+    message: "Missing charset declaration",
+    details: 'Add <meta charset="utf-8"> in <head> to prevent encoding issues across email clients.',
+  };
+}
+
 function checkSemanticStructure($: cheerio.CheerioAPI): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
 
@@ -323,6 +343,9 @@ export function checkAccessibilityFromDom($: cheerio.CheerioAPI): AccessibilityR
   issues.push(...checkTableAccessibility($));
   issues.push(...checkTextSizeAndContrast($));
   issues.push(...checkSemanticStructure($));
+
+  const charsetIssue = checkCharsetDeclaration($);
+  if (charsetIssue) issues.push(charsetIssue);
 
   // Calculate score with per-rule penalty capping
   let penalty = 0;

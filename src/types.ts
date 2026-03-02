@@ -101,6 +101,8 @@ export interface SpamReport {
 export interface SpamAnalysisOptions {
   /** Value of the List-Unsubscribe header, if present */
   listUnsubscribeHeader?: string;
+  /** Value of the List-Unsubscribe-Post header (RFC 8058 one-click unsubscribe) */
+  listUnsubscribePostHeader?: string;
   /** Type of email — transactional emails are exempt from unsubscribe requirements */
   emailType?: "marketing" | "transactional";
 }
@@ -169,4 +171,62 @@ export interface ImageReport {
   totalDataUriBytes: number;
   issues: ImageIssue[];
   images: ImageInfo[];
+}
+
+// ─── Inbox preview ──────────────────────────────────────────────────────────
+
+export interface InboxPreviewIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+}
+
+export interface ClientTruncation {
+  client: string;
+  subjectLimit: number;
+  preheaderLimit: number;
+  truncatedSubject: string | null;
+  truncatedPreheader: string | null;
+  subjectTruncated: boolean;
+  preheaderTruncated: boolean;
+}
+
+export interface InboxPreview {
+  subject: string | null;
+  preheader: string | null;
+  subjectLength: number;
+  preheaderLength: number;
+  truncation: ClientTruncation[];
+  issues: InboxPreviewIssue[];
+}
+
+// ─── Size checking ──────────────────────────────────────────────────────────
+
+export interface SizeIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  detail?: string;
+}
+
+export interface SizeReport {
+  htmlBytes: number;
+  humanSize: string;
+  clipped: boolean;
+  issues: SizeIssue[];
+}
+
+// ─── Template variable detection ────────────────────────────────────────────
+
+export interface TemplateIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  variable: string;
+  location: "text" | "attribute";
+}
+
+export interface TemplateReport {
+  unresolvedCount: number;
+  issues: TemplateIssue[];
 }

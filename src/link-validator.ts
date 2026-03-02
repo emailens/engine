@@ -180,6 +180,25 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     }
   });
 
+  // Broken anchor detection — #id links where no matching id exists
+  links.each((_, el) => {
+    const href = $(el).attr("href") || "";
+    const trimmed = href.trim();
+    if (trimmed.startsWith("#") && trimmed.length > 1) {
+      const targetId = trimmed.slice(1);
+      const target = $(`[id="${targetId}"]`);
+      if (target.length === 0) {
+        issues.push({
+          severity: "error",
+          rule: "broken-anchor",
+          message: `Anchor link "${trimmed}" points to an element that does not exist`,
+          href: trimmed,
+          text: $(el).text().trim().slice(0, 80) || "(no text)",
+        });
+      }
+    }
+  });
+
   // Duplicate link detection
   for (const [href, count] of hrefCounts) {
     if (count > 5) {
