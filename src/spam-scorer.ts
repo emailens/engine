@@ -517,11 +517,16 @@ export function analyzeSpamFromDom(
 }
 
 /**
- * Analyze an HTML email for spam indicators.
+ * Analyze an HTML email for content hygiene issues.
  *
- * Returns a 0-100 score (100 = clean, 0 = very spammy) and an array
+ * Returns a 0-100 score (100 = clean, 0 = many issues) and an array
  * of issues found. Uses heuristic rules modeled after common spam
  * filter triggers (CAN-SPAM, GDPR, SpamAssassin patterns).
+ *
+ * **Important:** This is heuristic content analysis, NOT a real spam
+ * filter. It checks for common anti-patterns that trigger spam filters
+ * but cannot predict actual inbox placement. For real spam testing,
+ * use SpamAssassin integration or a dedicated service like GlockApps.
  */
 export function analyzeSpam(
   html: string,

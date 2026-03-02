@@ -230,8 +230,8 @@ describe("new CSS properties (v0.2.0)", () => {
     const warnings = analyzeEmail(WORD_BREAK_HTML);
     const wbWarnings = warnings.filter((w) => w.property === "word-break");
     expect(wbWarnings.length).toBeGreaterThan(0);
-    // Should warn for Outlook Windows at minimum
-    expect(wbWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    // caniemail: yahoo-mail does not support word-break
+    expect(wbWarnings.some((w) => w.client === "yahoo-mail")).toBe(true);
   });
 
   test("detects overflow-wrap in inline styles", () => {
@@ -308,13 +308,13 @@ describe("new CSS properties (v0.2.0)", () => {
     }
   });
 
-  test("detects white-space partial support in Outlook", () => {
+  test("detects white-space unsupported in Outlook Windows", () => {
     const warnings = analyzeEmail(WHITE_SPACE_HTML);
     const wsWarnings = warnings.filter((w) => w.property === "white-space");
+    // caniemail: outlook-windows does not support white-space
     const outlookWS = wsWarnings.find((w) => w.client === "outlook-windows");
-    if (outlookWS) {
-      expect(outlookWS.severity).toBe("info");
-    }
+    expect(outlookWS).toBeDefined();
+    expect(outlookWS!.severity).toBe("warning");
   });
 });
 

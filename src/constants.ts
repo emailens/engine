@@ -66,3 +66,6 @@ export const EMPTY_IMAGES: ImageReport = { total: 0, totalDataUriBytes: 0, issue
 export const EMPTY_INBOX_PREVIEW: InboxPreview = { subject: null, preheader: null, subjectLength: 0, preheaderLength: 0, truncation: [], issues: [] };
 export const EMPTY_SIZE: SizeReport = { htmlBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
 export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] };
+
+import type { DeliverabilityReport } from "./types";
+export const EMPTY_DELIVERABILITY: DeliverabilityReport = { domain: "", checks: [], score: 0, issues: [] };

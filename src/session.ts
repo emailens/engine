@@ -115,6 +115,7 @@ export interface EmailSession {
    * already-transformed HTML, use the standalone `simulateDarkMode()` instead.
    */
   simulateDarkMode(clientId: string): { html: string; warnings: CSSWarning[] };
+
 }
 
 /**

@@ -230,3 +230,27 @@ export interface TemplateReport {
   unresolvedCount: number;
   issues: TemplateIssue[];
 }
+
+// ─── Deliverability checking ─────────────────────────────────────────────────
+
+export interface DeliverabilityCheck {
+  name: "spf" | "dkim" | "dmarc" | "mx" | "bimi";
+  status: "pass" | "fail" | "warn" | "skip";
+  message: string;
+  detail?: string;
+  record?: string;
+}
+
+export interface DeliverabilityReport {
+  domain: string;
+  checks: DeliverabilityCheck[];
+  score: number;
+  issues: DeliverabilityIssue[];
+}
+
+export interface DeliverabilityIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  detail?: string;
+}

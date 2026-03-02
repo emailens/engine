@@ -1,6 +1,6 @@
 # @emailens/engine
 
-Email compatibility engine that transforms CSS per email client, analyzes compatibility, scores results, simulates dark mode, provides framework-aware fix snippets, and runs spam, accessibility, link, image, inbox preview, size, and template variable analysis.
+Email compatibility engine that transforms CSS per email client, analyzes compatibility across **250+ CSS properties**, scores results, simulates dark mode, provides framework-aware fix snippets, checks DNS deliverability (SPF, DKIM, DMARC, MX, BIMI), and runs content hygiene, accessibility, link, image, inbox preview, size, and template variable analysis.
 
 Supports **12 email clients**: Gmail (Web, Android, iOS), Outlook (365, Windows), Apple Mail (macOS, iOS), Yahoo Mail, Samsung Mail, Thunderbird, HEY Mail, and Superhuman.
 
@@ -140,6 +140,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `extractInboxPreview()` | Yes | Subject line and preheader extraction |
 | `checkSize()` | Yes | Gmail clipping size check |
 | `checkTemplateVariables()` | Yes | Unresolved template variable detection |
+| `checkDeliverability(domain)` | — | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
 | `transformForClient(clientId)` | No | Transform for one client |
 | `transformForAllClients()` | No | Transform for all 12 clients |
 | `simulateDarkMode(clientId)` | No | Dark mode simulation |
@@ -184,7 +185,9 @@ Get only warnings that require HTML restructuring (`fixType: "structural"`).
 
 ### `analyzeSpam(html: string, options?: SpamAnalysisOptions): SpamReport`
 
-Analyzes an HTML email for spam indicators. Returns a 0–100 score (100 = clean) and an array of issues. Uses heuristic rules modeled after SpamAssassin, CAN-SPAM, and GDPR.
+Analyzes an HTML email for content hygiene issues. Returns a 0–100 score (100 = clean) and an array of issues. Uses heuristic rules modeled after SpamAssassin, CAN-SPAM, and GDPR.
+
+> **Note:** Content hygiene heuristics — not a real spam filter. This checks for common anti-patterns that trigger spam filters but cannot predict actual inbox placement. For real spam testing, use the `checkSpamAssassin()` integration or a dedicated service.
 
 ```typescript
 import { analyzeSpam } from "@emailens/engine";
@@ -277,6 +280,49 @@ const report = checkTemplateVariables(html);
 ```
 
 **Detects:** `{{var}}` (Handlebars/Mustache), `${var}` (ES template literals), `<%= %>` (ERB/EJS), `*|TAG|*` (Mailchimp), `%%tag%%` (Salesforce), `{merge_field}` (single-brace).
+
+---
+
+### `checkDeliverability(domain, options?): Promise<DeliverabilityReport>`
+
+Validates email deliverability for a domain by checking MX, SPF, DKIM, DMARC, and BIMI DNS records. All DNS queries have a 5-second timeout. No external dependencies — uses `node:dns/promises`.
+
+```typescript
+import { checkDeliverability } from "@emailens/engine";
+
+const report = await checkDeliverability("example.com");
+console.log(report.score);   // 0-100
+console.log(report.checks);  // individual check results
+console.log(report.issues);  // actionable issues
+```
+
+**Checks:**
+- **MX** — domain can receive email
+- **SPF** — authorized senders (`v=spf1`), flags dangerous `+all`
+- **DKIM** — probes 15 common selectors (`google`, `selector1`, `default`, `dkim`, etc.)
+- **DMARC** — policy enforcement (`v=DMARC1`), warns on `p=none`
+- **BIMI** — brand indicator (optional, nice-to-have)
+
+Also available as a session method: `session.checkDeliverability("example.com")`.
+
+> **Note:** This is standalone async — not wired into the synchronous `auditEmail()` pipeline.
+
+### `checkSpamAssassin(input, options?): Promise<SpamAssassinResult | null>`
+
+Opt-in integration with a local SpamAssassin installation. Shells out to `spamc` (daemon) or `spamassassin` (standalone) via `execFile`. Returns `null` if SpamAssassin is not installed.
+
+```typescript
+import { checkSpamAssassin } from "@emailens/engine";
+
+const result = await checkSpamAssassin(rawRfc2822Message);
+if (result) {
+  console.log(result.score);      // e.g. 3.2
+  console.log(result.isSpam);     // true if score >= threshold
+  console.log(result.rules);      // matched SpamAssassin rules
+}
+```
+
+> **Note:** Requires a full RFC 2822 message (headers + body), not just HTML.
 
 ---
 
@@ -597,6 +643,29 @@ interface ImageReport {
   issues: ImageIssue[];
   images: ImageInfo[];
 }
+
+interface DeliverabilityReport {
+  domain: string;
+  checks: DeliverabilityCheck[];
+  score: number;       // 0-100
+  issues: DeliverabilityIssue[];
+}
+
+interface DeliverabilityCheck {
+  name: "spf" | "dkim" | "dmarc" | "mx" | "bimi";
+  status: "pass" | "fail" | "warn" | "skip";
+  message: string;
+  detail?: string;
+  record?: string;
+}
+
+interface SpamAssassinResult {
+  score: number;
+  threshold: number;
+  isSpam: boolean;
+  rules: Array<{ name: string; score: number; description: string }>;
+  rawOutput: string;
+}
 ```
 
 ## Testing
@@ -605,7 +674,7 @@ interface ImageReport {
 bun test
 ```
 
-525 tests covering analysis, transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, inbox preview extraction, size checking, template variable detection, session API, security hardening, integration pipelines, and accuracy benchmarks.
+574 tests covering analysis (250+ CSS properties), transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, content hygiene scoring, link validation, accessibility checking, image analysis, inbox preview extraction, size checking, template variable detection, DNS deliverability checking, session API, security hardening, integration pipelines, accuracy benchmarks, and battle tests.
 
 ## License
 

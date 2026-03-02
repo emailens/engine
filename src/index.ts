@@ -7,8 +7,10 @@ export { diffResults } from "./diff";
 export { generateFixPrompt } from "./export-prompt";
 export { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "./ai-fix";
 export { estimateAiFixTokens, heuristicTokenCount } from "./token-utils";
-export { STRUCTURAL_FIX_PROPERTIES } from "./rules/css-support";
+export { STRUCTURAL_FIX_PROPERTIES, CSS_SUPPORT, HTML_ELEMENT_FEATURES, AT_RULE_FEATURES, COMPOUND_VALUE_FEATURES, CSS_FUNCTION_FEATURES } from "./rules/css-support";
 export { analyzeSpam } from "./spam-scorer";
+// checkDeliverability and checkSpamAssassin use Node.js builtins (dns, child_process)
+// and are exported from "@emailens/engine/server" to avoid breaking client-side bundles.
 export { validateLinks } from "./link-validator";
 export { checkAccessibility } from "./accessibility-checker";
 export { analyzeImages } from "./image-analyzer";
@@ -19,7 +21,10 @@ export { auditEmail } from "./audit";
 export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
 export { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
+export { EMPTY_DELIVERABILITY } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
+export type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";
+// SpamAssassinResult, SpamAssassinOptions are re-exported from "@emailens/engine/server"
 export { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
