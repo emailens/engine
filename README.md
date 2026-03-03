@@ -1,64 +1,82 @@
 # @emailens/engine
 
-Email compatibility engine that transforms CSS per email client, analyzes compatibility across **250+ CSS properties**, scores results, simulates dark mode, provides framework-aware fix snippets, checks DNS deliverability (SPF, DKIM, DMARC, MX, BIMI), and runs content hygiene, accessibility, link, image, inbox preview, size, and template variable analysis.
+**Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-Supports **12 email clients**: Gmail (Web, Android, iOS), Outlook (365, Windows), Apple Mail (macOS, iOS), Yahoo Mail, Samsung Mail, Thunderbird, HEY Mail, and Superhuman.
+`@emailens/engine` analyzes your HTML against 250+ CSS properties across 12 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
-## Install
+## Quick Start
 
 ```bash
 npm install @emailens/engine
-# or
-bun add @emailens/engine
 ```
-
-Requires Node.js >= 18.
-
-## Quick Start
 
 ```typescript
 import { auditEmail } from "@emailens/engine";
 
+// Flexbox + gap + box-shadow — all Outlook killers
 const html = `<html lang="en">
-<head><title>Newsletter</title>
-  <style>.card { border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }</style>
+<head><title>Weekly Update</title>
+  <style>
+    .card { border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  </style>
 </head>
 <body>
   <div class="card" style="display: flex; gap: 16px;">
     <div>Column A</div>
     <div>Column B</div>
   </div>
-  <a href="https://example.com/unsubscribe">Unsubscribe</a>
 </body>
 </html>`;
 
-// Run all checks in one call
 const report = auditEmail(html, { framework: "jsx" });
+
+console.log(report.compatibility.scores["outlook-windows"]);
+// { score: 30, errors: 3, warnings: 3, info: 1 }
+//  ↑ Outlook uses Word — flexbox, gap, box-shadow, border-radius all break
 
 console.log(report.compatibility.scores["gmail-web"]);
 // { score: 75, errors: 0, warnings: 5, info: 0 }
 
-console.log(report.spam);
-// { score: 100, level: "low", issues: [] }
-
-console.log(report.accessibility.score);
-// 88
-
-console.log(report.links.totalLinks);
-// 1
-
-console.log(report.images.total);
-// 0
-
-console.log(report.inboxPreview.subject);
-// "Newsletter"
-
-console.log(report.size.clipped);
-// false
-
-console.log(report.templateVariables.unresolvedCount);
-// 0
+console.log(report.spam.score);        // 100 (clean)
+console.log(report.accessibility.score); // 88
+console.log(report.size.clipped);       // false (under Gmail's 102KB limit)
 ```
+
+Score too low? Fix it automatically:
+
+```typescript
+import { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "@emailens/engine";
+
+const { code } = await generateAiFix({
+  originalHtml: html,
+  warnings: report.compatibility.warnings,
+  scores: report.compatibility.scores,
+  scope: "outlook-windows",
+  format: "jsx",
+  provider: async (prompt) => {
+    // Any LLM — Claude, GPT, etc.
+    const msg = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8192,
+      system: AI_FIX_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return msg.content[0].type === "text" ? msg.content[0].text : "";
+  },
+});
+// code → JSX with <Table> layout, VML roundrects, inline fallbacks
+```
+
+## What It Catches
+
+- **CSS compatibility** — 250+ properties tested across 12 email clients, with fix snippets and AI-powered auto-fix
+- **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
+- **Accessibility** — WCAG contrast ratios, alt text, semantic structure, heading hierarchy
+- **Link validation** — broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
+- **Image analysis** — missing dimensions, oversized data URIs, tracking pixels, WebP/SVG format
+- **Inbox preview** — subject/preheader truncation per client, Gmail clipping detection
+- **Domain authentication** — SPF, DKIM, DMARC, MX, and BIMI DNS record validation
+- **Template variables** — unresolved merge tags across 6 template systems (Handlebars, ERB, Mailchimp, etc.)
 
 ## API Reference
 
@@ -185,9 +203,9 @@ Get only warnings that require HTML restructuring (`fixType: "structural"`).
 
 ### `analyzeSpam(html: string, options?: SpamAnalysisOptions): SpamReport`
 
-Analyzes an HTML email for content hygiene issues. Returns a 0–100 score (100 = clean) and an array of issues. Uses heuristic rules modeled after SpamAssassin, CAN-SPAM, and GDPR.
+Analyzes an HTML email for spam scoring issues. Returns a 0–100 score (100 = clean) and an array of issues. Uses heuristic rules modeled after SpamAssassin, CAN-SPAM, and GDPR.
 
-> **Note:** Content hygiene heuristics — not a real spam filter. This checks for common anti-patterns that trigger spam filters but cannot predict actual inbox placement. For real spam testing, use the `checkSpamAssassin()` integration or a dedicated service.
+> **Note:** Spam scoring heuristics — not a real spam filter. This checks for common anti-patterns that trigger spam filters but cannot predict actual inbox placement. For real spam testing, use the `checkSpamAssassin()` integration or a dedicated service.
 
 ```typescript
 import { analyzeSpam } from "@emailens/engine";
@@ -668,13 +686,17 @@ interface SpamAssassinResult {
 }
 ```
 
-## Testing
+## Contributing
+
+Contributions are welcome! Please [open an issue](https://github.com/nicholasgriffintn/emailens/issues) to discuss your idea before submitting a PR.
 
 ```bash
 bun test
 ```
 
-574 tests covering analysis (250+ CSS properties), transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, content hygiene scoring, link validation, accessibility checking, image analysis, inbox preview extraction, size checking, template variable detection, DNS deliverability checking, session API, security hardening, integration pipelines, accuracy benchmarks, and battle tests.
+574 tests covering CSS analysis (250+ properties), transformation, dark mode simulation, framework-aware fixes, AI fix generation, token estimation, spam scoring, link validation, accessibility checking, image analysis, inbox preview extraction, size checking, template variable detection, DNS deliverability checking, session API, security hardening, integration pipelines, accuracy benchmarks, and battle tests.
+
+**Project structure:** analysis modules live in `src/`, each with a corresponding test file in `tests/`. The engine parses HTML once and shares the DOM across all analyzers.
 
 ## License
 
