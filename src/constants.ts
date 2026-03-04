@@ -29,10 +29,10 @@ export interface ClientDisplayLimit {
 export const CLIENT_DISPLAY_LIMITS: ClientDisplayLimit[] = [
   { client: "Gmail (Web)", subjectLimit: 70, preheaderLimit: 90 },
   { client: "Gmail (Mobile)", subjectLimit: 40, preheaderLimit: 90 },
-  { client: "Outlook (Web)", subjectLimit: 60, preheaderLimit: 35 },
+  { client: "Outlook (Web)", subjectLimit: 60, preheaderLimit: 90 },
   { client: "Outlook (Desktop)", subjectLimit: 55, preheaderLimit: 35 },
   { client: "Apple Mail (macOS)", subjectLimit: 78, preheaderLimit: 140 },
-  { client: "Apple Mail (iOS)", subjectLimit: 35, preheaderLimit: 90 },
+  { client: "Apple Mail (iOS)", subjectLimit: 41, preheaderLimit: 90 },
   { client: "Yahoo Mail", subjectLimit: 46, preheaderLimit: 100 },
   { client: "Samsung Email", subjectLimit: 40, preheaderLimit: 70 },
 ];

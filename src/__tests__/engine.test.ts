@@ -406,11 +406,58 @@ describe("simulateDarkMode", () => {
     expect(result.html).toContain("#1a1a1a");
   });
 
-  test("skips dark mode for Outlook Windows", () => {
+  test("applies full inversion for Outlook Windows", () => {
     const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
     const result = simulateDarkMode(html, "outlook-windows");
-    // Outlook Windows has no dark mode, but body still gets the wrapper styling
-    expect(result.warnings.length).toBe(0);
+    // Outlook Windows now has dark mode with full inversion
+    expect(result.html).toContain("#1a1a1a"); // white bg inverted to dark
+    expect(result.html).toContain("#e0e0e0"); // black text inverted to light
+    const infoWarning = result.warnings.find(
+      (w) => w.message.includes("full color inversion")
+    );
+    expect(infoWarning).toBeDefined();
+  });
+
+  test("gmail-web does not invert colors", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "gmail-web");
+    // gmail-web only darkens the UI, no content inversion
+    // The body wrapper styling is still applied, but inline styles on elements are NOT inverted
+    const pStyle = result.html.match(/color:\s*#000000/);
+    expect(pStyle).toBeTruthy();
+  });
+
+  test("gmail-ios applies full inversion", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "gmail-ios");
+    expect(result.html).toContain("#1a1a1a"); // white bg inverted
+    expect(result.html).toContain("#e0e0e0"); // black text inverted
+  });
+
+  test("gmail-android applies partial inversion", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "gmail-android");
+    // Partial inversion: very dark text (#000) → #d4d4d4 (not #e0e0e0 which full uses)
+    expect(result.html).toContain("#d4d4d4");
+    expect(result.html).not.toMatch(/color:\s*#e0e0e0[^"]*">\s*Test/); // not full inversion on p
+  });
+
+  test("thunderbird applies full inversion when no prefers-color-scheme", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "thunderbird");
+    expect(result.html).toContain("#1a1a1a");
+    expect(result.html).toContain("#e0e0e0");
+    const infoWarning = result.warnings.find(
+      (w) => w.message.includes("prefers-color-scheme")
+    );
+    expect(infoWarning).toBeDefined();
+  });
+
+  test("thunderbird skips inversion when prefers-color-scheme is present", () => {
+    const html = `<html><head><style>@media (prefers-color-scheme: dark) { body { background: #000; } }</style></head><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "thunderbird");
+    // Should NOT invert colors since the email handles dark mode itself
+    expect(result.html).toMatch(/color:\s*#000000/);
   });
 
   test("suggests prefers-color-scheme for Apple Mail", () => {
@@ -420,6 +467,13 @@ describe("simulateDarkMode", () => {
       (w) => w.message.includes("prefers-color-scheme")
     );
     expect(prefersWarning).toBeDefined();
+  });
+
+  test("apple-mail skips inversion when prefers-color-scheme is present", () => {
+    const html = `<html><head><style>@media (prefers-color-scheme: dark) { body { background: #000; } }</style></head><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "apple-mail-macos");
+    // Should NOT invert colors since the email handles dark mode itself
+    expect(result.html).toMatch(/color:\s*#000000/);
   });
 });
 

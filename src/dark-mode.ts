@@ -49,11 +49,17 @@ export function simulateDarkMode(
   // Determine dark mode behavior based on client
   switch (clientId) {
     case "gmail-web":
-    case "gmail-android":
+      // Gmail Web only darkens the UI chrome, not email content
+      break;
+
     case "gmail-ios":
-      // Gmail does full color inversion on Android,
-      // partial on web/iOS
-      applyColorInversion($, clientId === "gmail-android" ? "full" : "partial");
+      // Gmail iOS applies full color inversion
+      applyColorInversion($, "full");
+      break;
+
+    case "gmail-android":
+      // Gmail Android applies partial color inversion
+      applyColorInversion($, "partial");
       break;
 
     case "outlook-web":
@@ -61,11 +67,27 @@ export function simulateDarkMode(
       applyColorInversion($, "partial");
       break;
 
+    case "outlook-windows":
+      // Classic Outlook (Word engine) applies full color inversion in dark mode
+      applyColorInversion($, "full");
+      if (!html.includes("prefers-color-scheme")) {
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            "Outlook Windows applies full color inversion in dark mode. Colors may shift unexpectedly.",
+          suggestion:
+            "Test with dark mode enabled. Use [data-ogsc] or [data-ogsb] overrides to control Outlook dark mode rendering.",
+        });
+      }
+      break;
+
     case "apple-mail-macos":
     case "apple-mail-ios":
-      // Apple Mail respects prefers-color-scheme
-      applyColorInversion($, "partial");
+      // Apple Mail respects prefers-color-scheme; only apply forced inversion if absent
       if (!html.includes("prefers-color-scheme")) {
+        applyColorInversion($, "partial");
         warnings.push({
           severity: "info",
           client: clientId,
@@ -79,11 +101,39 @@ export function simulateDarkMode(
       break;
 
     case "yahoo-mail":
-      applyColorInversion($, "partial");
+      // Yahoo Mail only darkens the UI chrome, not email content
       break;
 
     case "samsung-mail":
-      applyColorInversion($, "full");
+      // Samsung Mail supports prefers-color-scheme; apply partial inversion only if absent
+      if (!html.includes("prefers-color-scheme")) {
+        applyColorInversion($, "partial");
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            "Samsung Mail supports @media (prefers-color-scheme: dark). Consider adding dark mode styles.",
+          suggestion:
+            "Add a @media (prefers-color-scheme: dark) block with inverted colors for the best dark mode experience.",
+        });
+      }
+      break;
+
+    case "thunderbird":
+      // Thunderbird 140+ has Dark Message Mode; respects prefers-color-scheme
+      if (!html.includes("prefers-color-scheme")) {
+        applyColorInversion($, "full");
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            "Thunderbird supports @media (prefers-color-scheme: dark). Consider adding dark mode styles.",
+          suggestion:
+            "Add a @media (prefers-color-scheme: dark) block with inverted colors for the best dark mode experience.",
+        });
+      }
       break;
 
     case "hey-mail":
@@ -116,11 +166,6 @@ export function simulateDarkMode(
             "Add @media (prefers-color-scheme: dark) styles — Superhuman's power-user audience often prefers dark mode.",
         });
       }
-      break;
-
-    case "outlook-windows":
-    case "thunderbird":
-      // These don't have dark mode
       break;
   }
 

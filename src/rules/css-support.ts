@@ -2,7 +2,7 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix — auto-generated from caniemail.com.
- * Last synced: 2026-03-02
+ * Last synced: 2026-03-04
  * caniemail last updated: 2026-02-16 15:39:06 +0000
  *
  * 251 features across 12 email clients.
@@ -3546,7 +3546,6 @@ export const CSS_SUPPORT: Record<
  */
 export const GMAIL_STRIPPED_PROPERTIES = new Set([
   "position",
-  "overflow",
   "visibility",
   "box-shadow",
   "text-shadow",
@@ -3554,6 +3553,9 @@ export const GMAIL_STRIPPED_PROPERTIES = new Set([
   "animation",
   "transition",
   "gap",
+  "filter",
+  "clip-path",
+  "backdrop-filter",
 ]);
 
 /** CSS properties that Outlook Word engine ignores */
@@ -3582,6 +3584,10 @@ export const OUTLOOK_WORD_UNSUPPORTED = new Set([
   "overflow-wrap",
   "text-overflow",
   "border-spacing",
+  "filter",
+  "clip-path",
+  "backdrop-filter",
+  "visibility",
 ]);
 
 /**

@@ -38,7 +38,7 @@ export const EMAIL_CLIENTS: EmailClient[] = [
     name: "Outlook Windows",
     category: "desktop",
     engine: "Microsoft Word",
-    darkModeSupport: false,
+    darkModeSupport: true,
     icon: "monitor",
   },
   {
@@ -78,7 +78,7 @@ export const EMAIL_CLIENTS: EmailClient[] = [
     name: "Thunderbird",
     category: "desktop",
     engine: "Gecko",
-    darkModeSupport: false,
+    darkModeSupport: true,
     icon: "monitor",
   },
   {

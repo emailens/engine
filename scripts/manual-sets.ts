@@ -14,7 +14,6 @@
  */
 export const GMAIL_STRIPPED_PROPERTIES = [
   "position",
-  "overflow",
   "visibility",
   "box-shadow",
   "text-shadow",
@@ -22,6 +21,9 @@ export const GMAIL_STRIPPED_PROPERTIES = [
   "animation",
   "transition",
   "gap",
+  "filter",
+  "clip-path",
+  "backdrop-filter",
 ];
 
 /**
@@ -52,6 +54,10 @@ export const OUTLOOK_WORD_UNSUPPORTED = [
   "overflow-wrap",
   "text-overflow",
   "border-spacing",
+  "filter",
+  "clip-path",
+  "backdrop-filter",
+  "visibility",
 ];
 
 /**
