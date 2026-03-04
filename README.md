@@ -155,7 +155,7 @@ Covers:
 
 - [ ] Outlook VML auto-generation
 - [ ] GitHub Actions integration (score thresholds in CI)
-- [ ] Automated caniemail.com data sync
+- [x] Automated caniemail.com data sync
 - [ ] Real-time rendering previews
 - [ ] MJML/Maizzle source-level linting
 - [ ] Plugin system for custom analyzers
@@ -165,8 +165,19 @@ Covers:
 Contributions are welcome! See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for architecture overview, setup instructions, and PR guidelines.
 
 ```bash
-bun install && bun test   # 574 tests
+bun install && bun test   # 580 tests
 ```
+
+### Data Maintenance
+
+CSS support data is auto-synced from [caniemail.com](https://www.caniemail.com/). Other data (dark mode behavior, display limits, Superhuman overrides) is manually curated and tracked with verification dates.
+
+```bash
+bun run sync:caniemail    # Refresh CSS support matrix from caniemail.com
+bun run check:freshness   # Flag stale data sources (exits 1 if any overdue)
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md#data-sources-and-freshness) for full details on data sources and verification procedures.
 
 ## License
 

@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link, and image quality analysis.",
   "type": "module",
   "exports": {
@@ -34,6 +34,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "sync:caniemail": "bun run scripts/sync-caniemail.ts",
+    "check:freshness": "bun run scripts/check-data-freshness.ts",
     "test": "bun test",
     "prepublishOnly": "bun run build"
   },

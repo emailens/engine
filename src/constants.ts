@@ -19,6 +19,10 @@ export const GMAIL_CLIP_THRESHOLD = 102 * 1024;
 export const GMAIL_CLIP_WARNING_THRESHOLD = 90 * 1024;
 
 // ─── Per-client display limits ──────────────────────────────────────────────
+// Display limits last verified: 2026-03-04
+// Sources: emailtooltester.com, Campaign Monitor, Litmus preview text guide
+// Note: These are approximations — actual limits vary by device, screen size,
+// font rendering, and sender name length.
 
 export interface ClientDisplayLimit {
   client: string;
@@ -28,7 +32,7 @@ export interface ClientDisplayLimit {
 
 export const CLIENT_DISPLAY_LIMITS: ClientDisplayLimit[] = [
   { client: "Gmail (Web)", subjectLimit: 70, preheaderLimit: 90 },
-  { client: "Gmail (Mobile)", subjectLimit: 40, preheaderLimit: 90 },
+  { client: "Gmail (Mobile)", subjectLimit: 40, preheaderLimit: 45 },
   { client: "Outlook (Web)", subjectLimit: 60, preheaderLimit: 90 },
   { client: "Outlook (Desktop)", subjectLimit: 55, preheaderLimit: 35 },
   { client: "Apple Mail (macOS)", subjectLimit: 78, preheaderLimit: 140 },

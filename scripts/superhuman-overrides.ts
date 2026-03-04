@@ -2,8 +2,10 @@
  * Manual Superhuman support overrides.
  *
  * Superhuman is NOT in caniemail.com. Values are inferred from Superhuman's
- * Chromium/Blink rendering engine and its documented stripping behaviours
- * (forms, external stylesheets). Treat as best-effort estimates.
+ * Chromium/Blink rendering engine (Electron app) and its documented stripping
+ * behaviours (forms, external stylesheets). Treat as best-effort estimates.
+ *
+ * Last verified: 2026-03-04
  *
  * Format: Record<propertyKey, SupportLevel>
  * Only include overrides — properties not listed here default to "unknown".

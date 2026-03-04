@@ -16,6 +16,9 @@ const DARK_THRESHOLD = 0.15;
  * - Some invert colors (Gmail Android)
  * - Some use prefers-color-scheme media query (Apple Mail)
  * - Some do partial inversion (Outlook.com)
+ *
+ * Last verified: 2026-03-04
+ * Sources: Litmus dark mode guide, caniemail.com, Parcel dark mode guide
  */
 export function simulateDarkMode(
   html: string,
@@ -64,7 +67,19 @@ export function simulateDarkMode(
 
     case "outlook-web":
       // Outlook.com applies its own dark mode with partial inversion
+      // Also injects [data-ogsc] and [data-ogsb] attributes to store original colors
       applyColorInversion($, "partial");
+      if (!html.includes("prefers-color-scheme")) {
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            "Outlook.com applies partial color inversion in dark mode.",
+          suggestion:
+            "Use [data-ogsc] or [data-ogsb] CSS attribute selectors to override Outlook.com's dark mode color changes.",
+        });
+      }
       break;
 
     case "outlook-windows":
@@ -78,22 +93,23 @@ export function simulateDarkMode(
           message:
             "Outlook Windows applies full color inversion in dark mode. Colors may shift unexpectedly.",
           suggestion:
-            "Test with dark mode enabled. Use [data-ogsc] or [data-ogsb] overrides to control Outlook dark mode rendering.",
+            "Test with dark mode enabled. The Word rendering engine offers limited control over dark mode color shifts.",
         });
       }
       break;
 
     case "apple-mail-macos":
     case "apple-mail-ios":
-      // Apple Mail respects prefers-color-scheme; only apply forced inversion if absent
+      // Apple Mail respects prefers-color-scheme but does NOT force inversion when absent —
+      // it leaves email content as-is (no color changes) unless the email opts in via
+      // <meta name="color-scheme" content="light dark"> or prefers-color-scheme media queries.
       if (!html.includes("prefers-color-scheme")) {
-        applyColorInversion($, "partial");
         warnings.push({
           severity: "info",
           client: clientId,
           property: "dark-mode",
           message:
-            "Apple Mail supports @media (prefers-color-scheme: dark). Consider adding dark mode styles.",
+            "Apple Mail supports @media (prefers-color-scheme: dark). Without it, email content renders unchanged in dark mode.",
           suggestion:
             "Add a @media (prefers-color-scheme: dark) block with inverted colors for the best dark mode experience.",
         });

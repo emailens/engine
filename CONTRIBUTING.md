@@ -113,6 +113,36 @@ Every analyzer follows this pattern:
 3. **`property::clientPrefix`** — client-specific (e.g., `border-radius::outlook`)
 4. **`property`** — generic HTML fallback
 
+## Data Sources and Freshness
+
+The engine relies on a mix of automated and manually-curated data. Run `bun run check:freshness` to see which data sources are due for review.
+
+### Automated Data
+
+| Data | Source | Script | Frequency |
+|---|---|---|---|
+| CSS support matrix (251 features × 12 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
+
+### Manually-Curated Data
+
+These data sources have no public API and require periodic manual verification against authoritative references. Each file contains a `Last verified: YYYY-MM-DD` date stamp that `check:freshness` monitors.
+
+| Data | File | Verify Against |
+|---|---|---|
+| Dark mode behavior per client | `src/dark-mode.ts` | [Litmus dark mode guide](https://www.litmus.com/blog/the-ultimate-guide-to-dark-mode-for-email-marketers), [Can I Email prefers-color-scheme](https://www.caniemail.com/features/css-at-media-prefers-color-scheme/), [Parcel dark mode guide](https://parcel.io/guides/dark-mode) |
+| Subject/preheader display limits | `src/constants.ts` (`CLIENT_DISPLAY_LIMITS`) | [Email Tool Tester subject line limits](https://www.emailtooltester.com/en/blog/email-subject-lines-character-limit/), [Litmus preview text guide](https://www.litmus.com/blog/the-ultimate-guide-to-preview-text-support) |
+| Superhuman CSS overrides | `scripts/superhuman-overrides.ts` | Manual testing in Superhuman app (no testing service covers Superhuman) |
+
+**When updating manually-curated data**, always update the `Last verified: YYYY-MM-DD` date stamp in the file header. The freshness check flags anything older than 90 days.
+
+### Freshness Check
+
+```bash
+bun run check:freshness
+```
+
+This script scans all data files for their verification dates and reports which ones are stale. It exits with code 1 if any data is overdue, making it suitable for CI or pre-release checks.
+
 ## How to Add a New CSS Property Rule
 
 Adding support data for a new CSS property (e.g., `aspect-ratio`):
