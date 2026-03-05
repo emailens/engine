@@ -10,6 +10,7 @@ export interface EmailClient {
   engine: string;
   darkModeSupport: boolean;
   icon: string;
+  deprecated?: string;
 }
 
 export interface CSSRule {

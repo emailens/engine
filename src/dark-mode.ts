@@ -83,6 +83,22 @@ export function simulateDarkMode(
       break;
 
     case "outlook-windows":
+      // New Outlook (web engine) applies partial inversion like Outlook.com
+      applyColorInversion($, "partial");
+      if (!html.includes("prefers-color-scheme")) {
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            "Outlook (New) applies partial color inversion in dark mode, similar to Outlook.com.",
+          suggestion:
+            "Use [data-ogsc] or [data-ogsb] CSS attribute selectors to override dark mode color changes.",
+        });
+      }
+      break;
+
+    case "outlook-windows-legacy":
       // Classic Outlook (Word engine) applies full color inversion in dark mode
       applyColorInversion($, "full");
       if (!html.includes("prefers-color-scheme")) {
@@ -91,7 +107,7 @@ export function simulateDarkMode(
           client: clientId,
           property: "dark-mode",
           message:
-            "Outlook Windows applies full color inversion in dark mode. Colors may shift unexpectedly.",
+            "Outlook Classic applies full color inversion in dark mode. Colors may shift unexpectedly.",
           suggestion:
             "Test with dark mode enabled. The Word rendering engine offers limited control over dark mode color shifts.",
         });

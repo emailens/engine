@@ -35,11 +35,20 @@ export const EMAIL_CLIENTS: EmailClient[] = [
   },
   {
     id: "outlook-windows",
-    name: "Outlook Windows",
+    name: "Outlook (New)",
+    category: "desktop",
+    engine: "Outlook Web",
+    darkModeSupport: true,
+    icon: "monitor",
+  },
+  {
+    id: "outlook-windows-legacy",
+    name: "Outlook Classic",
     category: "desktop",
     engine: "Microsoft Word",
     darkModeSupport: true,
     icon: "monitor",
+    deprecated: "2026-10",
   },
   {
     id: "apple-mail-macos",

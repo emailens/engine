@@ -7,7 +7,7 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your HTML against 250+ CSS properties across 12 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
+`@emailens/engine` analyzes your HTML against 250+ CSS properties across 13 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
 > **[emailens.dev](https://emailens.dev)** — Try the hosted version. Paste HTML, get a full audit in seconds.
 
@@ -80,7 +80,7 @@ const { code } = await generateAiFix({
 
 8 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility** — 250+ properties tested across 12 email clients, with fix snippets and AI-powered auto-fix
+- **CSS compatibility** — 250+ properties tested across 13 email clients, with fix snippets and AI-powered auto-fix
 - **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
 - **Accessibility** — WCAG contrast ratios, alt text, semantic structure, heading hierarchy
 - **Link validation** — broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
@@ -127,7 +127,8 @@ Three entry points:
 | Gmail Android | `gmail-android` | Mobile | Gmail Mobile | Yes |
 | Gmail iOS | `gmail-ios` | Mobile | Gmail Mobile | Yes |
 | Outlook 365 | `outlook-web` | Webmail | Outlook Web | Yes |
-| Outlook Windows | `outlook-windows` | Desktop | Microsoft Word | No |
+| Outlook (New) | `outlook-windows` | Desktop | Outlook Web | Yes |
+| Outlook Classic | `outlook-windows-legacy` | Desktop | Microsoft Word | Yes |
 | Apple Mail | `apple-mail-macos` | Desktop | WebKit | Yes |
 | Apple Mail iOS | `apple-mail-ios` | Mobile | WebKit | Yes |
 | Yahoo Mail | `yahoo-mail` | Webmail | Yahoo | Yes |

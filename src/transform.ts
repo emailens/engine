@@ -235,7 +235,7 @@ function outlookWindowsAdditionalChecks(
       severity: "warning",
       client: clientId,
       property: "border-radius",
-      message: "Outlook Windows ignores border-radius. Buttons and containers will have sharp corners.",
+      message: "Outlook Classic ignores border-radius. Buttons and containers will have sharp corners.",
     }, "border-radius", clientId, framework));
   }
 
@@ -244,7 +244,7 @@ function outlookWindowsAdditionalChecks(
       severity: "warning",
       client: clientId,
       property: "max-width",
-      message: "Outlook Windows ignores max-width.",
+      message: "Outlook Classic ignores max-width.",
     }, "max-width", clientId, framework));
   }
 
@@ -258,7 +258,7 @@ function outlookWindowsAdditionalChecks(
       severity: "error",
       client: clientId,
       property: "display:flex",
-      message: "Outlook Windows uses Microsoft Word for rendering. Flexbox and Grid layouts will break.",
+      message: "Outlook Classic uses Microsoft Word for rendering. Flexbox and Grid layouts will break.",
     }, "display:flex", clientId, framework));
   }
 
@@ -272,7 +272,7 @@ function outlookWindowsAdditionalChecks(
       severity: "warning",
       client: clientId,
       property: "background-image",
-      message: "Outlook Windows requires VML for background images.",
+      message: "Outlook Classic requires VML for background images.",
     }, "background-image", clientId, framework));
   }
 
@@ -447,6 +447,15 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-windows": {
     id: "outlook-windows",
+    strippedProperties: new Set(["position", "transform", "animation", "transition"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
+  "outlook-windows-legacy": {
+    id: "outlook-windows-legacy",
     strippedProperties: OUTLOOK_WORD_UNSUPPORTED,
     stripMode: "strip",
     valueStrips: [

@@ -227,17 +227,17 @@ describe("GMAIL_STRIPPED_PROPERTIES consistency", () => {
 describe("CSS property expansion from left/right/top/bottom", () => {
   it("has support data for 'right'", () => {
     expect(CSS_SUPPORT["right"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["right"]).length).toBe(12);
+    expect(Object.keys(CSS_SUPPORT["right"]).length).toBe(13);
   });
 
   it("has support data for 'top'", () => {
     expect(CSS_SUPPORT["top"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["top"]).length).toBe(12);
+    expect(Object.keys(CSS_SUPPORT["top"]).length).toBe(13);
   });
 
   it("has support data for 'bottom'", () => {
     expect(CSS_SUPPORT["bottom"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["bottom"]).length).toBe(12);
+    expect(Object.keys(CSS_SUPPORT["bottom"]).length).toBe(13);
   });
 
   it("right/top/bottom have same support data as left", () => {
@@ -492,10 +492,10 @@ describe("CSS_SUPPORT matrix integrity (post-fix)", () => {
     expect(Object.keys(CSS_SUPPORT).length).toBeGreaterThanOrEqual(250);
   });
 
-  it("every property has all 12 client IDs", () => {
+  it("every property has all 13 client IDs", () => {
     const expectedClients = [
       "gmail-web", "gmail-android", "gmail-ios",
-      "outlook-web", "outlook-windows",
+      "outlook-web", "outlook-windows", "outlook-windows-legacy",
       "apple-mail-macos", "apple-mail-ios",
       "yahoo-mail", "samsung-mail", "thunderbird",
       "hey-mail", "superhuman",

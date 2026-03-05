@@ -100,7 +100,8 @@ export function isCodeFixGenericFallback(
 }
 
 function getClientPrefix(clientId: string): string | null {
-  if (clientId.startsWith("outlook-windows")) return "outlook";
+  if (clientId === "outlook-windows-legacy") return "outlook"; // Word engine — VML fixes
+  if (clientId === "outlook-windows") return null; // New Outlook — web engine, no special fixes
   if (clientId.startsWith("outlook")) return null; // Outlook web is more standards-compliant
   if (clientId.startsWith("gmail")) return "gmail";
   if (clientId.startsWith("apple-mail")) return "apple";

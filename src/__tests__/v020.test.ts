@@ -238,7 +238,7 @@ describe("new CSS properties (v0.2.0)", () => {
     const warnings = analyzeEmail(OVERFLOW_WRAP_HTML);
     const owWarnings = warnings.filter((w) => w.property === "overflow-wrap");
     expect(owWarnings.length).toBeGreaterThan(0);
-    expect(owWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(owWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects text-overflow in inline styles", () => {
@@ -251,68 +251,68 @@ describe("new CSS properties (v0.2.0)", () => {
     const warnings = analyzeEmail(BORDER_SPACING_HTML);
     const bsWarnings = warnings.filter((w) => w.property === "border-spacing");
     expect(bsWarnings.length).toBeGreaterThan(0);
-    expect(bsWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(bsWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects min-width in inline styles", () => {
     const warnings = analyzeEmail(MIN_WIDTH_HTML);
     const mwWarnings = warnings.filter((w) => w.property === "min-width");
     expect(mwWarnings.length).toBeGreaterThan(0);
-    expect(mwWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(mwWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects min-height in inline styles", () => {
     const warnings = analyzeEmail(MIN_HEIGHT_HTML);
     const mhWarnings = warnings.filter((w) => w.property === "min-height");
     expect(mhWarnings.length).toBeGreaterThan(0);
-    expect(mhWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(mhWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects max-height in inline styles", () => {
     const warnings = analyzeEmail(MAX_HEIGHT_HTML);
     const mhWarnings = warnings.filter((w) => w.property === "max-height");
     expect(mhWarnings.length).toBeGreaterThan(0);
-    expect(mhWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(mhWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects text-shadow in inline styles", () => {
     const warnings = analyzeEmail(TEXT_SHADOW_HTML);
     const tsWarnings = warnings.filter((w) => w.property === "text-shadow");
     expect(tsWarnings.length).toBeGreaterThan(0);
-    // Gmail, Outlook Windows, and Yahoo should all flag this
+    // Gmail, Outlook Classic, and Yahoo should all flag this
     expect(tsWarnings.some((w) => w.client === "gmail-web")).toBe(true);
-    expect(tsWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(tsWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects background-size in inline styles", () => {
     const warnings = analyzeEmail(BG_SIZE_HTML);
     const bgWarnings = warnings.filter((w) => w.property === "background-size");
     expect(bgWarnings.length).toBeGreaterThan(0);
-    expect(bgWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(bgWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects background-position in inline styles", () => {
     const warnings = analyzeEmail(BG_POSITION_HTML);
     const bgWarnings = warnings.filter((w) => w.property === "background-position");
     expect(bgWarnings.length).toBeGreaterThan(0);
-    expect(bgWarnings.some((w) => w.client === "outlook-windows")).toBe(true);
+    expect(bgWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);
   });
 
   test("detects vertical-align partial support in Outlook", () => {
     const warnings = analyzeEmail(VERTICAL_ALIGN_HTML);
     const vaWarnings = warnings.filter((w) => w.property === "vertical-align");
-    // Outlook Windows has "partial" support, so should produce info-level warning
-    const outlookVA = vaWarnings.find((w) => w.client === "outlook-windows");
+    // Outlook Classic has "partial" support, so should produce info-level warning
+    const outlookVA = vaWarnings.find((w) => w.client === "outlook-windows-legacy");
     if (outlookVA) {
       expect(outlookVA.severity).toBe("info");
     }
   });
 
-  test("detects white-space unsupported in Outlook Windows", () => {
+  test("detects white-space unsupported in Outlook Classic", () => {
     const warnings = analyzeEmail(WHITE_SPACE_HTML);
     const wsWarnings = warnings.filter((w) => w.property === "white-space");
-    // caniemail: outlook-windows does not support white-space
-    const outlookWS = wsWarnings.find((w) => w.client === "outlook-windows");
+    // caniemail: outlook-windows-legacy (Word engine) does not support white-space
+    const outlookWS = wsWarnings.find((w) => w.client === "outlook-windows-legacy");
     expect(outlookWS).toBeDefined();
     expect(outlookWS!.severity).toBe("warning");
   });
@@ -363,32 +363,32 @@ describe("STRUCTURAL_FIX_PROPERTIES", () => {
 
 describe("fix snippets for new CSS properties", () => {
   test("word-break has fix snippet for Outlook (html)", () => {
-    const fix = getCodeFix("word-break", "outlook-windows");
+    const fix = getCodeFix("word-break", "outlook-windows-legacy");
     expect(fix).toBeDefined();
     expect(fix!.language).toBe("html");
     expect(fix!.after).toContain("table");
   });
 
   test("word-break has JSX fix snippet", () => {
-    const fix = getCodeFix("word-break", "outlook-windows", "jsx");
+    const fix = getCodeFix("word-break", "outlook-windows-legacy", "jsx");
     expect(fix).toBeDefined();
     expect(fix!.language).toBe("jsx");
   });
 
   test("word-break has MJML fix snippet", () => {
-    const fix = getCodeFix("word-break", "outlook-windows", "mjml");
+    const fix = getCodeFix("word-break", "outlook-windows-legacy", "mjml");
     expect(fix).toBeDefined();
     expect(fix!.language).toBe("mjml");
   });
 
   test("overflow-wrap has fix snippet for html", () => {
-    const fix = getCodeFix("overflow-wrap", "outlook-windows");
+    const fix = getCodeFix("overflow-wrap", "outlook-windows-legacy");
     expect(fix).toBeDefined();
     expect(fix!.language).toBe("html");
   });
 
   test("overflow-wrap has JSX fix snippet", () => {
-    const fix = getCodeFix("overflow-wrap", "outlook-windows", "jsx");
+    const fix = getCodeFix("overflow-wrap", "outlook-windows-legacy", "jsx");
     expect(fix).toBeDefined();
   });
 
@@ -399,23 +399,23 @@ describe("fix snippets for new CSS properties", () => {
   });
 
   test("border-spacing has suggestion", () => {
-    const sug = getSuggestion("border-spacing", "outlook-windows");
+    const sug = getSuggestion("border-spacing", "outlook-windows-legacy");
     expect(sug.text).toBeTruthy();
     expect(sug.text).toContain("cellspacing");
   });
 
   test("min-width has suggestion", () => {
-    const sug = getSuggestion("min-width", "outlook-windows");
+    const sug = getSuggestion("min-width", "outlook-windows-legacy");
     expect(sug.text).toBeTruthy();
   });
 
   test("min-height has suggestion", () => {
-    const sug = getSuggestion("min-height", "outlook-windows");
+    const sug = getSuggestion("min-height", "outlook-windows-legacy");
     expect(sug.text).toBeTruthy();
   });
 
   test("max-height has suggestion", () => {
-    const sug = getSuggestion("max-height", "outlook-windows");
+    const sug = getSuggestion("max-height", "outlook-windows-legacy");
     expect(sug.text).toBeTruthy();
   });
 });
@@ -801,13 +801,13 @@ And here's the full code:
       warnings,
       scores,
       scope: "current",
-      selectedClientId: "outlook-windows",
+      selectedClientId: "outlook-windows-legacy",
       format: "html",
       provider: capturingProvider,
     });
 
-    // Prompt should mention Outlook specifically
-    expect(receivedPrompt).toContain("Outlook Windows");
+    // Prompt should mention Outlook Classic specifically
+    expect(receivedPrompt).toContain("Outlook Classic");
   });
 
   test("reports structuralCount correctly", async () => {

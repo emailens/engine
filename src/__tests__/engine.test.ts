@@ -101,7 +101,7 @@ describe("analyzeEmail", () => {
 
 describe("getCodeFix — framework-aware resolution", () => {
   test("jsx: display:flex + outlook returns Row/Column fix (tier 1)", () => {
-    const fix = getCodeFix("display:flex", "outlook-windows", "jsx");
+    const fix = getCodeFix("display:flex", "outlook-windows-legacy", "jsx");
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("Row");
     expect(fix!.after).toContain("Column");
@@ -130,13 +130,13 @@ describe("getCodeFix — framework-aware resolution", () => {
   });
 
   test("mjml: border-radius + outlook returns MJML limitation guidance (tier 1)", () => {
-    const fix = getCodeFix("border-radius", "outlook-windows", "mjml");
+    const fix = getCodeFix("border-radius", "outlook-windows-legacy", "mjml");
     expect(fix).toBeDefined();
     expect(fix!.description).toMatch(/limitation/i);
   });
 
   test("no framework (undefined): display:flex + outlook returns VML/table fix (tier 3 fallback)", () => {
-    const fix = getCodeFix("display:flex", "outlook-windows", undefined);
+    const fix = getCodeFix("display:flex", "outlook-windows-legacy", undefined);
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("<!--[if mso]>");
     expect(fix!.after).toContain("<table");
@@ -144,14 +144,14 @@ describe("getCodeFix — framework-aware resolution", () => {
   });
 
   test("undefined framework: display:flex + outlook returns HTML table fix (backward compat)", () => {
-    const fix = getCodeFix("display:flex", "outlook-windows");
+    const fix = getCodeFix("display:flex", "outlook-windows-legacy");
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("<!--[if mso]>");
     expect(fix!.after).not.toContain("@react-email/components");
   });
 
   test("maizzle: display:flex + outlook returns Tailwind/MSO conditional fix (tier 1)", () => {
-    const fix = getCodeFix("display:flex", "outlook-windows", "maizzle");
+    const fix = getCodeFix("display:flex", "outlook-windows-legacy", "maizzle");
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("<!--[if mso]>");
     expect(fix!.after).toContain("class=");
@@ -166,7 +166,7 @@ describe("getCodeFix — framework-aware resolution", () => {
 
   test("unknown framework falls back gracefully to html fix", () => {
     // @ts-expect-error — intentional unknown framework for runtime fallback test
-    const fix = getCodeFix("display:flex", "outlook-windows", "unknown-framework");
+    const fix = getCodeFix("display:flex", "outlook-windows-legacy", "unknown-framework");
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("<!--[if mso]>");
   });
@@ -184,7 +184,7 @@ describe("analyzeEmail — framework-aware fixes", () => {
   test("jsx: display:flex warning for outlook contains Row/Column fix", () => {
     const warnings = analyzeEmail(flexHtml, "jsx");
     const outlookFlexWarn = warnings.find(
-      (w) => w.client === "outlook-windows" && w.property === "display:flex"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "display:flex"
     );
     expect(outlookFlexWarn).toBeDefined();
     expect(outlookFlexWarn!.fix).toBeDefined();
@@ -203,7 +203,7 @@ describe("analyzeEmail — framework-aware fixes", () => {
   test("no framework: display:flex warning for outlook returns VML table fix (backward compat)", () => {
     const warnings = analyzeEmail(flexHtml);
     const outlookFlexWarn = warnings.find(
-      (w) => w.client === "outlook-windows" && w.property === "display:flex"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "display:flex"
     );
     expect(outlookFlexWarn).toBeDefined();
     expect(outlookFlexWarn!.fix).toBeDefined();
@@ -215,10 +215,10 @@ describe("analyzeEmail — framework-aware fixes", () => {
     const withUndefined = analyzeEmail(flexHtml, undefined);
     const withNone = analyzeEmail(flexHtml);
     const undefinedFix = withUndefined.find(
-      (w) => w.client === "outlook-windows" && w.property === "display:flex"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "display:flex"
     )?.fix;
     const noneFix = withNone.find(
-      (w) => w.client === "outlook-windows" && w.property === "display:flex"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "display:flex"
     )?.fix;
     expect(undefinedFix?.after).toEqual(noneFix?.after);
   });
@@ -301,9 +301,9 @@ describe("transformForClient", () => {
     expect(result.html).toContain("color: red");
   });
 
-  test("Outlook Windows strips border-radius, box-shadow, max-width", () => {
+  test("Outlook Classic strips border-radius, box-shadow, max-width", () => {
     const html = `<html><body><div style="border-radius: 8px; box-shadow: 1px 1px black; max-width: 600px; color: red;">test</div></body></html>`;
-    const result = transformForClient(html, "outlook-windows");
+    const result = transformForClient(html, "outlook-windows-legacy");
     expect(result.html).not.toContain("border-radius");
     expect(result.html).not.toContain("box-shadow");
     expect(result.html).not.toContain("max-width");
@@ -406,10 +406,10 @@ describe("simulateDarkMode", () => {
     expect(result.html).toContain("#1a1a1a");
   });
 
-  test("applies full inversion for Outlook Windows", () => {
+  test("applies full inversion for Outlook Classic (legacy)", () => {
     const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
-    const result = simulateDarkMode(html, "outlook-windows");
-    // Outlook Windows now has dark mode with full inversion
+    const result = simulateDarkMode(html, "outlook-windows-legacy");
+    // Outlook Classic (Word engine) applies full color inversion in dark mode
     expect(result.html).toContain("#1a1a1a"); // white bg inverted to dark
     expect(result.html).toContain("#e0e0e0"); // black text inverted to light
     const infoWarning = result.warnings.find(

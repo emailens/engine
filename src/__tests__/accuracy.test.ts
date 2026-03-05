@@ -409,13 +409,13 @@ describe("Gmail Transform Accuracy", () => {
 // OUTLOOK WINDOWS ACCURACY TESTS
 // ---------------------------------------------------------------------------
 
-describe("Outlook Windows Transform Accuracy", () => {
-  test("Template 1 (Transactional) — Outlook Windows", () => {
+describe("Outlook Classic Transform Accuracy", () => {
+  test("Template 1 (Transactional) — Outlook Classic", () => {
     const tracker = new AccuracyTracker();
-    const result = transformForClient(templates.transactional, "outlook-windows");
+    const result = transformForClient(templates.transactional, "outlook-windows-legacy");
     const html = result.html;
 
-    // Outlook Windows KEEPS <style> blocks
+    // Outlook Classic KEEPS <style> blocks
     tracker.check("Keeps <style> blocks", /<style[\s>]/.test(html));
 
     // Outlook strips border-radius
@@ -496,14 +496,14 @@ describe("Outlook Windows Transform Accuracy", () => {
     // Outlook keeps width
     tracker.check("Keeps width", /width/.test(html));
 
-    console.log(`\n--- Outlook Windows + Transactional ---`);
+    console.log(`\n--- Outlook Classic + Transactional ---`);
     console.log(tracker.summary);
     expect(tracker.score).toBeGreaterThanOrEqual(70);
   });
 
-  test("Template 2 (Newsletter) — Outlook Windows", () => {
+  test("Template 2 (Newsletter) — Outlook Classic", () => {
     const tracker = new AccuracyTracker();
-    const result = transformForClient(templates.newsletter, "outlook-windows");
+    const result = transformForClient(templates.newsletter, "outlook-windows-legacy");
     const html = result.html;
 
     // Outlook keeps <style>
@@ -618,14 +618,14 @@ describe("Outlook Windows Transform Accuracy", () => {
       ),
     );
 
-    console.log(`\n--- Outlook Windows + Newsletter ---`);
+    console.log(`\n--- Outlook Classic + Newsletter ---`);
     console.log(tracker.summary);
     expect(tracker.score).toBeGreaterThanOrEqual(70);
   });
 
-  test("Template 3 (Receipt) — Outlook Windows", () => {
+  test("Template 3 (Receipt) — Outlook Classic", () => {
     const tracker = new AccuracyTracker();
-    const result = transformForClient(templates.receipt, "outlook-windows");
+    const result = transformForClient(templates.receipt, "outlook-windows-legacy");
     const html = result.html;
 
     // Outlook keeps <style>
@@ -712,7 +712,7 @@ describe("Outlook Windows Transform Accuracy", () => {
     // Outlook keeps text-align
     tracker.check("Keeps text-align", /text-align/.test(html));
 
-    console.log(`\n--- Outlook Windows + Receipt ---`);
+    console.log(`\n--- Outlook Classic + Receipt ---`);
     console.log(tracker.summary);
     expect(tracker.score).toBeGreaterThanOrEqual(70);
   });
@@ -986,7 +986,7 @@ describe("Compatibility Score Accuracy", () => {
 
     const appleScore = scores["apple-mail-macos"].score;
     const gmailScore = scores["gmail-web"].score;
-    const outlookScore = scores["outlook-windows"].score;
+    const outlookScore = scores["outlook-windows-legacy"].score;
 
     tracker.check(
       "Apple Mail scores higher than Gmail",
@@ -995,7 +995,7 @@ describe("Compatibility Score Accuracy", () => {
     );
 
     tracker.check(
-      "Apple Mail scores higher than Outlook Windows",
+      "Apple Mail scores higher than Outlook Classic",
       appleScore > outlookScore,
       `Apple: ${appleScore}, Outlook: ${outlookScore}`,
     );
@@ -1009,7 +1009,7 @@ describe("Compatibility Score Accuracy", () => {
 
     // Outlook should score below 80
     tracker.check(
-      "Outlook Windows scores below 80 for modern CSS template",
+      "Outlook Classic scores below 80 for modern CSS template",
       outlookScore < 80,
       `Outlook score: ${outlookScore}`,
     );
@@ -1025,7 +1025,7 @@ describe("Compatibility Score Accuracy", () => {
     console.log(`\n--- Compatibility Scores (Newsletter) ---`);
     console.log(`Apple Mail: ${appleScore}`);
     console.log(`Gmail Web: ${gmailScore}`);
-    console.log(`Outlook Windows: ${outlookScore}`);
+    console.log(`Outlook Classic: ${outlookScore}`);
     console.log(`Thunderbird: ${tbScore}`);
     console.log(tracker.summary);
     expect(tracker.score).toBeGreaterThanOrEqual(80);
@@ -1038,7 +1038,7 @@ describe("Compatibility Score Accuracy", () => {
 
     const appleScore = scores["apple-mail-macos"].score;
     const gmailScore = scores["gmail-web"].score;
-    const outlookScore = scores["outlook-windows"].score;
+    const outlookScore = scores["outlook-windows-legacy"].score;
 
     // Apple Mail should score highest
     tracker.check(
@@ -1056,7 +1056,7 @@ describe("Compatibility Score Accuracy", () => {
 
     // Outlook should be lowest (Word engine strips the most)
     tracker.check(
-      "Outlook Windows scores below Apple Mail",
+      "Outlook Classic scores below Apple Mail",
       outlookScore <= appleScore,
       `Outlook: ${outlookScore}, Apple: ${appleScore}`,
     );
@@ -1099,7 +1099,7 @@ describe("Overall Accuracy Score", () => {
 
     // Run all Outlook transforms
     for (const [name, html] of Object.entries(templates)) {
-      const result = transformForClient(html, "outlook-windows");
+      const result = transformForClient(html, "outlook-windows-legacy");
       const out = result.html;
 
       // Core Outlook behaviors

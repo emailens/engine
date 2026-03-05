@@ -34,7 +34,7 @@ src/
 ├── index.ts                  # Public re-exports for main entry point
 ├── audit.ts                  # auditEmail() — shared DOM parse, runs all 8 analyzers
 ├── session.ts                # createSession() — pre-parsed DOM, exposes all methods
-├── analyze.ts                # CSS compatibility analysis (250+ properties × 12 clients)
+├── analyze.ts                # CSS compatibility analysis (250+ properties × 13 clients)
 ├── spam-scorer.ts            # Heuristic spam scoring (45+ signals)
 ├── link-validator.ts         # Static link analysis (no network requests)
 ├── accessibility-checker.ts  # WCAG accessibility audit
@@ -121,7 +121,7 @@ The engine relies on a mix of automated and manually-curated data. Run `bun run 
 
 | Data | Source | Script | Frequency |
 |---|---|---|---|
-| CSS support matrix (251 features × 12 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
+| CSS support matrix (251 features × 13 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
 
 ### Manually-Curated Data
 
@@ -148,7 +148,7 @@ This script scans all data files for their verification dates and reports which 
 Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
 1. **Check caniemail.com** — look up the property's support across email clients
-2. **Add the entry to `src/rules/css-support.ts`** — add a new key to `CSS_SUPPORT` with support levels for all 12 clients:
+2. **Add the entry to `src/rules/css-support.ts`** — add a new key to `CSS_SUPPORT` with support levels for all 13 clients:
    ```typescript
    "aspect-ratio": {
      "gmail-web": "unsupported",
