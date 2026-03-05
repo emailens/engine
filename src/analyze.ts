@@ -399,12 +399,19 @@ export function generateCompatibilityScore(
 
   for (const client of EMAIL_CLIENTS) {
     const clientWarnings = warnings.filter((w) => w.client === client.id);
-    const errors = clientWarnings.filter((w) => w.severity === "error").length;
-    const warns = clientWarnings.filter((w) => w.severity === "warning").length;
-    const info = clientWarnings.filter((w) => w.severity === "info").length;
+
+    // Count unique properties per severity so repeated elements don't inflate the score
+    const errorProps = new Set(clientWarnings.filter((w) => w.severity === "error").map((w) => w.property));
+    const warnProps = new Set(clientWarnings.filter((w) => w.severity === "warning").map((w) => w.property));
+    const infoProps = new Set(clientWarnings.filter((w) => w.severity === "info").map((w) => w.property));
+
+    const errors = errorProps.size;
+    const warns = warnProps.size;
+    const info = infoProps.size;
 
     // Score: 100 minus penalties, clamped to 0-100
-    const score = Math.max(0, Math.min(100, 100 - errors * 15 - warns * 5 - info * 1));
+    // Partial-support (info) items are not penalised — they mostly work
+    const score = Math.max(0, Math.min(100, 100 - errors * 10 - warns * 3));
 
     result[client.id] = { score, errors, warnings: warns, info };
   }
