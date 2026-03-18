@@ -147,4 +147,8 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
     "Use width/height attributes on <img> directly.",
   "display":
     "Use tables for layout in email clients.",
+
+  // ── padding ─────────────────────────────────────────────────────────────
+  "padding::outlook":
+    "Outlook ignores padding on <a> tags. Use the MSO font-width trick with &#8202; hair spaces, or use VML. React Email's <Button> handles this automatically.",
 };

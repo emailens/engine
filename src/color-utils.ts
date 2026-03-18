@@ -1,8 +1,9 @@
 /**
  * WCAG 2.1 color parsing, luminance, and contrast utilities.
  *
- * Handles hex (#fff, #ffffff, #rrggbbaa), rgb()/rgba(), 148 named CSS colors,
- * and `transparent`. Returns null for unresolvable values like var(), inherit,
+ * Handles hex (#rgb, #rgba, #rrggbb, #rrggbbaa), rgb()/rgba() (comma and
+ * space syntax), hsl()/hsla(), hwb(), oklch(), 148 named CSS colors, and
+ * `transparent`. Returns null for unresolvable values like var(), inherit,
  * currentColor.
  */
 
@@ -69,6 +70,104 @@ const NAMED_COLORS: Record<string, [number, number, number]> = {
   yellowgreen: [154, 205, 50],
 };
 
+// --- Internal conversion helpers ---
+
+/** Parse an alpha value that may be a number (0-1) or percentage (0%-100%). */
+function parseAlpha(raw: string | undefined): number {
+  if (raw === undefined) return 1;
+  const s = raw.trim();
+  if (s.endsWith("%")) {
+    return Math.min(1, Math.max(0, parseFloat(s) / 100));
+  }
+  return Math.min(1, Math.max(0, parseFloat(s)));
+}
+
+/** Clamp a value to 0-255 and round. */
+function clamp255(n: number): number {
+  return Math.round(Math.min(255, Math.max(0, n)));
+}
+
+/**
+ * Convert HSL to RGB.
+ * H in degrees [0,360), S and L in [0,1].
+ */
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const hp = h / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  const m = l - c / 2;
+
+  let r1 = 0, g1 = 0, b1 = 0;
+  if (hp >= 0 && hp < 1)      { r1 = c; g1 = x; b1 = 0; }
+  else if (hp >= 1 && hp < 2) { r1 = x; g1 = c; b1 = 0; }
+  else if (hp >= 2 && hp < 3) { r1 = 0; g1 = c; b1 = x; }
+  else if (hp >= 3 && hp < 4) { r1 = 0; g1 = x; b1 = c; }
+  else if (hp >= 4 && hp < 5) { r1 = x; g1 = 0; b1 = c; }
+  else                        { r1 = c; g1 = 0; b1 = x; }
+
+  return [
+    clamp255((r1 + m) * 255),
+    clamp255((g1 + m) * 255),
+    clamp255((b1 + m) * 255),
+  ];
+}
+
+/**
+ * Convert HWB to RGB.
+ * H in degrees, W and B in [0,1].
+ */
+function hwbToRgb(h: number, w: number, b: number): [number, number, number] {
+  if (w + b >= 1) {
+    const gray = clamp255((w / (w + b)) * 255);
+    return [gray, gray, gray];
+  }
+  // Get pure hue as RGB via HSL(h, 100%, 50%)
+  const [r0, g0, b0] = hslToRgb(h, 1, 0.5);
+  return [
+    clamp255(r0 / 255 * (1 - w - b) * 255 + w * 255),
+    clamp255(g0 / 255 * (1 - w - b) * 255 + w * 255),
+    clamp255(b0 / 255 * (1 - w - b) * 255 + w * 255),
+  ];
+}
+
+/** Linear-sRGB to sRGB gamma correction. */
+function linearToGamma(c: number): number {
+  if (c <= 0.0031308) return 12.92 * c;
+  return 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+}
+
+/**
+ * Convert OKLCh to RGB.
+ * L in [0,1], C in [0,~0.4], H in degrees [0,360).
+ */
+function oklchToRgb(L: number, C: number, H: number): [number, number, number] {
+  // oklch → oklab
+  const hRad = H * Math.PI / 180;
+  const a = C * Math.cos(hRad);
+  const b = C * Math.sin(hRad);
+
+  // oklab → LMS (cubed roots)
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+
+  // LMS → linear sRGB
+  const rLin = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const gLin = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const bLin = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+  // linear sRGB → sRGB gamma → 0-255
+  return [
+    clamp255(linearToGamma(rLin) * 255),
+    clamp255(linearToGamma(gLin) * 255),
+    clamp255(linearToGamma(bLin) * 255),
+  ];
+}
+
 /**
  * Parse a CSS color value to RGBA. Returns null for unresolvable values.
  */
@@ -91,7 +190,7 @@ export function parseColor(value: string): RGBA | null {
     return { r: named[0], g: named[1], b: named[2], a: 1 };
   }
 
-  // Hex: #rgb, #rrggbb, #rrggbbaa
+  // Hex: #rgb, #rgba, #rrggbb, #rrggbbaa
   if (v.startsWith("#")) {
     const hex = v.slice(1);
     if (hex.length === 3) {
@@ -100,6 +199,14 @@ export function parseColor(value: string): RGBA | null {
         g: parseInt(hex[1] + hex[1], 16),
         b: parseInt(hex[2] + hex[2], 16),
         a: 1,
+      };
+    }
+    if (hex.length === 4) {
+      return {
+        r: parseInt(hex[0] + hex[0], 16),
+        g: parseInt(hex[1] + hex[1], 16),
+        b: parseInt(hex[2] + hex[2], 16),
+        a: parseInt(hex[3] + hex[3], 16) / 255,
       };
     }
     if (hex.length === 6) {
@@ -121,18 +228,83 @@ export function parseColor(value: string): RGBA | null {
     return null;
   }
 
-  // rgb() / rgba()
-  const rgbMatch = v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/);
-  if (rgbMatch) {
+  // rgb() / rgba() — comma syntax
+  const rgbComma = v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+%?))?\s*\)$/);
+  if (rgbComma) {
     return {
-      r: Math.min(255, parseInt(rgbMatch[1], 10)),
-      g: Math.min(255, parseInt(rgbMatch[2], 10)),
-      b: Math.min(255, parseInt(rgbMatch[3], 10)),
-      a: rgbMatch[4] !== undefined ? Math.min(1, parseFloat(rgbMatch[4])) : 1,
+      r: Math.min(255, parseInt(rgbComma[1], 10)),
+      g: Math.min(255, parseInt(rgbComma[2], 10)),
+      b: Math.min(255, parseInt(rgbComma[3], 10)),
+      a: rgbComma[4] !== undefined ? parseAlpha(rgbComma[4]) : 1,
     };
   }
 
+  // rgb() / rgba() — space syntax: rgb(255 0 0) or rgb(255 0 0 / 0.5) or rgb(255 0 0 / 50%)
+  const rgbSpace = v.match(/^rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
+  if (rgbSpace) {
+    return {
+      r: Math.min(255, parseInt(rgbSpace[1], 10)),
+      g: Math.min(255, parseInt(rgbSpace[2], 10)),
+      b: Math.min(255, parseInt(rgbSpace[3], 10)),
+      a: rgbSpace[4] !== undefined ? parseAlpha(rgbSpace[4]) : 1,
+    };
+  }
+
+  // hsl() / hsla() — comma syntax: hsl(120, 100%, 50%) or hsla(120, 100%, 50%, 0.5)
+  const hslComma = v.match(/^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+%?))?\s*\)$/);
+  if (hslComma) {
+    const h = ((parseFloat(hslComma[1]) % 360) + 360) % 360;
+    const s = Math.min(100, parseFloat(hslComma[2])) / 100;
+    const l = Math.min(100, parseFloat(hslComma[3])) / 100;
+    const [r, g, b] = hslToRgb(h, s, l);
+    return { r, g, b, a: hslComma[4] !== undefined ? parseAlpha(hslComma[4]) : 1 };
+  }
+
+  // hsl() / hsla() — space syntax: hsl(120 100% 50%) or hsl(120 100% 50% / 0.5)
+  const hslSpace = v.match(/^hsla?\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
+  if (hslSpace) {
+    const h = ((parseFloat(hslSpace[1]) % 360) + 360) % 360;
+    const s = Math.min(100, parseFloat(hslSpace[2])) / 100;
+    const l = Math.min(100, parseFloat(hslSpace[3])) / 100;
+    const [r, g, b] = hslToRgb(h, s, l);
+    return { r, g, b, a: hslSpace[4] !== undefined ? parseAlpha(hslSpace[4]) : 1 };
+  }
+
+  // hwb(): hwb(120 10% 20%) or hwb(120 10% 20% / 0.5)
+  const hwbMatch = v.match(/^hwb\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
+  if (hwbMatch) {
+    const h = ((parseFloat(hwbMatch[1]) % 360) + 360) % 360;
+    const w = Math.min(100, parseFloat(hwbMatch[2])) / 100;
+    const bk = Math.min(100, parseFloat(hwbMatch[3])) / 100;
+    const [r, g, b] = hwbToRgb(h, w, bk);
+    return { r, g, b, a: hwbMatch[4] !== undefined ? parseAlpha(hwbMatch[4]) : 1 };
+  }
+
+  // oklch(): oklch(0.7 0.15 180) or oklch(0.7 0.15 180 / 0.5)
+  const oklchMatch = v.match(/^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
+  if (oklchMatch) {
+    const L = Math.min(1, Math.max(0, parseFloat(oklchMatch[1])));
+    const C = Math.max(0, parseFloat(oklchMatch[2]));
+    const H = ((parseFloat(oklchMatch[3]) % 360) + 360) % 360;
+    const [r, g, b] = oklchToRgb(L, C, H);
+    return { r, g, b, a: oklchMatch[4] !== undefined ? parseAlpha(oklchMatch[4]) : 1 };
+  }
+
   return null;
+}
+
+/**
+ * Format an RGBA value as an rgb() or rgba() CSS string.
+ * Returns `rgba(r, g, b, a)` when alpha < 1, otherwise `rgb(r, g, b)`.
+ */
+export function formatRgb(rgba: RGBA): string {
+  const r = clamp255(rgba.r);
+  const g = clamp255(rgba.g);
+  const b = clamp255(rgba.b);
+  if (rgba.a < 1) {
+    return `rgba(${r}, ${g}, ${b}, ${rgba.a})`;
+  }
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 /**

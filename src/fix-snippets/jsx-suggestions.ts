@@ -84,4 +84,8 @@ export const JSX_SUGGESTION_DATABASE: Record<string, string> = {
   // ── overflow-wrap ─────────────────────────────────────────────────────
   "overflow-wrap::jsx":
     "Wrap text in a <table><tr><td> element. Outlook ignores overflowWrap but respects table cell widths.",
+
+  // ── padding ─────────────────────────────────────────────────────────────
+  "padding::outlook::jsx":
+    "Use React Email's <Button> component which automatically generates MSO-compatible padding using the mso-font-width trick.",
 };

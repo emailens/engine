@@ -9,20 +9,42 @@ import {
 } from "./rules/css-support";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
+import { downlevelCSS } from "./downlevel";
 import { MAX_HTML_SIZE } from "./constants";
 
 // =============================================================================
 // Shared helpers
 // =============================================================================
 
-/** Inline <style> blocks into elements using css-tree. */
-function inlineStyles($: cheerio.CheerioAPI): void {
+/** Check if a selector contains pseudo-classes or pseudo-elements. */
+function hasPseudoSelector(selector: string): boolean {
+  // Match :pseudo or ::pseudo — but not bare : in attribute selectors like [attr:value]
+  // This catches :hover, :focus, :nth-of-type, :not(), ::before, ::after, etc.
+  return /(?<![[\w])::?[a-z][\w-]*(?:\(|(?=[^(]))/i.test(selector);
+}
+
+/** Add !important to all declarations in an at-rule AST node. */
+function addImportantToDeclarations(node: csstree.CssNode): void {
+  csstree.walk(node, {
+    visit: "Declaration",
+    enter(decl: csstree.CssNode) {
+      if (decl.type !== "Declaration") return;
+      if (decl.important) return;
+      decl.important = true;
+    },
+  });
+}
+
+/** Inline <style> blocks into elements using css-tree. Returns non-inlinable CSS. */
+function inlineStyles($: cheerio.CheerioAPI): string {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
     styleBlocks.push($(el).text());
   });
 
-  if (styleBlocks.length === 0) return;
+  if (styleBlocks.length === 0) return "";
+
+  const preserved: string[] = [];
 
   for (const block of styleBlocks) {
     let ast: csstree.CssNode;
@@ -32,6 +54,24 @@ function inlineStyles($: cheerio.CheerioAPI): void {
       continue;
     }
 
+    // Collect non-inlinable at-rules (@media, @supports, @keyframes)
+    csstree.walk(ast, {
+      visit: "Atrule",
+      enter(node: csstree.CssNode) {
+        if (node.type !== "Atrule") return;
+        const name = node.name.toLowerCase();
+        if (name === "media" || name === "supports" || name === "keyframes" || name === "-webkit-keyframes" || name === "font-face") {
+          // Add !important to declarations inside @media/@supports so they override inline styles
+          if (name === "media" || name === "supports") {
+            addImportantToDeclarations(node);
+          }
+          preserved.push(csstree.generate(node));
+          return this.skip;
+        }
+      },
+    });
+
+    // Inline regular rules and collect pseudo-selector rules
     csstree.walk(ast, {
       visit: "Rule",
       enter(node: csstree.CssNode) {
@@ -43,10 +83,8 @@ function inlineStyles($: cheerio.CheerioAPI): void {
 
         const selectorText = csstree.generate(node.prelude);
 
-        if (selectorText.includes(":hover") ||
-            selectorText.includes(":focus") ||
-            selectorText.includes(":active") ||
-            selectorText.includes("::")) {
+        if (hasPseudoSelector(selectorText)) {
+          preserved.push(csstree.generate(node));
           return;
         }
 
@@ -61,6 +99,8 @@ function inlineStyles($: cheerio.CheerioAPI): void {
       },
     });
   }
+
+  return preserved.join("\n");
 }
 
 /** Build a CSSWarning with framework-aware suggestion + fix + fallback flag. */
@@ -564,15 +604,24 @@ function applyTransform(
   const warnings: CSSWarning[] = [];
   const clientId = config.id;
 
-  // 0. Pre-strip additional checks (e.g., Gmail @font-face detection)
+  // 1a. Pre-strip additional checks (e.g., Gmail @font-face detection)
   if (config.additionalChecks && config.inlineAndStripStyles) {
     warnings.push(...config.additionalChecks($, clientId, html, framework));
   }
 
-  // 1. Inline + strip <style> if needed
+  // 1b. Inline + strip <style> if needed
   if (config.inlineAndStripStyles) {
-    inlineStyles($);
+    const preserved = inlineStyles($);
     $("style").remove();
+    if (preserved.trim()) {
+      const head = $("head");
+      if (head.length > 0) {
+        head.append(`<style>${preserved}</style>`);
+      } else {
+        // If no <head>, prepend to body
+        $("body").prepend(`<style>${preserved}</style>`);
+      }
+    }
   }
 
   // 2. Strip external stylesheets
@@ -706,11 +755,25 @@ export function transformForClient(
       ],
     };
   }
-  return applyTransform(html, config, framework);
+
+  // Downlevel once per transformForClient call
+  const downleveled = downlevelCSS(html);
+  return applyTransform(downleveled, config, framework);
 }
 
 export function transformForAllClients(html: string, framework?: Framework): TransformResult[] {
+  if (!html || !html.trim()) {
+    return Object.keys(CLIENT_CONFIGS).map((clientId) => ({
+      clientId, html: html || "", warnings: [],
+    }));
+  }
+  if (html.length > MAX_HTML_SIZE) {
+    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
+  }
+
+  // Downlevel once, reuse for all 13 clients
+  const downleveled = downlevelCSS(html);
   return Object.keys(CLIENT_CONFIGS).map((clientId) =>
-    transformForClient(html, clientId, framework)
+    applyTransform(downleveled, CLIENT_CONFIGS[clientId], framework)
   );
 }

@@ -18,6 +18,7 @@ export { extractInboxPreview } from "./inbox-preview";
 export { checkSize } from "./size-checker";
 export { checkTemplateVariables } from "./template-checker";
 export { auditEmail } from "./audit";
+export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
 export { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
@@ -25,7 +26,8 @@ export { EMPTY_DELIVERABILITY } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
 export type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";
 // SpamAssassinResult, SpamAssassinOptions are re-exported from "@emailens/engine/server"
-export { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
+export { parseColor, formatRgb, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
+export { downlevelCSS } from "./downlevel";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";

@@ -574,4 +574,34 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   </div>
 </div>`,
   },
+
+  // ── padding (Outlook MSO font-width trick, JSX) ───────────────────────
+  "padding::outlook::jsx": {
+    language: "jsx",
+    description: "Use React Email Button component which handles MSO padding automatically",
+    before: `<a
+  href="https://example.com"
+  style={{ backgroundColor: "#6d28d9", color: "#fff",
+           padding: "12px 32px", display: "inline-block",
+           textDecoration: "none" }}>
+  Click Here
+</a>`,
+    after: `import { Button } from "@react-email/components";
+
+{/* The Button component automatically handles MSO padding
+    via the mso-font-width + &#8202; technique */}
+<Button
+  href="https://example.com"
+  style={{
+    backgroundColor: "#6d28d9",
+    color: "#fff",
+    padding: "12px 32px",
+    borderRadius: "6px",
+    textDecoration: "none",
+    fontWeight: "bold",
+  }}
+>
+  Click Here
+</Button>`,
+  },
 };

@@ -631,4 +631,47 @@ h1 {
   <a href="https://example.com/full">Read more</a>
 </div>`,
   },
+
+  // ── padding (Outlook MSO font-width trick) ─────────────────────────────
+  "padding::outlook": {
+    language: "html",
+    description: "Use MSO font-width trick for reliable button padding in Outlook",
+    before: `<a href="https://example.com"
+  style="background-color: #6d28d9; color: #fff;
+         padding: 12px 32px; display: inline-block;
+         text-decoration: none;">
+  Click Here
+</a>`,
+    after: `<!--[if mso]>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"
+  style="border-collapse: collapse;">
+  <tr>
+    <td style="background-color: #6d28d9; padding: 0;
+               mso-padding-alt: 12px 32px;">
+      <!--[if mso]>
+      <i style="letter-spacing: 32px; mso-font-width: -100%;
+                mso-text-raise: 18pt;" hidden>&#8202;</i>
+      <![endif]-->
+      <a href="https://example.com"
+        style="background-color: #6d28d9; color: #fff;
+               mso-text-raise: 9pt; text-decoration: none;
+               font-family: Arial, sans-serif; font-size: 14px;
+               font-weight: bold;">Click Here</a>
+      <!--[if mso]>
+      <i style="letter-spacing: 32px; mso-font-width: -100%;"
+         hidden>&#8202;</i>
+      <![endif]-->
+    </td>
+  </tr>
+</table>
+<![endif]-->
+<!--[if !mso]><!-->
+<a href="https://example.com"
+  style="background-color: #6d28d9; color: #fff;
+         padding: 12px 32px; display: inline-block;
+         text-decoration: none;">
+  Click Here
+</a>
+<!--<![endif]-->`,
+  },
 };
