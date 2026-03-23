@@ -441,6 +441,7 @@ function superhumanAdditionalChecks(
 // =============================================================================
 
 const EMPTY_SET: Set<string> = new Set();
+const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
@@ -487,7 +488,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-windows": {
     id: "outlook-windows",
-    strippedProperties: new Set(["position", "transform", "animation", "transition"]),
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -510,7 +511,25 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-web": {
     id: "outlook-web",
-    strippedProperties: new Set(["position", "transform", "animation", "transition"]),
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
+  "outlook-ios": {
+    id: "outlook-ios",
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
+  "outlook-android": {
+    id: "outlook-android",
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -771,7 +790,7 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
     throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
-  // Downlevel once, reuse for all 13 clients
+  // Downlevel once, reuse for all clients
   const downleveled = downlevelCSS(html);
   return Object.keys(CLIENT_CONFIGS).map((clientId) =>
     applyTransform(downleveled, CLIENT_CONFIGS[clientId], framework)

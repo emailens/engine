@@ -4,6 +4,7 @@ import { MAX_HTML_SIZE } from "./constants";
 import { parseColor, relativeLuminance } from "./color-utils";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import type { CSSWarning } from "./types";
+import { getClient } from "./clients";
 
 /** Luminance threshold — colors above this are considered "light" */
 const LIGHT_THRESHOLD = 0.7;
@@ -93,7 +94,24 @@ export function simulateDarkMode(
           message:
             "Outlook (New) applies partial color inversion in dark mode, similar to Outlook.com.",
           suggestion:
-            "Use [data-ogsc] or [data-ogsb] CSS attribute selectors to override dark mode color changes.",
+            "Use [data-ogsc] or [data-ogsb] CSS attribute selectors to override Outlook's dark mode color changes.",
+        });
+      }
+      break;
+
+    case "outlook-ios":
+    case "outlook-android":
+      // Outlook mobile apps apply partial inversion but do not inject [data-ogsc]/[data-ogsb] attributes
+      applyColorInversion($, "partial");
+      if (!html.includes("prefers-color-scheme")) {
+        warnings.push({
+          severity: "info",
+          client: clientId,
+          property: "dark-mode",
+          message:
+            `${getClient(clientId)?.name ?? clientId} applies partial color inversion in dark mode.`,
+          suggestion:
+            "Add a @media (prefers-color-scheme: dark) block with inverted colors. Outlook mobile does not support [data-ogsc]/[data-ogsb] attribute overrides.",
         });
       }
       break;

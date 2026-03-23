@@ -318,6 +318,37 @@ describe("transformForClient", () => {
     expect(result.warnings.filter((w) => w.severity === "error").length).toBe(0);
   });
 
+  test("Outlook iOS strips position/transform/animation but keeps standard CSS", () => {
+    const html = `<html><body><div style="position: fixed; transform: rotate(5deg); color: red; border-radius: 8px;">test</div></body></html>`;
+    const result = transformForClient(html, "outlook-ios");
+    expect(result.html).not.toContain("position");
+    expect(result.html).not.toContain("transform");
+    expect(result.html).toContain("color: red");
+    expect(result.html).toContain("border-radius");
+  });
+
+  test("Outlook Android strips position/transform/animation but keeps standard CSS", () => {
+    const html = `<html><body><div style="position: absolute; animation: spin 1s; color: blue;">test</div></body></html>`;
+    const result = transformForClient(html, "outlook-android");
+    expect(result.html).not.toContain("position");
+    expect(result.html).not.toContain("animation");
+    expect(result.html).toContain("color: blue");
+  });
+
+  test("Outlook iOS/Android differ from Outlook Classic (Word engine)", () => {
+    const html = `<html><body><div style="border-radius: 8px; box-shadow: 1px 1px black; max-width: 600px;">test</div></body></html>`;
+    const outlookIos = transformForClient(html, "outlook-ios");
+    const outlookClassic = transformForClient(html, "outlook-windows-legacy");
+    // Outlook mobile (web engine) keeps border-radius, box-shadow, max-width
+    expect(outlookIos.html).toContain("border-radius");
+    expect(outlookIos.html).toContain("box-shadow");
+    expect(outlookIos.html).toContain("max-width");
+    // Outlook Classic (Word engine) strips them
+    expect(outlookClassic.html).not.toContain("border-radius");
+    expect(outlookClassic.html).not.toContain("box-shadow");
+    expect(outlookClassic.html).not.toContain("max-width");
+  });
+
   test("handles unknown client gracefully", () => {
     const html = `<html><body>test</body></html>`;
     const result = transformForClient(html, "nonexistent-client");
@@ -440,6 +471,28 @@ describe("simulateDarkMode", () => {
     // Partial inversion: very dark text (#000) → #d4d4d4 (not #e0e0e0 which full uses)
     expect(result.html).toContain("#d4d4d4");
     expect(result.html).not.toMatch(/color:\s*#e0e0e0[^"]*">\s*Test/); // not full inversion on p
+  });
+
+  test("outlook-ios applies partial inversion", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "outlook-ios");
+    // Partial inversion: very dark text (#000) → #d4d4d4
+    expect(result.html).toContain("#d4d4d4");
+    const infoWarning = result.warnings.find(
+      (w) => w.message.includes("partial color inversion")
+    );
+    expect(infoWarning).toBeDefined();
+  });
+
+  test("outlook-android applies partial inversion", () => {
+    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+    const result = simulateDarkMode(html, "outlook-android");
+    // Partial inversion: very dark text (#000) → #d4d4d4
+    expect(result.html).toContain("#d4d4d4");
+    const infoWarning = result.warnings.find(
+      (w) => w.message.includes("Outlook Android")
+    );
+    expect(infoWarning).toBeDefined();
   });
 
   test("thunderbird applies full inversion when no prefers-color-scheme", () => {

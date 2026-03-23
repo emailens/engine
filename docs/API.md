@@ -129,7 +129,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `checkTemplateVariables()` | Yes | Unresolved template variable detection |
 | `checkDeliverability(domain)` | — | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
 | `transformForClient(clientId)` | No | Transform for one client |
-| `transformForAllClients()` | No | Transform for all 13 clients |
+| `transformForAllClients()` | No | Transform for all 15 clients |
 | `simulateDarkMode(clientId)` | No | Dark mode simulation |
 
 **When to use sessions vs standalone functions:**
@@ -144,7 +144,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 
 ### `analyzeEmail(html: string, framework?: Framework): CSSWarning[]`
 
-Analyzes an HTML email and returns CSS compatibility warnings for all 13 email clients. Detects `<style>`, `<link>`, `<svg>`, `<video>`, `<form>`, inline CSS properties, `@font-face`, `@media` queries, gradients, flexbox/grid, and more.
+Analyzes an HTML email and returns CSS compatibility warnings for all 15 email clients. Detects `<style>`, `<link>`, `<svg>`, `<video>`, `<form>`, inline CSS properties, `@font-face`, `@media` queries, gradients, flexbox/grid, and more.
 
 The optional `framework` parameter controls which fix snippets are attached to warnings. Analysis always runs on compiled HTML.
 
@@ -327,16 +327,19 @@ Transforms HTML for a specific email client — strips unsupported CSS, inlines 
 
 ### `transformForAllClients(html, framework?): TransformResult[]`
 
-Transforms HTML for all 13 email clients at once.
+Transforms HTML for all 15 email clients at once.
 
 ### `simulateDarkMode(html, clientId): { html, warnings }`
 
 Simulates how an email client applies dark mode using luminance-based color detection.
 
-- **Full inversion** (Gmail Android, Samsung Mail): inverts all light backgrounds and dark text
-- **Partial inversion** (Gmail Web, Apple Mail, Yahoo, Outlook.com, HEY, Superhuman): only inverts very light/dark colors
-- **No dark mode** (Thunderbird)
-- **Full inversion** also applies to Outlook Classic (Word engine, EOL Oct 2026)
+- **Full inversion** (Gmail iOS, Outlook Classic, Thunderbird¹): inverts all light backgrounds and dark text
+- **Partial inversion** (Gmail Android, Outlook.com, Outlook (New), Outlook iOS, Outlook Android, Samsung Mail², HEY, Superhuman): only inverts very light/dark colors
+- **Respects prefers-color-scheme** (Apple Mail macOS/iOS): no forced inversion — honors `@media (prefers-color-scheme: dark)` if present
+- **No content inversion** (Gmail Web, Yahoo Mail): only the email client UI is darkened
+
+¹ Thunderbird skips inversion when `prefers-color-scheme` is present in the email.
+² Samsung Mail skips inversion when `prefers-color-scheme` is present in the email.
 
 ### `getCodeFix(property, clientId, framework?): CodeFix | undefined`
 
@@ -477,8 +480,8 @@ The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For 
 |---|---|---|
 | `auditEmail()` | 1 parse + 8 analyses | Shared DOM, most efficient for full reports |
 | `createSession()` | 1 parse upfront | Amortized across all subsequent analysis calls |
-| `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 13 clients |
-| `transformForAllClients()` | 12 parses (1 per client) | Each client mutates its own DOM copy |
+| `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 15 clients |
+| `transformForAllClients()` | 15 parses (1 per client) | Each client mutates its own DOM copy |
 | `simulateDarkMode()` | 1 parse per call | Mutates DOM for color inversion |
 
 ### Optimization tips for consumers

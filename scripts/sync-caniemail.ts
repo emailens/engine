@@ -27,6 +27,9 @@ const CLIENT_MAP: Record<string, string> = {
   "outlook.outlook-com": "outlook-web",
   "outlook.windows": "outlook-windows",
   "yahoo.desktop-webmail": "yahoo-mail",
+  "outlook.windows-mail": "outlook-windows-legacy",
+  "outlook.ios": "outlook-ios",
+  "outlook.android": "outlook-android",
   "samsung-email.android": "samsung-mail",
   "thunderbird.macos": "thunderbird",
   "hey.desktop-webmail": "hey-mail",
@@ -35,7 +38,7 @@ const CLIENT_MAP: Record<string, string> = {
 
 const ALL_ENGINE_CLIENTS = [
   "gmail-web", "gmail-android", "gmail-ios",
-  "outlook-web", "outlook-windows",
+  "outlook-web", "outlook-windows", "outlook-windows-legacy", "outlook-ios", "outlook-android",
   "apple-mail-macos", "apple-mail-ios",
   "yahoo-mail", "samsung-mail", "thunderbird",
   "hey-mail", "superhuman",

@@ -12,7 +12,7 @@ describe("CSS_SUPPORT matrix", () => {
     expect(propertyCount).toBeGreaterThanOrEqual(150);
   });
 
-  it("every property has all 12 client IDs", () => {
+  it("every property has all client IDs", () => {
     for (const [property, clients] of Object.entries(CSS_SUPPORT)) {
       for (const clientId of ALL_CLIENT_IDS) {
         expect(clients[clientId]).toBeDefined();

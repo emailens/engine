@@ -7,7 +7,7 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your HTML against 250+ CSS properties across 13 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
+`@emailens/engine` analyzes your HTML against 250+ CSS properties across 15 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
 > **[emailens.dev](https://emailens.dev)** — Try the hosted version. Paste HTML, get a full audit in seconds.
 
@@ -80,7 +80,7 @@ const { code } = await generateAiFix({
 
 8 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility** — 250+ properties tested across 13 email clients, with fix snippets and AI-powered auto-fix
+- **CSS compatibility** — 250+ properties tested across 15 email clients, with fix snippets and AI-powered auto-fix
 - **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
 - **Accessibility** — WCAG contrast ratios, alt text, semantic structure, heading hierarchy
 - **Link validation** — broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs

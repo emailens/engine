@@ -101,7 +101,7 @@ export interface EmailSession {
   transformForClient(clientId: string): TransformResult;
 
   /**
-   * Transform HTML for all 13 email clients.
+   * Transform HTML for all email clients.
    *
    * Creates an isolated DOM copy per client (transforms mutate the DOM).
    */

@@ -51,6 +51,22 @@ export const EMAIL_CLIENTS: EmailClient[] = [
     deprecated: "2026-10",
   },
   {
+    id: "outlook-ios",
+    name: "Outlook iOS",
+    category: "mobile",
+    engine: "Outlook Mobile",
+    darkModeSupport: true,
+    icon: "smartphone",
+  },
+  {
+    id: "outlook-android",
+    name: "Outlook Android",
+    category: "mobile",
+    engine: "Outlook Mobile",
+    darkModeSupport: true,
+    icon: "smartphone",
+  },
+  {
     id: "apple-mail-macos",
     name: "Apple Mail",
     category: "desktop",

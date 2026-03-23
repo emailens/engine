@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0
+
+### Added
+
+- **Outlook iOS and Outlook Android** email clients — full CSS support matrix data (synced from caniemail.com), per-client transforms, and dark mode simulation with partial color inversion.
+- **Outlook Windows Mail → Outlook Classic consolidation** — `outlook-windows-legacy` now maps the former Windows Mail client with `engine: "Microsoft Word"` and `deprecated: "2026-10"`.
+- Dark mode simulation now gives **mobile-specific guidance** for Outlook iOS/Android instead of incorrectly suggesting `[data-ogsc]`/`[data-ogsb]` attribute overrides (which are Outlook.com web-only).
+- New tests for `outlook-ios` and `outlook-android` covering transforms and dark mode behavior.
+
+### Fixed
+
+- Battle test matrix integrity check now validates all 15 client IDs (was 13, missing `outlook-ios` and `outlook-android`).
+- API docs dark mode section corrected: Gmail iOS uses full inversion (not partial), Gmail Web and Yahoo Mail do not invert content, Apple Mail respects `prefers-color-scheme`.
+- `transformForAllClients()` performance note corrected from 12 to 15 parses.
+
 ## 0.2.0
 
 ### Added
