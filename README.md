@@ -4,6 +4,7 @@
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-574%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
+[![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
