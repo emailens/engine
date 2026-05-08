@@ -1,69 +1,119 @@
 import * as cheerio from "cheerio";
+import type { AnyNode, Element, Text } from "domhandler";
 
 /**
  * Convert HTML email to plain text suitable for multipart/alternative emails.
- * Uses cheerio for parsing (already a dependency — no new deps needed).
+ *
+ * Walks the DOM tree node-by-node, emitting text content with proper
+ * line breaks for block elements. Avoids cheerio's `.text()` which
+ * preserves all source whitespace from deeply nested email tables.
  */
 export function toPlainText(html: string): string {
   const $ = cheerio.load(html);
 
   // Remove elements that should not appear in plain text
-  $("style, script").remove();
+  $("style, script, head").remove();
   $("[data-skip-in-text='true']").remove();
 
-  // Convert <hr> to ---
-  $("hr").replaceWith("\n---\n");
+  const lines: string[] = [];
+  let currentLine = "";
 
-  // Convert <br> to newlines
-  $("br").replaceWith("\n");
+  const BLOCK_TAGS = new Set([
+    "p", "div", "h1", "h2", "h3", "h4", "h5", "h6",
+    "tr", "table", "blockquote", "ul", "ol", "li",
+    "section", "article", "header", "footer", "main",
+    "td", "th", // treat cells as blocks to avoid run-on text
+  ]);
 
-  // Convert <img> to alt text
-  $("img").each((_, el) => {
-    const alt = $(el).attr("alt");
-    $(el).replaceWith(alt ? alt : "");
-  });
+  const SKIP_TAGS = new Set(["style", "script", "head"]);
 
-  // Convert <a> tags
-  $("a").each((_, el) => {
-    const $el = $(el);
-    const href = $el.attr("href") || "";
-    const text = $el.text().trim();
-
-    if (!href || href === text) {
-      $el.replaceWith(text || href);
-    } else if (!text) {
-      $el.replaceWith(href);
-    } else {
-      $el.replaceWith(`${text} (${href})`);
-    }
-  });
-
-  // Convert list items with prefix
-  $("li").each((_, el) => {
-    const $el = $(el);
-    const text = $el.text().trim();
-    $el.replaceWith(`\n- ${text}\n`);
-  });
-
-  // Convert block elements to double newlines
-  const blockTags = "p, div, h1, h2, h3, h4, h5, h6, tr, blockquote, ul, ol";
-  $(blockTags).each((_, el) => {
-    const $el = $(el);
-    $el.prepend("\n\n");
-    $el.append("\n\n");
-  });
-
-  // Get text content (strips remaining tags)
-  let text = $("body").text();
-
-  // If no body tag, fall back to root text
-  if (!text.trim()) {
-    text = $.root().text();
+  function flushLine() {
+    const trimmed = currentLine.trim();
+    if (trimmed) lines.push(trimmed);
+    currentLine = "";
   }
 
-  // Collapse 3+ consecutive newlines into 2
-  text = text.replace(/\n{3,}/g, "\n\n");
+  function walk(node: AnyNode) {
+    if (node.type === "text") {
+      // Collapse whitespace in text nodes (like browser rendering)
+      const text = (node as Text).data.replace(/\s+/g, " ");
+      if (text.trim()) {
+        currentLine += text;
+      }
+      return;
+    }
 
-  // Trim leading/trailing whitespace
-  return text.trim();
+    if (node.type !== "tag") return;
+    const el = node as Element;
+    const tag = el.tagName.toLowerCase();
+
+    if (SKIP_TAGS.has(tag)) return;
+
+    // Self-closing conversions
+    if (tag === "br") {
+      flushLine();
+      return;
+    }
+    if (tag === "hr") {
+      flushLine();
+      lines.push("---");
+      return;
+    }
+    if (tag === "img") {
+      const alt = $(el).attr("alt")?.trim();
+      if (alt) currentLine += alt;
+      return;
+    }
+
+    // Links — inline, append URL if different from text
+    if (tag === "a") {
+      const href = $(el).attr("href") || "";
+      const text = $(el).text().trim();
+      if (!href || href === "#" || href === text) {
+        currentLine += text || href;
+      } else if (!text) {
+        currentLine += href;
+      } else {
+        currentLine += `${text} (${href})`;
+      }
+      return; // don't recurse into children — already extracted text
+    }
+
+    // Block elements: flush before and after
+    const isBlock = BLOCK_TAGS.has(tag);
+    if (isBlock) {
+      flushLine();
+    } else if (currentLine && !currentLine.endsWith(" ")) {
+      // Inline elements: ensure a space separator so sibling spans
+      // like <span>15</span><span>Clients</span> become "15 Clients"
+      currentLine += " ";
+    }
+
+    // List items get a bullet prefix
+    if (tag === "li") {
+      currentLine = "- ";
+    }
+
+    // Recurse into children
+    for (const child of el.children) {
+      walk(child);
+    }
+
+    if (isBlock) flushLine();
+  }
+
+  // Start walking from body, or root if no body
+  const body = $("body");
+  const root = body.length ? body[0] : $.root()[0];
+  if (root && "children" in root) {
+    for (const child of root.children) {
+      walk(child);
+    }
+  }
+  flushLine();
+
+  // Join lines, collapse multiple blank lines into one
+  let result = lines.join("\n");
+  result = result.replace(/\n{3,}/g, "\n\n");
+  return result.trim();
 }

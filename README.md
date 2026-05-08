@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-574%20passing-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-653%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
 
@@ -120,6 +120,21 @@ Three entry points:
 | AI auto-fix | Yes | No | No | No |
 | Open source | MIT | No | No | Yes (data) |
 
+### vs other email libraries
+
+`@emailens/engine` sits in the **QA / lint / scoring** slot — it analyzes finished HTML. It's complementary to (not a replacement for) composition and inlining libraries.
+
+| | @emailens/engine | [juice](https://github.com/automattic/juice) | [email-comb](https://github.com/codsen/email-comb) | [mjml](https://mjml.io/) | [maizzle](https://maizzle.com/) |
+|---|---|---|---|---|---|
+| Purpose | QA / lint / score | CSS inliner | Unused CSS pruner | MJML → HTML | Tailwind → HTML |
+| Per-client compatibility scoring | Yes | No | No | No | No |
+| Spam / a11y / link / image analysis | Yes | No | No | No | No |
+| AI-powered fix generation | Yes | No | No | No | No |
+| Compose emails | Reads only | Reads only | Reads only | Yes | Yes |
+| CSS inlining | No (pair with juice) | Yes | No | Yes (built-in) | Yes (built-in) |
+
+A typical pipeline: write in **mjml** or **maizzle** → inline with **juice** → audit with **@emailens/engine** → ship.
+
 ## Supported Email Clients
 
 | Client | ID | Category | Engine | Dark Mode |
@@ -130,6 +145,8 @@ Three entry points:
 | Outlook 365 | `outlook-web` | Webmail | Outlook Web | Yes |
 | Outlook (New) | `outlook-windows` | Desktop | Outlook Web | Yes |
 | Outlook Classic | `outlook-windows-legacy` | Desktop | Microsoft Word | Yes |
+| Outlook iOS | `outlook-ios` | Mobile | Outlook Mobile | Yes |
+| Outlook Android | `outlook-android` | Mobile | Outlook Mobile | Yes |
 | Apple Mail | `apple-mail-macos` | Desktop | WebKit | Yes |
 | Apple Mail iOS | `apple-mail-ios` | Mobile | WebKit | Yes |
 | Yahoo Mail | `yahoo-mail` | Webmail | Yahoo | Yes |
@@ -155,19 +172,20 @@ Covers:
 
 ## Roadmap
 
-- [ ] Outlook VML auto-generation
-- [ ] GitHub Actions integration (score thresholds in CI)
-- [x] Automated caniemail.com data sync
-- [ ] Real-time rendering previews
-- [ ] MJML/Maizzle source-level linting
-- [ ] Plugin system for custom analyzers
+See [ROADMAP.md](./ROADMAP.md) for the full picture (shipped items + items under consideration with rationale).
+
+**Shipped:** automated caniemail.com data sync · GitHub Actions integration via `@emailens/cli` and the [Marketplace Action](https://github.com/marketplace/actions/emailens-email-preview-check) · AI-powered fix generation · compile module for JSX/MJML/Maizzle.
+
+**Considering:** Outlook VML auto-generation · plugin system for custom analyzers · MJML/Maizzle source-level linting · ESLint plugin · spam corpus tuning · dark-mode accuracy tests.
+
+Concrete bugs go in [Issues](https://github.com/emailens/engine/issues). Open-ended ideas live in the roadmap.
 
 ## Contributing
 
 Contributions are welcome! See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for architecture overview, setup instructions, and PR guidelines.
 
 ```bash
-bun install && bun test   # 580 tests
+bun install && bun test   # 653 tests
 ```
 
 ### Data Maintenance

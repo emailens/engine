@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.1
+
+### Fixed
+
+- **`toPlainText()` rewrite** — Rewrote HTML-to-plain-text conversion to walk the DOM tree node-by-node instead of using cheerio's `.text()`. Email HTML with deeply nested tables (10+ levels) no longer produces excessive whitespace. Block elements emit clean line breaks, inline siblings get proper spacing (e.g. `<span>15</span><span>Clients</span>` → `"15 Clients"`), and the output collapses to readable paragraphs.
+
+### Documentation
+
+- New **[ROADMAP.md](./ROADMAP.md)** — separates "shipped" / "considering" items from the issue tracker so the latter can host actual user bug reports.
+- README: added Outlook iOS and Outlook Android to the supported-clients table (was missing despite being shipped in 0.9.0); refreshed the test count badge; added a new "vs other email libraries" comparison covering `juice`, `email-comb`, `mjml`, and `maizzle` with explicit "complementary, not competitor" framing; replaced the inline roadmap with a link to ROADMAP.md.
+
 ## 0.9.0
 
 ### Added
