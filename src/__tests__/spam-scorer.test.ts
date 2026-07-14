@@ -368,6 +368,38 @@ describe("spam scorer — preheader exemption (fix #1)", () => {
     expect(rule).toBeUndefined();
   });
 
+  test("React Email's zero-width-padded preheader is NOT flagged", () => {
+    // React Email's <Preview> pads the preheader with hundreds of zero-width
+    // characters so body copy does not leak into the inbox snippet. They are
+    // invisible, so they are not "text" — but they counted toward the 200-char
+    // ceiling, which meant the standard preheader of every React Email was
+    // reported as "Hidden text detected — major spam filter red flag".
+    const padding = "‌​‍‎‏ ".repeat(50);
+    const html = `<html><body>
+      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">SPF check failed for acme.com${padding}</div>
+      <p>Main email content here with enough words for testing.</p>
+      <a href="https://example.com/unsubscribe">Unsubscribe</a>
+    </body></html>`;
+    const report = analyzeSpam(html);
+    const rule = report.issues.find((i) => i.rule === "hidden-text");
+    expect(rule).toBeUndefined();
+  });
+
+  test("long VISIBLE hidden text is still flagged despite preheader styles", () => {
+    // The 200-char ceiling exists to stop someone hiding a wall of keywords
+    // behind preheader-shaped CSS. Ignoring invisible padding must not also
+    // discard that protection.
+    const stuffing = "cheap viagra free money click now winner ".repeat(10);
+    const html = `<html><body>
+      <div style="display:none;overflow:hidden;max-height:0;">${stuffing}</div>
+      <p>Main email content here.</p>
+      <a href="https://example.com/unsubscribe">Unsubscribe</a>
+    </body></html>`;
+    const report = analyzeSpam(html);
+    const rule = report.issues.find((i) => i.rule === "hidden-text");
+    expect(rule).toBeDefined();
+  });
+
   test("mid-body font-size:0 keyword stuffing is STILL flagged", () => {
     const html = `<html><body>
       <p>Normal content at the top of the email body.</p>

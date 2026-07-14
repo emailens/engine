@@ -209,11 +209,24 @@ const PREHEADER_ACCESSORY_PATTERNS = [
   /line-height\s*:\s*0/,
 ];
 
+/**
+ * Zero-width and other invisible characters. React Email's <Preview> (and most
+ * hand-rolled preheaders) pad the preheader with hundreds of these so that body
+ * copy does not leak into the inbox snippet.
+ */
+const INVISIBLE_CHARS = /[​-‏⁠᠎﻿­]/g;
+
 function isLikelyPreheader(
   style: string,
   text: string,
 ): boolean {
-  if (text.length > 200) return false;
+  // Measure VISIBLE length. The padding above is not text a human or a spam
+  // filter ever sees, but counting it blew past this ceiling — which meant the
+  // standard preheader of every React Email was reported as "major spam filter
+  // red flag". The ceiling itself still matters: it stops someone hiding a wall
+  // of keywords behind preheader-shaped CSS, so strip the padding, don't raise
+  // the limit.
+  if (text.replace(INVISIBLE_CHARS, "").trim().length > 200) return false;
 
   // Exempt only when preheader-specific accessory patterns are present
   return PREHEADER_ACCESSORY_PATTERNS.some((p) => p.test(style));
