@@ -384,10 +384,25 @@ function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
   return issues;
 }
 
-// CAN-SPAM physical address detection — US-centric patterns
-const STREET_ADDRESS_PATTERN = /\b\d{1,5}\s+[A-Za-z]+\s+(St(reet)?|Ave(nue)?|Blvd|Boulevard|Dr(ive)?|Rd|Road|Ln|Lane|Way|Ct|Court|Pl(ace)?|Pkwy|Parkway|Cir(cle)?|Terr(ace)?|Loop)\b/i;
+// CAN-SPAM physical address detection.
+//
+// Anglo addresses put the street TYPE last ("123 Main St"); Romance and
+// Germanic ones put it right after the number ("12 chemin du Beauregard",
+// "Bahnhofstrasse 5"). Both orders are matched — the US-only pattern flagged
+// every European address as missing, which is wrong on a checker used
+// worldwide.
+// Anglo, type last ("123 Main St", "221B Baker Street"). The [A-Za-z]? allows
+// a UK-style house-number letter suffix.
+const STREET_ADDRESS_PATTERN = /\b\d{1,5}[A-Za-z]?\s+[A-Za-z]+\s+(St(reet)?|Ave(nue)?|Blvd|Boulevard|Dr(ive)?|Rd|Road|Ln|Lane|Way|Ct|Court|Pl(ace)?|Pkwy|Parkway|Cir(cle)?|Terr(ace)?|Loop)\b/i;
+// number → type (French/Italian): "12 chemin du…", "5 rue de…"
+const STREET_TYPE_FIRST_PATTERN = /\b\d{1,5}\s+(rue|chemin|avenue|av|boulevard|bd|impasse|all[ée]e|place|route|quai|cours|via|viale|piazza|strada)\b/i;
+// type → … → number (Spanish/Portuguese/Catalan): "Calle Mayor 10"
+const STREET_TYPE_LEADING_PATTERN = /\b(calle|avenida|avda|plaza|paseo|carrer|rua|travessa)\s+[A-Za-zÀ-ÿ]+.{0,30}?\d{1,4}\b/i;
+// name+type suffix, then number (German/Dutch/Nordic): "Bahnhofstrasse 5"
+const STREET_TYPE_SUFFIX_PATTERN = /\b[A-Za-zÀ-ÿ]+(stra(ss|ß)e|straat|weg|gasse|allee|platz|vej|gata|gate)\s+\d{1,4}\b/i;
 const PO_BOX_PATTERN = /\bP\.?\s*O\.?\s*Box\s+\d+/i;
-const ZIP_CODE_PATTERN = /\b\d{5}(-\d{4})?\b/;
+// 5-digit (US/FR/DE/ES/IT), UK ("SW1A 1AA"), or NL/postal ("1011 AB").
+const ZIP_CODE_PATTERN = /\b(\d{5}(-\d{4})?|[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}|\d{4}\s*[A-Z]{2})\b/i;
 const ADDRESS_CLASS_PATTERN = /address|mailing|postal|footer-address|physical-address/i;
 
 function checkPhysicalAddress(
@@ -398,8 +413,15 @@ function checkPhysicalAddress(
   // Transactional emails are exempt
   if (options?.emailType === "transactional") return null;
 
-  // Check visible text for street address patterns
-  if (STREET_ADDRESS_PATTERN.test(text) && ZIP_CODE_PATTERN.test(text)) return null;
+  // Check visible text for street address patterns. A postal code alone is too
+  // weak (any 5-digit number), so require a street signal too — in any of the
+  // three word orders.
+  const hasStreet =
+    STREET_ADDRESS_PATTERN.test(text) ||
+    STREET_TYPE_FIRST_PATTERN.test(text) ||
+    STREET_TYPE_LEADING_PATTERN.test(text) ||
+    STREET_TYPE_SUFFIX_PATTERN.test(text);
+  if (hasStreet && ZIP_CODE_PATTERN.test(text)) return null;
   if (PO_BOX_PATTERN.test(text) && ZIP_CODE_PATTERN.test(text)) return null;
 
   // Check for elements with address-related class names

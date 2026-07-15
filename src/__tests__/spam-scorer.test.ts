@@ -768,3 +768,62 @@ describe("spam scorer — realistic newsletter (integration)", () => {
     expect(badRules.length).toBe(0);
   });
 });
+
+// ============================================================================
+// International physical-address detection
+// ============================================================================
+
+describe("spam scorer — physical address is not US-only", () => {
+  // A footer with an address must not be flagged as missing one, whatever the
+  // country's street-word order. The US-only pattern flagged every European
+  // address, which is wrong on a checker used worldwide.
+  const withAddress = (addr: string) => `<html><body>
+    <p>Hello, here is your weekly update with enough words for testing.</p>
+    <a href="https://example.com/unsubscribe">Unsubscribe</a>
+    <p>${addr}</p>
+  </body></html>`;
+
+  // Formats the content heuristic handles, by street-word order.
+  const cases: Array<[string, string]> = [
+    ["French (number → type)", "Emailens · 12 chemin du Beauregard, 93370 Montfermeil, France"],
+    ["French rue", "5 rue de la Paix, 75002 Paris, France"],
+    ["German (name+type suffix → number)", "Bahnhofstrasse 5, 10115 Berlin, Germany"],
+    ["Spanish (type → name → number)", "Calle Mayor 10, 28013 Madrid, Spain"],
+    ["UK (lettered house number, type last)", "221B Baker Street, London NW1 6XE, UK"],
+    ["US still works", "123 Main Street, Springfield, IL 62704"],
+  ];
+
+  for (const [name, addr] of cases) {
+    test(`${name} is recognised`, () => {
+      const rule = analyzeSpam(withAddress(addr)).issues.find(
+        (i) => i.rule === "missing-physical-address",
+      );
+      expect(rule).toBeUndefined();
+    });
+  }
+
+  test("a bare-name street (Dutch 'Damrak 12') is caught by the <address> tag", () => {
+    // Some countries write streets with no type word at all, which no content
+    // regex can reliably recognise. The reliable, correct signal is the
+    // <address> element — the semantic tag for exactly this — which is why our
+    // own email footer uses it. Do not try to regex every country's format.
+    const html = `<html><body>
+      <p>Hello, here is your weekly update with enough words for testing.</p>
+      <a href="https://example.com/unsubscribe">Unsubscribe</a>
+      <address>Damrak 12, 1012 AB Amsterdam, Netherlands</address>
+    </body></html>`;
+    const rule = analyzeSpam(html).issues.find((i) => i.rule === "missing-physical-address");
+    expect(rule).toBeUndefined();
+  });
+
+  test("an email with no address at all is still flagged", () => {
+    // The broadening must not disarm the check — a bare postal-code-shaped
+    // number is not an address.
+    const html = `<html><body>
+      <p>Buy now! Limited offer, order 50000 units today.</p>
+      <a href="https://example.com/unsubscribe">Unsubscribe</a>
+    </body></html>`;
+    const rule = analyzeSpam(html).issues.find((i) => i.rule === "missing-physical-address");
+    expect(rule).toBeDefined();
+  });
+});
