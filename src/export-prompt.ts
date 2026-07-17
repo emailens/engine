@@ -13,6 +13,8 @@ export interface ExportPromptOptions {
   scope: ExportScope;
   selectedClientId?: string;
   format?: "html" | "jsx" | "mjml" | "maizzle";
+  /** Optional user goal for the fix (e.g. "keep the gradient header"). */
+  intent?: string;
 }
 
 export function generateFixPrompt(options: ExportPromptOptions): string {
@@ -23,6 +25,7 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     scope,
     selectedClientId,
     format = "html",
+    intent,
   } = options;
 
   const filteredWarnings =
@@ -63,12 +66,23 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
       `${infoCount} info`
   );
 
-  // 2. Original email code
+  // 2. User intent
+  const trimmedIntent = intent?.trim();
+  if (trimmedIntent) {
+    sections.push(
+      `## User Intent\n\n` +
+        `The user described what they want this email to achieve. Honor it where ` +
+        `possible, but never at the cost of breaking email-client compatibility:\n\n` +
+        trimmedIntent
+    );
+  }
+
+  // 3. Original email code
   sections.push(
     `## Original Email Code\n\n` + `\`\`\`${format}\n${originalHtml}\n\`\`\``
   );
 
-  // 3. Compatibility scores table
+  // 4. Compatibility scores table
   const scoreEntries = Object.entries(filteredScores).filter(
     ([, v]) => v != null
   );
@@ -83,7 +97,7 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     sections.push(table.trimEnd());
   }
 
-  // 4. Detected issues grouped by severity
+  // 5. Detected issues grouped by severity
   if (filteredWarnings.length > 0) {
     let issueSection = `## Detected Issues\n`;
 
@@ -121,7 +135,7 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     sections.push(issueSection);
   }
 
-  // 5. Instructions
+  // 6. Instructions
   const formatInstructions: Record<string, string> = {
     jsx:
       `Apply all the fixes listed above to the original email code. ` +
