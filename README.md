@@ -10,9 +10,21 @@
 
 `@emailens/engine` analyzes your HTML against 250+ CSS properties across 15 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
+Our data says you need this: across the 251 CSS and HTML features we track, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
+
+![emailens lint output showing errors and warnings across email clients](./docs/lint-demo.png)
+
 > **[emailens.dev](https://emailens.dev)** — Try the hosted version. Paste HTML, get a full audit in seconds.
 
 ## Quick Start
+
+No install, no project setup, lint any email right now:
+
+```bash
+npx @emailens/cli lint email.html
+```
+
+Or use the engine as a library:
 
 ```bash
 npm install @emailens/engine
@@ -202,3 +214,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md#data-sources-and-freshness) for full det
 ## License
 
 MIT — Copyright 2025 [Emailens](https://emailens.dev)
+
+---
+
+If this saved you from an Outlook surprise, [a star](https://github.com/emailens/engine) helps other email developers find it.
