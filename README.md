@@ -1,10 +1,19 @@
+<div align="center">
+
 # @emailens/engine
+
+**The rendering linter for email**
 
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-653%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
+[![GitHub stars](https://img.shields.io/github/stars/emailens/engine?style=flat)](https://github.com/emailens/engine/stargazers)
+
+[Quick Start](#quick-start) · [What It Catches](#what-it-catches) · [Why Emailens](#why-emailens) · [Supported Clients](#supported-email-clients) · [API Docs](./docs/API.md) · [The State of Email CSS](https://emailens.dev/email-css/report)
+
+</div>
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
