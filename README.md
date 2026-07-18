@@ -1,6 +1,9 @@
 <div align="center">
 
-# @emailens/engine
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./docs/wordmark-dark.svg">
+  <img src="./docs/wordmark-light.svg" alt="emailens / engine" width="515">
+</picture>
 
 **The rendering linter for email**
 
