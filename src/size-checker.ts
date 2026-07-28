@@ -1,6 +1,6 @@
 import type { CheerioAPI } from "cheerio";
-import * as cheerio from "cheerio";
-import { MAX_HTML_SIZE, GMAIL_CLIP_THRESHOLD, GMAIL_CLIP_WARNING_THRESHOLD } from "./constants";
+import { GMAIL_CLIP_THRESHOLD, GMAIL_CLIP_WARNING_THRESHOLD, EMPTY_SIZE } from "./constants";
+import { fromHtml } from "./parse-html";
 import type { SizeIssue, SizeReport } from "./types";
 
 /**
@@ -56,13 +56,5 @@ export function checkSizeFromDom(_$: CheerioAPI, html: string): SizeReport {
  * "View entire message" link.
  */
 export function checkSize(html: string): SizeReport {
-  if (!html || !html.trim()) {
-    return { htmlBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
-  return checkSizeFromDom($, html);
+  return fromHtml(html, EMPTY_SIZE, checkSizeFromDom);
 }

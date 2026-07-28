@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
-import { MAX_HTML_SIZE } from "./constants";
+import { EMPTY_SPAM } from "./constants";
+import { fromHtml } from "./parse-html";
 import type { SpamAnalysisOptions, SpamIssue, SpamReport } from "./types";
 
 const SPAM_TRIGGER_PHRASES = [
@@ -567,13 +568,5 @@ export function analyzeSpam(
   html: string,
   options?: SpamAnalysisOptions,
 ): SpamReport {
-  if (!html || !html.trim()) {
-    return { score: 100, level: "low", issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
-  return analyzeSpamFromDom($, options);
+  return fromHtml(html, EMPTY_SPAM, ($) => analyzeSpamFromDom($, options));
 }

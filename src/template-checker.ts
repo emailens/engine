@@ -1,6 +1,6 @@
 import type { CheerioAPI } from "cheerio";
-import * as cheerio from "cheerio";
-import { MAX_HTML_SIZE, TEMPLATE_VARIABLE_PATTERNS } from "./constants";
+import { TEMPLATE_VARIABLE_PATTERNS, EMPTY_TEMPLATE } from "./constants";
+import { fromHtml } from "./parse-html";
 import type { TemplateIssue, TemplateReport } from "./types";
 
 /**
@@ -87,13 +87,5 @@ function extractTextContent($: CheerioAPI): string {
  * Returns the count of unresolved variables and detailed issues.
  */
 export function checkTemplateVariables(html: string): TemplateReport {
-  if (!html || !html.trim()) {
-    return { unresolvedCount: 0, issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
-  return checkTemplateVariablesFromDom($);
+  return fromHtml(html, EMPTY_TEMPLATE, checkTemplateVariablesFromDom);
 }

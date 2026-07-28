@@ -35,6 +35,8 @@ export type { AuditOptions, AuditReport } from "./audit";
 export type { EmailSession, CreateSessionOptions } from "./session";
 export type { SandboxStrategy, CompileReactEmailOptions } from "./compile/react-email";
 export type {
+  Severity,
+  BaseIssue,
   EmailClient,
   CSSWarning,
   CodeFix,

@@ -1,4 +1,4 @@
-import * as cheerio from "cheerio";
+import type { CheerioAPI } from "cheerio";
 import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
@@ -7,8 +7,8 @@ import { analyzeImagesFromDom } from "./image-analyzer";
 import { extractInboxPreviewFromDom } from "./inbox-preview";
 import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
+import { fromHtml } from "./parse-html";
 import {
-  MAX_HTML_SIZE,
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
   EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE,
 } from "./constants";
@@ -47,38 +47,30 @@ export interface AuditReport {
   templateVariables: TemplateReport;
 }
 
+/** Unified empty report for blank input — hands out the same singletons every checker uses. */
+export const EMPTY_AUDIT: AuditReport = {
+  compatibility: { warnings: [], scores: {} },
+  spam: EMPTY_SPAM,
+  links: EMPTY_LINKS,
+  accessibility: EMPTY_ACCESSIBILITY,
+  images: EMPTY_IMAGES,
+  inboxPreview: EMPTY_INBOX_PREVIEW,
+  size: EMPTY_SIZE,
+  templateVariables: EMPTY_TEMPLATE,
+};
+
 /**
- * Run all email analysis checks in a single call.
- *
- * Returns a unified report with compatibility warnings + scores,
- * spam analysis, link validation, accessibility audit, and image analysis.
- * Use the `skip` option to omit checks you don't need.
- *
- * Internally parses the HTML once and shares the parsed DOM across
- * all analyzers to avoid redundant parsing overhead.
+ * Run every analyzer over an already-parsed DOM and assemble the report.
+ * Shared by `auditEmail()` (which parses first) and `EmailSession.audit()`
+ * (which reuses the session's DOM) so the check list lives in one place.
  */
-export function auditEmail(html: string, options?: AuditOptions): AuditReport {
-  if (!html || !html.trim()) {
-    return {
-      compatibility: { warnings: [], scores: {} },
-      spam: EMPTY_SPAM,
-      links: EMPTY_LINKS,
-      accessibility: EMPTY_ACCESSIBILITY,
-      images: EMPTY_IMAGES,
-      inboxPreview: EMPTY_INBOX_PREVIEW,
-      size: EMPTY_SIZE,
-      templateVariables: EMPTY_TEMPLATE,
-    };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const framework = options?.framework;
+export function runAudit(
+  $: CheerioAPI,
+  html: string,
+  framework: Framework | undefined,
+  options?: Pick<AuditOptions, "spam" | "skip">,
+): AuditReport {
   const skip = new Set(options?.skip ?? []);
-
-  // Parse once, share across all analyzers
-  const $ = cheerio.load(html);
 
   const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework);
   const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
@@ -91,4 +83,18 @@ export function auditEmail(html: string, options?: AuditOptions): AuditReport {
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
 
   return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables };
+}
+
+/**
+ * Run all email analysis checks in a single call.
+ *
+ * Returns a unified report with compatibility warnings + scores,
+ * spam analysis, link validation, accessibility audit, and image analysis.
+ * Use the `skip` option to omit checks you don't need.
+ *
+ * Internally parses the HTML once and shares the parsed DOM across
+ * all analyzers to avoid redundant parsing overhead.
+ */
+export function auditEmail(html: string, options?: AuditOptions): AuditReport {
+  return fromHtml(html, EMPTY_AUDIT, ($, h) => runAudit($, h, options?.framework, options));
 }

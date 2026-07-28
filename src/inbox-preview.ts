@@ -1,6 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import * as cheerio from "cheerio";
-import { MAX_HTML_SIZE, CLIENT_DISPLAY_LIMITS } from "./constants";
+import { CLIENT_DISPLAY_LIMITS } from "./constants";
+import { fromHtml } from "./parse-html";
 import type { InboxPreviewIssue, InboxPreview, ClientTruncation } from "./types";
 
 const MAX_SUBJECT_LENGTH = 60;
@@ -26,23 +27,15 @@ const ZWNJ_PADDING_PATTERN = /(\u200C\s*(&nbsp;|\u00A0)\s*){2,}|(&zwnj;\s*&nbsp;
  * hacks (zero-width divs, display:none spans, etc.).
  */
 export function extractInboxPreview(html: string): InboxPreview {
-  if (!html || !html.trim()) {
-    return {
-      subject: null,
-      preheader: null,
-      subjectLength: 0,
-      preheaderLength: 0,
-      truncation: [],
-      issues: [{ rule: "missing-subject", severity: "warning", message: "No <title> tag found. Most email clients use this as the subject line." }],
-    };
-  }
-
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
-  return extractInboxPreviewFromDom($);
+  // Empty input still reports a missing subject, so it can't use the blank EMPTY_INBOX_PREVIEW.
+  return fromHtml(html, {
+    subject: null,
+    preheader: null,
+    subjectLength: 0,
+    preheaderLength: 0,
+    truncation: [],
+    issues: [{ rule: "missing-subject", severity: "warning", message: "No <title> tag found. Most email clients use this as the subject line." }],
+  }, extractInboxPreviewFromDom);
 }
 
 /**
