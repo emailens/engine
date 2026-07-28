@@ -15,7 +15,6 @@ export { compileMaizzle } from "./maizzle.js";
 export async function compile(
   source: string,
   format: InputFormat,
-  filePath?: string,
 ): Promise<string> {
   switch (format) {
     case "html":

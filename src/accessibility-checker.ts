@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { AccessibilityIssue, AccessibilityReport } from "./types";
-import { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
+import { GENERIC_LINK_TEXT, EMPTY_ACCESSIBILITY } from "./constants";
+import { fromHtml } from "./parse-html";
 import { getStyleValue } from "./style-utils";
 import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 
@@ -377,13 +378,5 @@ export function checkAccessibilityFromDom($: cheerio.CheerioAPI): AccessibilityR
  * color contrast. Returns a 0–100 score and detailed issues.
  */
 export function checkAccessibility(html: string): AccessibilityReport {
-  if (!html || !html.trim()) {
-    return { score: 100, issues: [] };
-  }
-  if (html.length > MAX_HTML_SIZE) {
-    throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
-  }
-
-  const $ = cheerio.load(html);
-  return checkAccessibilityFromDom($);
+  return fromHtml(html, EMPTY_ACCESSIBILITY, checkAccessibilityFromDom);
 }

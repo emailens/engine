@@ -13,10 +13,13 @@ export interface EmailClient {
   deprecated?: string;
 }
 
-export interface CSSRule {
-  property: string;
-  support: Record<string, SupportLevel>;
-  notes?: Record<string, string>;
+export type Severity = "error" | "warning" | "info";
+
+/** Shared shape for every analyzer's issue objects. */
+export interface BaseIssue {
+  rule: string;
+  severity: Severity;
+  message: string;
 }
 
 export interface CodeFix {
@@ -29,7 +32,7 @@ export interface CodeFix {
 export type FixType = "css" | "structural";
 
 export interface CSSWarning {
-  severity: "error" | "warning" | "info";
+  severity: Severity;
   client: string;
   property: string;
   message: string;
@@ -86,10 +89,7 @@ export interface DiffResult {
 
 // ─── Spam scoring ────────────────────────────────────────────────────────────
 
-export interface SpamIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
+export interface SpamIssue extends BaseIssue {
   detail?: string;
 }
 
@@ -110,10 +110,7 @@ export interface SpamAnalysisOptions {
 
 // ─── Link validation ─────────────────────────────────────────────────────────
 
-export interface LinkIssue {
-  severity: "error" | "warning" | "info";
-  rule: string;
-  message: string;
+export interface LinkIssue extends BaseIssue {
   href?: string;
   text?: string;
 }
@@ -135,10 +132,7 @@ export interface LinkReport {
 
 // ─── Accessibility checking ──────────────────────────────────────────────────
 
-export interface AccessibilityIssue {
-  severity: "error" | "warning" | "info";
-  rule: string;
-  message: string;
+export interface AccessibilityIssue extends BaseIssue {
   element?: string;
   details?: string;
 }
@@ -150,10 +144,7 @@ export interface AccessibilityReport {
 
 // ─── Image analysis ──────────────────────────────────────────────────────────
 
-export interface ImageIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
+export interface ImageIssue extends BaseIssue {
   src?: string;
 }
 
@@ -176,11 +167,7 @@ export interface ImageReport {
 
 // ─── Inbox preview ──────────────────────────────────────────────────────────
 
-export interface InboxPreviewIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
-}
+export interface InboxPreviewIssue extends BaseIssue {}
 
 export interface ClientTruncation {
   client: string;
@@ -203,10 +190,7 @@ export interface InboxPreview {
 
 // ─── Size checking ──────────────────────────────────────────────────────────
 
-export interface SizeIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
+export interface SizeIssue extends BaseIssue {
   detail?: string;
 }
 
@@ -219,10 +203,7 @@ export interface SizeReport {
 
 // ─── Template variable detection ────────────────────────────────────────────
 
-export interface TemplateIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
+export interface TemplateIssue extends BaseIssue {
   variable: string;
   location: "text" | "attribute";
 }
@@ -249,9 +230,6 @@ export interface DeliverabilityReport {
   issues: DeliverabilityIssue[];
 }
 
-export interface DeliverabilityIssue {
-  rule: string;
-  severity: "error" | "warning" | "info";
-  message: string;
+export interface DeliverabilityIssue extends BaseIssue {
   detail?: string;
 }
