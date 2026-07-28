@@ -27,6 +27,7 @@ import type {
   TemplateReport,
   TransformResult,
 } from "./types";
+import { runAudit, EMPTY_AUDIT } from "./audit";
 import type { AuditOptions, AuditReport } from "./audit";
 
 export interface CreateSessionOptions {
@@ -156,16 +157,7 @@ export function createSession(
     return {
       html: html || "",
       framework: fw,
-      audit: () => ({
-        compatibility: { warnings: [], scores: {} },
-        spam: EMPTY_SPAM,
-        links: EMPTY_LINKS,
-        accessibility: EMPTY_ACCESSIBILITY,
-        images: EMPTY_IMAGES,
-        inboxPreview: EMPTY_INBOX_PREVIEW,
-        size: EMPTY_SIZE,
-        templateVariables: EMPTY_TEMPLATE,
-      }),
+      audit: () => EMPTY_AUDIT,
       analyze: () => [],
       score: () => ({}),
       analyzeSpam: () => EMPTY_SPAM,
@@ -194,19 +186,7 @@ export function createSession(
     framework,
 
     audit(opts) {
-      const skip = new Set(opts?.skip ?? []);
-
-      const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework);
-      const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
-      const spam = skip.has("spam") ? EMPTY_SPAM : analyzeSpamFromDom($, opts?.spam);
-      const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
-      const accessibility = skip.has("accessibility") ? EMPTY_ACCESSIBILITY : checkAccessibilityFromDom($);
-      const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
-      const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
-      const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
-      const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
-
-      return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables };
+      return runAudit($, html, framework, opts);
     },
 
     analyze() {
