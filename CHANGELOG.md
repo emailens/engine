@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.6
+
+### Added
+
+- **`Severity` and `BaseIssue` exported types.** `Severity` is the shared `"error" | "warning" | "info"` union used across every report; `BaseIssue` is the `{ rule; severity; message }` shape that the analyzer issue types (`SpamIssue`, `LinkIssue`, `AccessibilityIssue`, …) now extend. Both are additive — the existing issue types keep the exact same structure.
+
+### Changed
+
+- **Internal cleanup, no behavior change.** The seven HTML analyzers now share one `fromHtml()` entry guard (empty-input + size-cap + parse) instead of repeating it; `auditEmail()` and `EmailSession.audit()` share a single `runAudit()` / `EMPTY_AUDIT` instead of duplicating the check list; removed unused type stubs, an unused `CSSRule` interface, and an unused `compile()` parameter. Public API and output are unchanged (all tests green).
+
+## 0.9.5
+
+### Added
+
+- **`generateFixPrompt()`** — builds a paste-ready, provider-agnostic LLM prompt from the engine's analysis (original HTML, per-client warnings, and compatibility scores). Scope it to `all` clients or a single `selectedClientId`, pass the source `format` (`html`/`jsx`/`mjml`/`maizzle`) for framework-aware guidance, and an optional `intent` to steer the fix (e.g. "keep the gradient header"). Complements `generateAiFix()`, which sends a prompt to an actual provider callback.
+
 ## 0.9.4
 
 ### Fixed
