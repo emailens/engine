@@ -201,6 +201,30 @@ export interface SizeReport {
   issues: SizeIssue[];
 }
 
+// ─── Content overflow (layout) ──────────────────────────────────────────────
+
+export interface OverflowIssue extends BaseIssue {
+  detail?: string;
+}
+
+export interface OverflowReport {
+  /** True when any content is likely to overflow the email frame / viewport. */
+  hasOverflow: boolean;
+  issues: OverflowIssue[];
+}
+
+// ─── Visual rendering bugs (stylized emails) ────────────────────────────────
+
+export interface VisualIssue extends BaseIssue {
+  detail?: string;
+  /** Concrete correction to apply (e.g. a background-color / font-family line). */
+  fix?: string;
+}
+
+export interface VisualReport {
+  issues: VisualIssue[];
+}
+
 // ─── Template variable detection ────────────────────────────────────────────
 
 export interface TemplateIssue extends BaseIssue {

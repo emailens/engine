@@ -7,6 +7,7 @@ import {
   simulateDarkMode,
   diffResults,
   EMAIL_CLIENTS,
+  CSS_SUPPORT,
   getClient,
   getCodeFix,
 } from "../index";
@@ -372,6 +373,74 @@ describe("transformForAllClients", () => {
     for (const result of results) {
       expect(clientIds).toContain(result.clientId);
     }
+  });
+
+  // outlook-macos uses the web/WebKit rendering engine, NOT the Word engine.
+  // Pin that editorial choice: it must preserve border-radius (which the Word
+  // engine — outlook-windows-legacy — strips).
+  test("outlook-macos uses the web engine, not Word (keeps border-radius)", () => {
+    const html = `<html><body><div style="border-radius: 8px;">X</div></body></html>`;
+    expect(transformForClient(html, "outlook-macos").html).toContain("border-radius");
+    expect(transformForClient(html, "outlook-windows-legacy").html).not.toContain("border-radius");
+  });
+});
+
+// ============================================================================
+// Invariant: a client's transform must not strip a property that CSS_SUPPORT
+// marks "supported" for that client — that would remove styles the client
+// actually renders. Catches config↔data drift (e.g. after a caniemail resync)
+// and mis-configured new clients. See ACCEPTED_STRIP_DIVERGENCES for known,
+// deliberate exceptions pending reconciliation against real-world testing.
+// ============================================================================
+
+describe("transform strip-sets stay consistent with CSS_SUPPORT", () => {
+  // Property → a sample value that triggers only property-level stripping
+  // (avoids value-level strips like display:grid or position:fixed).
+  const STRIP_CANDIDATES: Record<string, string> = {
+    position: "absolute",
+    transform: "rotate(5deg)",
+    animation: "spin 1s linear",
+    transition: "all 0.2s",
+    "box-shadow": "0 1px 2px #000",
+    opacity: "0.5",
+    gap: "8px",
+    filter: "blur(2px)",
+    visibility: "hidden",
+    "text-shadow": "1px 1px #000",
+  };
+
+  // Known divergences: config strips a property caniemail marks supported.
+  // These pre-date the caniemail resync and may reflect real-world testing that
+  // overrides caniemail — changing them is a downstream-visible behaviour change
+  // (see showcase-transforms in the SaaS), so they're grandfathered here rather
+  // than silently "fixed". Remove an entry only alongside the config change.
+  const ACCEPTED_STRIP_DIVERGENCES = new Set([
+    "yahoo-mail|opacity",
+    "yahoo-mail-android|opacity",
+    "yahoo-mail-ios|opacity",
+    "hey-mail|transform",
+    "hey-mail|animation",
+  ]);
+
+  const violations: string[] = [];
+  for (const client of EMAIL_CLIENTS) {
+    for (const [prop, value] of Object.entries(STRIP_CANDIDATES)) {
+      if (CSS_SUPPORT[prop]?.[client.id] !== "supported") continue;
+      const html = `<html><body><div style="${prop}: ${value};">x</div></body></html>`;
+      const out = transformForClient(html, client.id).html;
+      const survives = new RegExp(`${prop.replace(/-/g, "\\-")}\\s*:`).test(out);
+      if (!survives) violations.push(`${client.id}|${prop}`);
+    }
+  }
+
+  test("no config strips a property the client actually supports", () => {
+    const unexpected = violations.filter((v) => !ACCEPTED_STRIP_DIVERGENCES.has(v));
+    expect(unexpected).toEqual([]);
+  });
+
+  test("every grandfathered divergence still applies (allowlist isn't stale)", () => {
+    const stale = [...ACCEPTED_STRIP_DIVERGENCES].filter((a) => !violations.includes(a));
+    expect(stale).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.9.6",
+  "version": "0.10.0",
   "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link, and image quality analysis.",
   "type": "module",
   "exports": {
@@ -36,6 +36,7 @@
     "sync:caniemail": "bun run scripts/sync-caniemail.ts",
     "check:freshness": "bun run scripts/check-data-freshness.ts",
     "test": "bun test",
+    "test:render": "RENDER_TESTS=1 bun test src/__tests__/render.e2e.test.ts",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
@@ -89,6 +90,7 @@
     "@types/react": "^19.2.14",
     "bun-types": "^1.3.9",
     "mjml": "^4.15.0",
+    "playwright": "^1.62.0",
     "react": "^19.0.0",
     "sucrase": "^3.35.0",
     "tsup": "^8.4.0",

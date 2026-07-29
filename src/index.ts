@@ -17,6 +17,8 @@ export { analyzeImages } from "./image-analyzer";
 export { extractInboxPreview } from "./inbox-preview";
 export { checkSize } from "./size-checker";
 export { checkTemplateVariables } from "./template-checker";
+export { checkOverflow } from "./overflow-checker";
+export { checkVisual } from "./visual-checker";
 export { auditEmail } from "./audit";
 export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
@@ -66,4 +68,8 @@ export type {
   SizeReport,
   TemplateIssue,
   TemplateReport,
+  OverflowIssue,
+  OverflowReport,
+  VisualIssue,
+  VisualReport,
 } from "./types";

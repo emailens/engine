@@ -57,7 +57,7 @@ export const TEMPLATE_VARIABLE_PATTERNS: Array<[RegExp, string]> = [
 ];
 
 /** Shared empty report defaults for skipped checks and empty-input fast paths. */
-import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport } from "./types";
+import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport, OverflowReport, VisualReport } from "./types";
 
 export const EMPTY_SPAM: SpamReport = { score: 100, level: "low", issues: [] };
 export const EMPTY_LINKS: LinkReport = {
@@ -70,6 +70,27 @@ export const EMPTY_IMAGES: ImageReport = { total: 0, totalDataUriBytes: 0, issue
 export const EMPTY_INBOX_PREVIEW: InboxPreview = { subject: null, preheader: null, subjectLength: 0, preheaderLength: 0, truncation: [], issues: [] };
 export const EMPTY_SIZE: SizeReport = { htmlBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
 export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] };
+export const EMPTY_OVERFLOW: OverflowReport = { hasOverflow: false, issues: [] };
+export const EMPTY_VISUAL: VisualReport = { issues: [] };
+
+// ─── Content overflow thresholds (calibration knobs) ────────────────────────
+/** Standard email body width. Fixed px widths beyond this overflow the frame. */
+export const EMAIL_MAX_WIDTH = 600;
+/** A whitespace-delimited token longer than this can't wrap and overflows narrow screens. */
+export const UNBREAKABLE_STRING_LENGTH = 30;
+
+// ─── Visual fallback data ───────────────────────────────────────────────────
+/** Fonts pre-installed across email clients — a stack with one of these degrades safely. */
+export const WEB_SAFE_FONTS = new Set([
+  "arial", "helvetica", "helvetica neue", "verdana", "tahoma", "trebuchet ms",
+  "times new roman", "times", "georgia", "garamond", "palatino", "book antiqua",
+  "courier new", "courier", "lucida sans", "lucida", "arial black", "impact",
+]);
+/** Generic CSS font families — an ultimate fallback the client always resolves. */
+export const GENERIC_FONT_FAMILIES = new Set([
+  "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+  "ui-serif", "ui-sans-serif", "ui-monospace",
+]);
 
 import type { DeliverabilityReport } from "./types";
 export const EMPTY_DELIVERABILITY: DeliverabilityReport = { domain: "", checks: [], score: 0, issues: [] };

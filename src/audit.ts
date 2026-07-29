@@ -7,10 +7,12 @@ import { analyzeImagesFromDom } from "./image-analyzer";
 import { extractInboxPreviewFromDom } from "./inbox-preview";
 import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
+import { checkOverflowFromDom } from "./overflow-checker";
+import { checkVisualFromDom } from "./visual-checker";
 import { fromHtml } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
-  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL,
 } from "./constants";
 import type {
   CSSWarning,
@@ -23,6 +25,8 @@ import type {
   InboxPreview,
   SizeReport,
   TemplateReport,
+  OverflowReport,
+  VisualReport,
 } from "./types";
 
 export interface AuditOptions {
@@ -30,7 +34,7 @@ export interface AuditOptions {
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual">;
 }
 
 export interface AuditReport {
@@ -45,6 +49,8 @@ export interface AuditReport {
   inboxPreview: InboxPreview;
   size: SizeReport;
   templateVariables: TemplateReport;
+  overflow: OverflowReport;
+  visual: VisualReport;
 }
 
 /** Unified empty report for blank input — hands out the same singletons every checker uses. */
@@ -57,6 +63,8 @@ export const EMPTY_AUDIT: AuditReport = {
   inboxPreview: EMPTY_INBOX_PREVIEW,
   size: EMPTY_SIZE,
   templateVariables: EMPTY_TEMPLATE,
+  overflow: EMPTY_OVERFLOW,
+  visual: EMPTY_VISUAL,
 };
 
 /**
@@ -81,8 +89,10 @@ export function runAudit(
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
+  const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($);
+  const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables };
+  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual };
 }
 
 /**
