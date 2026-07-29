@@ -7,12 +7,14 @@ import { analyzeImagesFromDom } from "./image-analyzer";
 import { extractInboxPreviewFromDom } from "./inbox-preview";
 import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
+import { checkOverflowFromDom } from "./overflow-checker";
+import { checkVisualFromDom } from "./visual-checker";
 import { transformForClient, transformForAllClients } from "./transform";
 import { simulateDarkMode } from "./dark-mode";
 import {
   MAX_HTML_SIZE,
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
-  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL,
 } from "./constants";
 import type {
   CSSWarning,
@@ -25,6 +27,8 @@ import type {
   InboxPreview,
   SizeReport,
   TemplateReport,
+  OverflowReport,
+  VisualReport,
   TransformResult,
 } from "./types";
 import { runAudit, EMPTY_AUDIT } from "./audit";
@@ -93,6 +97,12 @@ export interface EmailSession {
 
   /** Scan for unresolved template/merge variables (shares pre-parsed DOM). */
   checkTemplateVariables(): TemplateReport;
+
+  /** Detect content likely to overflow the frame / viewport (shares pre-parsed DOM). */
+  checkOverflow(): OverflowReport;
+
+  /** Detect probable visual bugs in stylized emails, with fixes (shares pre-parsed DOM). */
+  checkVisual(): VisualReport;
 
   /**
    * Transform HTML for a specific client.
@@ -167,6 +177,8 @@ export function createSession(
       extractInboxPreview: () => EMPTY_INBOX_PREVIEW,
       checkSize: () => EMPTY_SIZE,
       checkTemplateVariables: () => EMPTY_TEMPLATE,
+      checkOverflow: () => EMPTY_OVERFLOW,
+      checkVisual: () => EMPTY_VISUAL,
       transformForClient: (clientId) => ({ clientId, html: html || "", warnings: [] }),
       transformForAllClients: () => [],
       simulateDarkMode: (clientId) => ({ html: html || "", warnings: [] }),
@@ -223,6 +235,14 @@ export function createSession(
 
     checkTemplateVariables() {
       return checkTemplateVariablesFromDom($);
+    },
+
+    checkOverflow() {
+      return checkOverflowFromDom($);
+    },
+
+    checkVisual() {
+      return checkVisualFromDom($);
     },
 
     // Transforms create isolated copies since they mutate the DOM

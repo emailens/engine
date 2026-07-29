@@ -9,7 +9,7 @@
 
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-653%20passing-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-719%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
 [![GitHub stars](https://img.shields.io/github/stars/emailens/engine?style=flat)](https://github.com/emailens/engine/stargazers)
@@ -20,9 +20,9 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your HTML against 250+ CSS properties across 15 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
+`@emailens/engine` analyzes your HTML against 250+ CSS properties across 21 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
-Our data says you need this: across the 251 CSS and HTML features we track, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
+Our data says you need this: across the 255 CSS and HTML features we track, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
 
 ![emailens lint output showing errors and warnings across email clients](./docs/lint-demo.png)
 
@@ -103,9 +103,11 @@ const { code } = await generateAiFix({
 
 ## What It Catches
 
-8 analysis engines, one `auditEmail()` call.
+10 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility** — 250+ properties tested across 15 email clients, with fix snippets and AI-powered auto-fix
+- **CSS compatibility** — 250+ properties tested across 21 email clients, with fix snippets and AI-powered auto-fix
+- **Content overflow** — fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
+- **Visual bugs** — gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix
 - **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
 - **Accessibility** — WCAG contrast ratios, alt text, semantic structure, heading hierarchy
 - **Link validation** — broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
@@ -171,12 +173,18 @@ A typical pipeline: write in **mjml** or **maizzle** → inline with **juice** �
 | Outlook Classic | `outlook-windows-legacy` | Desktop | Microsoft Word | Yes |
 | Outlook iOS | `outlook-ios` | Mobile | Outlook Mobile | Yes |
 | Outlook Android | `outlook-android` | Mobile | Outlook Mobile | Yes |
+| Outlook for Mac | `outlook-macos` | Desktop | WebKit | Yes |
 | Apple Mail | `apple-mail-macos` | Desktop | WebKit | Yes |
 | Apple Mail iOS | `apple-mail-ios` | Mobile | WebKit | Yes |
 | Yahoo Mail | `yahoo-mail` | Webmail | Yahoo | Yes |
+| Yahoo Mail Android | `yahoo-mail-android` | Mobile | Yahoo | Yes |
+| Yahoo Mail iOS | `yahoo-mail-ios` | Mobile | Yahoo | Yes |
 | Samsung Mail | `samsung-mail` | Mobile | Samsung | Yes |
 | Thunderbird | `thunderbird` | Desktop | Gecko | No |
 | HEY Mail | `hey-mail` | Webmail | WebKit | Yes |
+| Proton Mail | `protonmail` | Webmail | Proton | Yes |
+| AOL Mail | `aol` | Webmail | AOL | Yes |
+| Fastmail | `fastmail` | Webmail | Fastmail | Yes |
 | Superhuman | `superhuman` | Desktop | Blink | Yes |
 
 ## API Documentation
@@ -209,7 +217,14 @@ Concrete bugs go in [Issues](https://github.com/emailens/engine/issues). Open-en
 Contributions are welcome! See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for architecture overview, setup instructions, and PR guidelines.
 
 ```bash
-bun install && bun test   # 653 tests
+bun install && bun test   # 719 tests
+```
+
+Optional real-render validation — renders engine output in a real browser engine (free, no Litmus/Email on Acid needed). Off by default; needs a browser-capable machine:
+
+```bash
+bunx playwright install chromium
+bun run test:render
 ```
 
 ### Data Maintenance

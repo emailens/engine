@@ -113,6 +113,7 @@ Rules:
   - position:absolute → use <table> cells for layout
   - <svg> → replace with <img> pointing to a hosted PNG
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.
+- For "Layout & Visual Issues", apply the provided Fix directly: add the background-color fallback beneath a gradient/image, append a web-safe font to the stack, and constrain fixed widths wider than the frame to width:100% with max-width.
 - Apply ALL fixes from the issues list — do not skip any.
 - Use the framework syntax specified (JSX/MJML/Maizzle/HTML).
 - For JSX: use camelCase style props, React Email components, and proper TypeScript types.

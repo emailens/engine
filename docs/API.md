@@ -24,6 +24,8 @@
   - [`extractInboxPreview`](#extractinboxpreviewhtml-string-inboxpreview)
   - [`checkSize`](#checksizehtml-string-sizereport)
   - [`checkTemplateVariables`](#checktemplatevariableshtml-string-templatereport)
+  - [`checkOverflow`](#checkoverflowhtml-string-overflowreport)
+  - [`checkVisual`](#checkvisualhtml-string-visualreport)
 - [Transforms & Dark Mode](#transforms--dark-mode)
   - [`transformForClient`](#transformforclienthtml-clientid-framework-transformresult)
   - [`transformForAllClients`](#transformforallclientshtml-framework-transformresult)
@@ -73,6 +75,8 @@ const report = auditEmail(html, {
 // report.inboxPreview            — InboxPreview
 // report.size                    — SizeReport
 // report.templateVariables       — TemplateReport
+// report.overflow                — OverflowReport
+// report.visual                  — VisualReport
 ```
 
 **`AuditOptions`:**
@@ -101,6 +105,8 @@ const images = session.analyzeImages();
 const preview = session.extractInboxPreview();
 const size = session.checkSize();
 const templates = session.checkTemplateVariables();
+const overflow = session.checkOverflow();
+const visual = session.checkVisual();
 
 // Or run everything at once:
 const report = session.audit();
@@ -127,9 +133,11 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `extractInboxPreview()` | Yes | Subject line and preheader extraction |
 | `checkSize()` | Yes | Gmail clipping size check |
 | `checkTemplateVariables()` | Yes | Unresolved template variable detection |
+| `checkOverflow()` | Yes | Content overflow (fixed widths, unbreakable strings) |
+| `checkVisual()` | Yes | Visual bugs in stylized emails (background/font fallbacks) |
 | `checkDeliverability(domain)` | — | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
 | `transformForClient(clientId)` | No | Transform for one client |
-| `transformForAllClients()` | No | Transform for all 15 clients |
+| `transformForAllClients()` | No | Transform for all 21 clients |
 | `simulateDarkMode(clientId)` | No | Dark mode simulation |
 
 **When to use sessions vs standalone functions:**
@@ -144,7 +152,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 
 ### `analyzeEmail(html: string, framework?: Framework): CSSWarning[]`
 
-Analyzes an HTML email and returns CSS compatibility warnings for all 15 email clients. Detects `<style>`, `<link>`, `<svg>`, `<video>`, `<form>`, inline CSS properties, `@font-face`, `@media` queries, gradients, flexbox/grid, and more.
+Analyzes an HTML email and returns CSS compatibility warnings for all 21 email clients. Detects `<style>`, `<link>`, `<svg>`, `<video>`, `<form>`, inline CSS properties, `@font-face`, `@media` queries, gradients, flexbox/grid, and more.
 
 The optional `framework` parameter controls which fix snippets are attached to warnings. Analysis always runs on compiled HTML.
 
@@ -317,6 +325,32 @@ const report = checkTemplateVariables(html);
 
 **Detects:** `{{var}}` (Handlebars/Mustache), `${var}` (ES template literals), `<%= %>` (ERB/EJS), `*|TAG|*` (Mailchimp), `%%tag%%` (Salesforce), `{merge_field}` (single-brace).
 
+### `checkOverflow(html: string): OverflowReport`
+
+Detects content likely to overflow the email frame or mobile viewport — a client-agnostic layout check. Scans inline styles and `<style>` rules (incl. inside `@media`).
+
+```typescript
+import { checkOverflow } from "@emailens/engine";
+
+const report = checkOverflow(html);
+// { hasOverflow: true, issues: [{ rule: "fixed-width-overflow", severity: "warning", message: "…", detail: "…" }] }
+```
+
+**Detects:** fixed pixel widths wider than the email frame with no `width:100%`/`max-width:100%` escape (`fixed-width-overflow`); long unbreakable strings — raw URLs, tokens — that can't wrap (`unbreakable-string`, skipped when the email already uses `overflow-wrap`/`word-break`).
+
+### `checkVisual(html: string): VisualReport`
+
+Detects probable visual bugs in stylized emails — graceful-degradation failures that render visibly wrong. Each issue carries a concrete `fix`. Scans inline styles and `<style>` rules.
+
+```typescript
+import { checkVisual } from "@emailens/engine";
+
+const report = checkVisual(html);
+// issues: [{ rule: "missing-background-fallback", severity: "warning", message: "…", fix: "background-color: #2d1b4e;" }]
+```
+
+**Detects:** background images/gradients with no solid `background-color` — blank area (and hidden text) in Outlook (`missing-background-fallback`, gradient fallback computed from the first color stop); `font-family` stacks with no web-safe fallback — Times New Roman in Gmail/Outlook (`missing-font-fallback`, web-safe family appended).
+
 ---
 
 ## Transforms & Dark Mode
@@ -327,7 +361,7 @@ Transforms HTML for a specific email client — strips unsupported CSS, inlines 
 
 ### `transformForAllClients(html, framework?): TransformResult[]`
 
-Transforms HTML for all 15 email clients at once.
+Transforms HTML for all 21 email clients at once.
 
 ### `simulateDarkMode(html, clientId): { html, warnings }`
 
@@ -433,6 +467,8 @@ The engine classifies every warning as either `css` (CSS-only swap) or `structur
 
 ### `generateAiFix(options): Promise<AiFixResult>`
 
+Also accepts optional `overflow` and `visual` arrays (from `checkOverflow()` / `checkVisual()`) — when passed, their findings and concrete fixes are folded into the prompt so the fixer repairs layout/visual bugs too, not just per-property compatibility warnings. Same options apply to `generateFixPrompt()`.
+
 ```typescript
 import { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "@emailens/engine";
 
@@ -480,7 +516,7 @@ The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For 
 |---|---|---|
 | `auditEmail()` | 1 parse + 8 analyses | Shared DOM, most efficient for full reports |
 | `createSession()` | 1 parse upfront | Amortized across all subsequent analysis calls |
-| `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 15 clients |
+| `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 21 clients |
 | `transformForAllClients()` | 15 parses (1 per client) | Each client mutates its own DOM copy |
 | `simulateDarkMode()` | 1 parse per call | Mutates DOM for color inversion |
 

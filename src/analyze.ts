@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
 import {
   CSS_SUPPORT,
+  CSS_SUPPORT_NOTES,
   STRUCTURAL_FIX_PROPERTIES,
   HTML_ELEMENT_FEATURES,
   AT_RULE_FEATURES,
@@ -174,6 +175,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   const parsedAtRules = new Set<string>();
   const parsedProperties = new Set<string>();
   const propertyLines = new Map<string, number>();
+  const propertyValues = new Map<string, string[]>();
   const detectedCssFunctions = new Set<string>();
   const detectedPseudoClasses = new Set<string>();
   const detectedPseudoElements = new Set<string>();
@@ -201,8 +203,14 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
               propertyLines.set(prop, node.loc.start.line);
             }
 
-            // Data-driven compound value detection
+            // Capture value(s) for value-aware support checks (a property may
+            // appear multiple times across rules).
             const valueStr = csstree.generate(node.value);
+            const seenValues = propertyValues.get(prop);
+            if (seenValues) seenValues.push(valueStr);
+            else propertyValues.set(prop, [valueStr]);
+
+            // Data-driven compound value detection
             for (const det of COMPOUND_DETECTORS) {
               if (prop === det.property && valueStr.includes(det.valueIncludes)) {
                 parsedProperties.add(det.key);
@@ -257,7 +265,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
-        checkPropertySupport(prop, addWarning, framework, selector);
+        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined);
       }
 
       // Data-driven CSS function detection in inline styles
@@ -276,7 +284,11 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   for (const prop of parsedProperties) {
     if (prop.includes(":")) continue;
     if (!cssPropertiesToCheck.includes(prop)) continue;
-    checkPropertySupport(prop, addWarning, framework, undefined, propertyLines.get(prop));
+    const values = propertyValues.get(prop);
+    checkPropertySupport(
+      prop, addWarning, framework, undefined, propertyLines.get(prop),
+      values ? values.join(" ") : undefined,
+    );
   }
 
   // Data-driven compound values from <style> blocks (display:flex, display:grid, display:none)
@@ -338,20 +350,89 @@ function getFixType(prop: string): FixType {
   return STRUCTURAL_FIX_PROPERTIES.has(prop) ? "structural" : "css";
 }
 
+/**
+ * Properties whose "partial" rating is value-level: the property usually
+ * renders fine and only a specific value breaks. For these we gate the warning
+ * on the value (using the per-client caniemail note) instead of flagging every
+ * use. Properties not listed here keep the plain "partial → warn" behaviour.
+ */
+const VALUE_CAVEAT_PROPS = new Set(["margin", "position", "overflow"]);
+
+const POSITION_KEYWORDS = ["relative", "absolute", "fixed", "sticky"] as const;
+
+/**
+ * Does `value` actually trigger this client's partial-support caveat? Driven by
+ * the caniemail note, which is per-client (e.g. Outlook supports `sticky` but
+ * not `relative`/`absolute`, whereas Yahoo supports only `relative`). Returns
+ * true = the warning is warranted, false = this value renders fine.
+ *
+ * ponytail: element-scoped caveats (margin on `<span>`/`<body>`) aren't checked
+ * here — we only have the value, not the element — so margin-on-span under-warns.
+ */
+function valueTriggersCaveat(prop: string, value: string, notes: string[] | undefined): boolean {
+  const note = (notes ?? []).join(" ");
+  const noteLc = note.toLowerCase();
+
+  if (prop === "margin") {
+    // Negative is unsupported everywhere that's "partial"; `auto` only where the
+    // note says so (e.g. Outlook), so don't flag `margin: 0 auto` on Gmail.
+    if (/(?:^|[\s:(])-\.?\d/.test(value) && noteLc.includes("negative")) return true;
+    if (/\bauto\b/.test(value) && noteLc.includes("auto")) return true;
+    return false;
+  }
+
+  if (prop === "position") {
+    const used = POSITION_KEYWORDS.find((k) => new RegExp(`\\b${k}\\b`).test(value));
+    if (!used) return false; // e.g. position: static — nothing breaks
+    // Note form: "Supports `x` [and `y`] but not `z`[, `w`]." — parse the "not" list.
+    const m = note.match(/supports\s+.+?\s+but not\s+([^.]+)/i);
+    if (m) return m[1].toLowerCase().includes(used);
+    // No parseable note (e.g. Superhuman override): fixed/sticky are the usual break.
+    return used === "fixed" || used === "sticky";
+  }
+
+  if (prop === "overflow") {
+    // caniemail's "partial" is about the logical `overflow-block`/`overflow-inline`
+    // values (separate props people rarely write) plus a "cannot scroll to hidden
+    // content" bug on some mobile clients. Physical `overflow: hidden`/`clip`
+    // (clipping) renders fine; only scrollable values hit the bug.
+    if (!/\b(?:auto|scroll)\b/.test(value)) return false;
+    return noteLc.includes("cannot scroll");
+  }
+
+  return true;
+}
+
+/**
+ * Turn caniemail cell notes into a message suffix. Strips the redundant
+ * "Partial."/"Buggy."/"Not supported." prefix since the message already states
+ * the support level.
+ */
+function noteSuffix(notes: string[] | undefined): string {
+  if (!notes?.length) return "";
+  const cleaned = notes
+    .map((n) => n.replace(/^(?:Partial|Buggy|Not supported)\.\s*/i, "").trim())
+    .filter(Boolean);
+  return cleaned.length ? ` ${cleaned.join(" ")}` : "";
+}
+
 function checkPropertySupport(
   prop: string,
   addWarning: (w: CSSWarning) => void,
   framework?: Framework,
   selector?: string,
   line?: number,
+  value?: string,
 ) {
   const supportData = CSS_SUPPORT[prop];
   if (!supportData) return;
 
   const fixType = getFixType(prop);
+  const valueGated = VALUE_CAVEAT_PROPS.has(prop);
 
   for (const client of EMAIL_CLIENTS) {
     const support: SupportLevel = supportData[client.id] || "unknown";
+    const notes = CSS_SUPPORT_NOTES[prop]?.[client.id];
     if (support === "unsupported") {
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
@@ -359,7 +440,7 @@ function checkPropertySupport(
         severity: "warning",
         client: client.id,
         property: prop,
-        message: `${client.name} does not support "${prop}".`,
+        message: `${client.name} does not support "${prop}".${noteSuffix(notes)}`,
         suggestion: sug.text,
         fix,
         fixType,
@@ -369,13 +450,17 @@ function checkPropertySupport(
           ? { fixIsGenericFallback: true } : {}),
       });
     } else if (support === "partial") {
+      // Value-aware: skip when we have the value and this client's caveat
+      // doesn't apply to it (e.g. margin: 16px, or position: relative on a
+      // client that only breaks on fixed/sticky).
+      if (valueGated && value !== undefined && !valueTriggersCaveat(prop, value, notes)) continue;
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
       addWarning({
         severity: "info",
         client: client.id,
         property: prop,
-        message: `${client.name} has partial support for "${prop}".`,
+        message: `${client.name} has partial support for "${prop}".${noteSuffix(notes)}`,
         suggestion: sug.text,
         fix,
         fixType,

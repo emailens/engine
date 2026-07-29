@@ -442,6 +442,7 @@ function superhumanAdditionalChecks(
 
 const EMPTY_SET: Set<string> = new Set();
 const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
+const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
@@ -536,6 +537,18 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripForms: false,
     stripSvg: false,
   },
+  "outlook-macos": {
+    id: "outlook-macos",
+    // caniemail: the new (WebKit) Outlook for Mac supports position/transform/
+    // animation/box-shadow/opacity — only transition is unsupported. It is NOT
+    // the Word engine, so do not mirror outlook-web's broader strip set.
+    strippedProperties: new Set(["transition"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+  },
   "apple-mail-macos": {
     id: "apple-mail-macos",
     strippedProperties: EMPTY_SET,
@@ -558,7 +571,27 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "yahoo-mail": {
     id: "yahoo-mail",
-    strippedProperties: new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]),
+    strippedProperties: YAHOO_STRIPPED,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: yahooAdditionalChecks,
+  },
+  "yahoo-mail-android": {
+    id: "yahoo-mail-android",
+    strippedProperties: YAHOO_STRIPPED,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: false,
+    stripForms: false,
+    stripSvg: false,
+    additionalChecks: yahooAdditionalChecks,
+  },
+  "yahoo-mail-ios": {
+    id: "yahoo-mail-ios",
+    strippedProperties: YAHOO_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -597,6 +630,40 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripForms: true,
     stripSvg: false,
     additionalChecks: heyAdditionalChecks,
+  },
+  // ponytail: strip sets below are data-driven from caniemail (the same source
+  // as CSS_SUPPORT), not hand-guessed — no manual re-verification debt.
+  "protonmail": {
+    id: "protonmail",
+    // caniemail: strips animation + external stylesheets + forms; supports
+    // position/transform/box-shadow/opacity/svg.
+    strippedProperties: new Set(["animation"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: false,
+  },
+  "aol": {
+    id: "aol",
+    // caniemail: restrictive — drops animation, box-shadow, opacity, transform,
+    // external stylesheets, and SVG. Forms are kept.
+    strippedProperties: new Set(["animation", "box-shadow", "opacity", "transform"]),
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: true,
+    stripForms: false,
+    stripSvg: true,
+  },
+  "fastmail": {
+    id: "fastmail",
+    // caniemail: renders modern CSS but strips external stylesheets, forms, SVG.
+    strippedProperties: EMPTY_SET,
+    stripMode: "strip",
+    inlineAndStripStyles: false,
+    stripExternalStylesheets: true,
+    stripForms: true,
+    stripSvg: true,
   },
   "superhuman": {
     id: "superhuman",

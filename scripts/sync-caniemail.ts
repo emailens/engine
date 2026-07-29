@@ -30,18 +30,24 @@ const CLIENT_MAP: Record<string, string> = {
   "outlook.windows-mail": "outlook-windows-legacy",
   "outlook.ios": "outlook-ios",
   "outlook.android": "outlook-android",
+  "outlook.macos": "outlook-macos",
   "samsung-email.android": "samsung-mail",
   "thunderbird.macos": "thunderbird",
   "hey.desktop-webmail": "hey-mail",
+  "yahoo.android": "yahoo-mail-android",
+  "yahoo.ios": "yahoo-mail-ios",
+  "protonmail.desktop-webmail": "protonmail",
+  "aol.desktop-webmail": "aol",
+  "fastmail.desktop-webmail": "fastmail",
   // superhuman is manually provided
 };
 
 const ALL_ENGINE_CLIENTS = [
   "gmail-web", "gmail-android", "gmail-ios",
-  "outlook-web", "outlook-windows", "outlook-windows-legacy", "outlook-ios", "outlook-android",
+  "outlook-web", "outlook-windows", "outlook-windows-legacy", "outlook-ios", "outlook-android", "outlook-macos",
   "apple-mail-macos", "apple-mail-ios",
-  "yahoo-mail", "samsung-mail", "thunderbird",
-  "hey-mail", "superhuman",
+  "yahoo-mail", "yahoo-mail-android", "yahoo-mail-ios", "samsung-mail", "thunderbird",
+  "hey-mail", "protonmail", "aol", "fastmail", "superhuman",
 ];
 
 type SupportLevel = "supported" | "partial" | "unsupported" | "unknown";
@@ -94,6 +100,26 @@ function getLatestSupport(versions: Record<string, string>): SupportLevel {
   entries.sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
   const [, code] = entries[entries.length - 1];
   return mapSupportCode(code);
+}
+
+/**
+ * Resolve the caveat note(s) attached to the latest version's support code.
+ * caniemail encodes the "why" behind partial/buggy/unsupported ratings as
+ * `#N` references (e.g. "a #1") into the feature's notes_by_num map. We keep
+ * these so warnings can cite the specific caveat instead of a generic
+ * "partial support" message.
+ */
+function getLatestNotes(
+  versions: Record<string, string>,
+  notesByNum: Record<string, string> | null,
+): string[] {
+  if (!notesByNum) return [];
+  const entries = Object.entries(versions);
+  if (entries.length === 0) return [];
+  entries.sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
+  const [, code] = entries[entries.length - 1];
+  const refs = [...code.matchAll(/#(\d+)/g)].map((mm) => mm[1]);
+  return refs.map((r) => notesByNum[r]).filter((t): t is string => Boolean(t));
 }
 
 // ── Property key normalization ──────────────────────────────────────────────
@@ -165,6 +191,8 @@ const SLUG_TO_KEY: Record<string, string> = {
   "css-pseudo-class-disabled": ":disabled",
   "css-pseudo-class-enabled": ":enabled",
   "css-pseudo-class-focus": ":focus",
+  "css-pseudo-class-focus-visible": ":focus-visible",
+  "css-pseudo-class-focus-within": ":focus-within",
   "css-pseudo-class-has": ":has",
   "css-pseudo-class-is": ":is",
   "css-pseudo-class-root": ":root",
@@ -257,6 +285,9 @@ async function main() {
 
   // Build support matrix
   const matrix: Record<string, Record<string, SupportLevel>> = {};
+  // Parallel matrix of caniemail caveat notes, keyed the same way. Sparse:
+  // only cells that actually have a note are present.
+  const notesMatrix: Record<string, Record<string, string[]>> = {};
   const featureMeta: Record<string, { title: string; category: string; slug: string }> = {};
 
   for (const feature of data.data) {
@@ -265,6 +296,7 @@ async function main() {
 
     // Extract support for each of our engine clients
     const clientSupport: Record<string, SupportLevel> = {};
+    const clientNotes: Record<string, string[]> = {};
 
     for (const [canieClientName, platforms] of Object.entries(feature.stats)) {
       for (const [platform, versions] of Object.entries(platforms)) {
@@ -274,6 +306,8 @@ async function main() {
 
         const support = getLatestSupport(versions);
         clientSupport[engineClientId] = support;
+        const notes = getLatestNotes(versions, feature.notes_by_num);
+        if (notes.length) clientNotes[engineClientId] = notes;
       }
     }
 
@@ -300,10 +334,14 @@ async function main() {
       for (const clientId of ALL_ENGINE_CLIENTS) {
         if (matrix[key][clientId] === "unknown" && clientSupport[clientId] !== "unknown") {
           matrix[key][clientId] = clientSupport[clientId];
+          if (clientNotes[clientId]) {
+            (notesMatrix[key] ??= {})[clientId] = clientNotes[clientId];
+          }
         }
       }
     } else {
       matrix[key] = clientSupport;
+      if (Object.keys(clientNotes).length) notesMatrix[key] = clientNotes;
       featureMeta[key] = { title: feature.title, category: feature.category, slug: feature.slug };
     }
   }
@@ -352,7 +390,7 @@ async function main() {
   }
 
   // Generate the TypeScript file
-  const output = generateTsFile(sortedKeys, matrix, featureMeta, data.last_update_date);
+  const output = generateTsFile(sortedKeys, matrix, notesMatrix, featureMeta, data.last_update_date);
 
   // Write to disk
   const outPath = new URL("../src/rules/css-support.ts", import.meta.url).pathname;
@@ -366,6 +404,7 @@ async function main() {
 function generateTsFile(
   sortedKeys: string[],
   matrix: Record<string, Record<string, SupportLevel>>,
+  notesMatrix: Record<string, Record<string, string[]>>,
   _meta: Record<string, { title: string; category: string; slug: string }>,
   lastUpdate: string,
 ): string {
@@ -408,6 +447,31 @@ function generateTsFile(
     lines.push(`  },`);
   }
 
+  lines.push(`};`);
+  lines.push(``);
+
+  // Per-cell caveat notes from caniemail (sparse — only cells that have one).
+  // Used by analyze.ts to make partial/unsupported warnings specific and
+  // value-aware (e.g. only flag `margin` on negative/auto values).
+  const noteKeys = sortedKeys.filter((k) => notesMatrix[k] && Object.keys(notesMatrix[k]).length);
+  lines.push(`/**`);
+  lines.push(` * Caveat notes per (feature, client) from caniemail — the "why" behind a`);
+  lines.push(` * partial/buggy/unsupported rating. Sparse: only cells with a note appear.`);
+  lines.push(` */`);
+  lines.push(`export const CSS_SUPPORT_NOTES: Record<`);
+  lines.push(`  string,`);
+  lines.push(`  Record<string, string[]>`);
+  lines.push(`> = {`);
+  for (const key of noteKeys) {
+    lines.push(`  ${JSON.stringify(key)}: {`);
+    for (const clientId of ALL_ENGINE_CLIENTS) {
+      const notes = notesMatrix[key][clientId];
+      if (notes && notes.length) {
+        lines.push(`    ${JSON.stringify(clientId)}: ${JSON.stringify(notes)},`);
+      }
+    }
+    lines.push(`  },`);
+  }
   lines.push(`};`);
   lines.push(``);
 
@@ -488,7 +552,13 @@ function generateTsFile(
   return lines.join("\n");
 }
 
-main().catch((err) => {
-  console.error("sync-caniemail failed:", err);
-  process.exit(1);
-});
+// Only run when executed directly (`bun run sync:caniemail`), not when imported
+// by unit tests for the pure helpers below.
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("sync-caniemail failed:", err);
+    process.exit(1);
+  });
+}
+
+export { mapSupportCode, getLatestSupport, getLatestNotes };

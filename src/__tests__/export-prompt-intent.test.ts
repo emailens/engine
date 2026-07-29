@@ -8,6 +8,24 @@ const base = {
   scope: "all" as const,
 };
 
+describe("generateFixPrompt layout & visual issues", () => {
+  test("folds overflow + visual findings (with their fixes) into the prompt", () => {
+    const prompt = generateFixPrompt({
+      ...base,
+      overflow: [{ rule: "fixed-width-overflow", severity: "warning", message: "too wide", detail: "shrink it" }],
+      visual: [{ rule: "missing-background-fallback", severity: "warning", message: "no fallback", fix: "background-color: #2d1b4e;" }],
+    });
+    expect(prompt).toContain("## Layout & Visual Issues");
+    expect(prompt).toContain("fixed-width-overflow");
+    expect(prompt).toContain("missing-background-fallback");
+    expect(prompt).toContain("Fix: `background-color: #2d1b4e;`");
+  });
+
+  test("omits the section when there are no layout/visual issues", () => {
+    expect(generateFixPrompt({ ...base })).not.toContain("## Layout & Visual Issues");
+  });
+});
+
 describe("generateFixPrompt intent", () => {
   test("includes the intent section when intent is provided", () => {
     const prompt = generateFixPrompt({ ...base, intent: "keep the gradient header" });

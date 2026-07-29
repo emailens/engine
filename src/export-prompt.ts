@@ -1,4 +1,4 @@
-import type { CSSWarning } from "./types";
+import type { CSSWarning, OverflowIssue, VisualIssue } from "./types";
 import { getClient, EMAIL_CLIENTS } from "./clients";
 
 export type ExportScope = "all" | "current";
@@ -15,6 +15,10 @@ export interface ExportPromptOptions {
   format?: "html" | "jsx" | "mjml" | "maizzle";
   /** Optional user goal for the fix (e.g. "keep the gradient header"). */
   intent?: string;
+  /** Content-overflow findings (from checkOverflow) — folded into the fix prompt. */
+  overflow?: OverflowIssue[];
+  /** Visual-bug findings with fixes (from checkVisual) — folded into the fix prompt. */
+  visual?: VisualIssue[];
 }
 
 export function generateFixPrompt(options: ExportPromptOptions): string {
@@ -26,6 +30,8 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     selectedClientId,
     format = "html",
     intent,
+    overflow,
+    visual,
   } = options;
 
   const filteredWarnings =
@@ -133,6 +139,21 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     }
 
     sections.push(issueSection);
+  }
+
+  // 5b. Layout & visual issues (client-agnostic rendering bugs with fixes).
+  const layoutIssues: Array<{ rule: string; message: string; detail?: string; fix?: string }> = [
+    ...(overflow ?? []),
+    ...(visual ?? []),
+  ];
+  if (layoutIssues.length > 0) {
+    let s = `## Layout & Visual Issues\n\nClient-agnostic rendering bugs. Apply each fix directly to the code.\n`;
+    for (const issue of layoutIssues) {
+      s += `\n- **${issue.rule}**: ${issue.message}`;
+      if (issue.detail) s += `\n  - ${issue.detail}`;
+      if (issue.fix) s += `\n  - Fix: \`${issue.fix}\``;
+    }
+    sections.push(s);
   }
 
   // 6. Instructions

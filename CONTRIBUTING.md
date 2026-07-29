@@ -32,9 +32,9 @@ The package ships three entry points (configured in `tsup.config.ts`):
 ```
 src/
 ├── index.ts                  # Public re-exports for main entry point
-├── audit.ts                  # auditEmail() — shared DOM parse, runs all 8 analyzers
+├── audit.ts                  # auditEmail() — shared DOM parse, runs all 10 analyzers
 ├── session.ts                # createSession() — pre-parsed DOM, exposes all methods
-├── analyze.ts                # CSS compatibility analysis (250+ properties × 15 clients)
+├── analyze.ts                # CSS compatibility analysis (250+ properties × 21 clients)
 ├── spam-scorer.ts            # Heuristic spam scoring (45+ signals)
 ├── link-validator.ts         # Static link analysis (no network requests)
 ├── accessibility-checker.ts  # WCAG accessibility audit
@@ -121,7 +121,7 @@ The engine relies on a mix of automated and manually-curated data. Run `bun run 
 
 | Data | Source | Script | Frequency |
 |---|---|---|---|
-| CSS support matrix (251 features × 15 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
+| CSS support matrix (255 features × 21 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
 
 ### Manually-Curated Data
 
@@ -148,7 +148,7 @@ This script scans all data files for their verification dates and reports which 
 Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
 1. **Check caniemail.com** — look up the property's support across email clients
-2. **Add the entry to `src/rules/css-support.ts`** — add a new key to `CSS_SUPPORT` with support levels for all 15 clients:
+2. **Add the entry to `src/rules/css-support.ts`** — add a new key to `CSS_SUPPORT` with support levels for all 21 clients:
    ```typescript
    "aspect-ratio": {
      "gmail-web": "unsupported",
@@ -176,25 +176,22 @@ Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
 ## How to Add a New Email Client
 
-Adding a new email client (e.g., ProtonMail):
+Adding a new email client (e.g., Mail.ru). Support data is auto-generated, so the flow is mostly wiring + a re-sync:
 
-1. **Define the client in `src/clients.ts`**:
+1. **Map it in the sync script** (`scripts/sync-caniemail.ts`) — if the client is on caniemail.com, add its platform to `CLIENT_MAP` and its id to `ALL_ENGINE_CLIENTS`:
    ```typescript
-   {
-     id: "protonmail",
-     name: "ProtonMail",
-     category: "webmail",
-     engine: "ProtonMail",
-     darkModeSupport: true,
-     icon: "mail",
-   },
+   "mail-ru.desktop-webmail": "mailru",   // CLIENT_MAP
+   // ...and add "mailru" to ALL_ENGINE_CLIENTS
    ```
-2. **Add support data** — add a `"protonmail"` key to every entry in `CSS_SUPPORT` in `src/rules/css-support.ts` (251 entries)
-3. **Add dark mode behavior** — update `src/dark-mode.ts` with the client's dark mode inversion strategy (full, partial, or none)
-4. **Add transform rules** — update `src/transform.ts` if the client has specific CSS stripping or inlining behavior
-5. **Add inbox preview truncation** — if applicable, update `src/inbox-preview.ts` with subject/preheader length limits
-6. **Add tests** — pattern-match against existing client tests in `src/__tests__/engine.test.ts`
-7. **Run the full suite** — `bun test` to verify nothing regresses
+2. **Define the client in `src/clients.ts`** — add an `EMAIL_CLIENTS` entry:
+   ```typescript
+   { id: "mailru", name: "Mail.ru", category: "webmail", engine: "Mail.ru", darkModeSupport: true, icon: "mail" },
+   ```
+3. **Add a transform config** — add a `"mailru"` entry to `CLIENT_CONFIGS` in `src/transform.ts`. Derive the stripped properties from the client's caniemail data (don't hand-guess). For a client **not** on caniemail, add a manual overrides file like `scripts/superhuman-overrides.ts` instead.
+4. **Regenerate the matrix** — `bun run sync:caniemail` fills in `CSS_SUPPORT` / `CSS_SUPPORT_NOTES` for the new column across all entries automatically.
+5. **Add dark mode / inbox-preview behavior** — update `src/dark-mode.ts` and `src/inbox-preview.ts` if the client has specific behavior.
+6. **Add tests** — the `transformForAllClients` invariant already requires every registered client to have a transform config; pattern-match existing client tests in `src/__tests__/engine.test.ts`.
+7. **Run the full suite** — `bun test` to verify nothing regresses.
 
 ## How to Add a New Analyzer
 

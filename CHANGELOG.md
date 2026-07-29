@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Visual-bug detection with fixes (`checkVisual()`, and a `visual` section in `auditEmail()`).** Catches probable rendering bugs in stylized emails — a graceful-degradation class distinct from per-property support: background images/gradients with no solid `background-color` (they render as a blank area, and can hide overlaid text, in Outlook), and `font-family` stacks with no web-safe fallback (Gmail/Outlook fall back to Times New Roman). Each issue carries a concrete `fix` — for gradients the fallback color is computed from the first stop; for fonts a web-safe family is appended. Available standalone, via `EmailSession.checkVisual()`, and in the audit; skippable with `skip: ["visual"]`.
+
+- **Content-overflow detection (`checkOverflow()`, and an `overflow` section in `auditEmail()`).** A client-agnostic layout check that flags content likely to force horizontal scrolling: fixed pixel widths wider than the email frame (with no `width:100%`/`max-width:100%` escape), and long unbreakable strings (raw URLs, tokens) that can't wrap. Available standalone, via `EmailSession.checkOverflow()`, and in the unified audit; skippable with `skip: ["overflow"]`.
+
+- **`CSS_SUPPORT_NOTES` — the per-client caveat behind every partial/buggy/unsupported rating**, captured from caniemail (e.g. `margin` → "Negative values are not supported"; `position` → "Supports `sticky` but not `relative`, `absolute` and `fixed`"). Previously the sync discarded these. Warnings now cite the specific caveat instead of a generic "partial support" message.
+
+- **Six new email clients: `outlook-macos` (Outlook for Mac), `yahoo-mail-android`, `yahoo-mail-ios`, `protonmail` (Proton Mail), `aol` (AOL Mail), and `fastmail`.** All are backed by verified caniemail.com data (242–306 features known each) and are first-class across the analyzer and `transformForClient()`/`transformForAllClients()`. Outlook for Mac uses the WebKit web-rendering engine (mirrors `outlook-web`, not the Word engine) and the Yahoo mobile apps mirror `yahoo-mail`; the three webmail additions get per-client transform behaviour derived directly from their caniemail data (e.g. Proton Mail strips `animation`, external stylesheets, and forms; AOL additionally drops `box-shadow`/`opacity`/`transform`). The support matrix now covers **21 clients**.
+
+### Changed
+
+- **`generateFixPrompt()` / `generateAiFix()` now fold in content-overflow and visual-bug findings.** New optional `overflow` and `visual` options (arrays from `checkOverflow()` / `checkVisual()`) render a "Layout & Visual Issues" section in the fix prompt, each with its concrete fix (computed gradient fallback, appended web-safe font, width constraint). This lets the AI fixer/builder repair these rendering bugs on an existing email, not just per-property CSS-compatibility warnings.
+
+- **Refreshed the caniemail.com support data (synced 2026-07-20, up from 2026-02-16).** The matrix grows from 251 to **255 features**: adds `font-size-adjust`, `inert`, `:focus-visible`, and `:focus-within`, and updates 9 support cells — most notably `display: grid` is now recognised as supported in Gmail web, Outlook iOS/Android, and Yahoo Mail.
+
+- **Partial-support warnings for `margin`, `position`, and `overflow` are now value-aware and per-client** — a precision fix. Previously every use of these near-universal properties produced an info warning across every partial client (e.g. `margin: 16px` warned in 12 clients). Now the warning fires only when the *value* actually hits that client's caveat: `margin` on negative/`auto` values (and `auto` only where the client's note flags it), `position` on the specific keyword each client doesn't support (Outlook drops `relative`/`absolute` but renders `sticky`; Yahoo supports only `relative`), and `overflow` only on scrollable values for the mobile clients with the "can't scroll to hidden content" bug (`overflow: hidden` no longer warns). This substantially cuts false-positive info warnings and makes the survivors specific. Warning *counts and messages change* — regenerate any cached/snapshotted analyzer output downstream.
+
 ## 0.9.6
 
 ### Added

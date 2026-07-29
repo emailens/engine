@@ -14,7 +14,7 @@
  */
 import { describe, expect, it, mock, beforeEach } from "bun:test";
 import { analyzeEmail, CSS_SUPPORT } from "../index";
-import { GMAIL_STRIPPED_PROPERTIES } from "../rules/css-support";
+import { GMAIL_STRIPPED_PROPERTIES, CSS_SUPPORT_NOTES } from "../rules/css-support";
 import { checkDeliverability } from "../deliverability-checker";
 import type { DnsResolver } from "../deliverability-checker";
 
@@ -189,6 +189,20 @@ describe("pseudo-selector and pseudo-element detection", () => {
     }
   });
 
+  // Regression: :focus-visible / :focus-within must be keyed with the colon
+  // prefix (via SLUG_TO_KEY), or analyzeEmail — which looks up `:${name}` —
+  // can never match them and the support data is dead.
+  it.each([":focus-visible", ":focus-within"])("detects %s in <style> blocks", (pseudo) => {
+    expect(CSS_SUPPORT[pseudo]).toBeDefined();
+    const html = `<html><head><style>button${pseudo} { outline: 2px solid blue; }</style></head><body><button>Go</button></body></html>`;
+    const warnings = analyzeEmail(html);
+    const hits = warnings.filter((w) => w.property === pseudo);
+    const unsupported = Object.values(CSS_SUPPORT[pseudo]).filter((v) => v === "unsupported");
+    if (unsupported.length > 0) {
+      expect(hits.length).toBeGreaterThan(0);
+    }
+  });
+
   it("does NOT produce pseudo warnings when no pseudo-selectors are used", () => {
     const html = `<html><head><style>.red { color: red; }</style></head><body><p class="red">Text</p></body></html>`;
     const warnings = analyzeEmail(html);
@@ -225,19 +239,21 @@ describe("GMAIL_STRIPPED_PROPERTIES consistency", () => {
 // ============================================================================
 
 describe("CSS property expansion from left/right/top/bottom", () => {
+  const clientCount = Object.keys(CSS_SUPPORT["left"]).length;
+
   it("has support data for 'right'", () => {
     expect(CSS_SUPPORT["right"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["right"]).length).toBe(15);
+    expect(Object.keys(CSS_SUPPORT["right"]).length).toBe(clientCount);
   });
 
   it("has support data for 'top'", () => {
     expect(CSS_SUPPORT["top"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["top"]).length).toBe(15);
+    expect(Object.keys(CSS_SUPPORT["top"]).length).toBe(clientCount);
   });
 
   it("has support data for 'bottom'", () => {
     expect(CSS_SUPPORT["bottom"]).toBeDefined();
-    expect(Object.keys(CSS_SUPPORT["bottom"]).length).toBe(15);
+    expect(Object.keys(CSS_SUPPORT["bottom"]).length).toBe(clientCount);
   });
 
   it("right/top/bottom have same support data as left", () => {
@@ -506,6 +522,69 @@ describe("CSS_SUPPORT matrix integrity (post-fix)", () => {
         expect(support[clientId]).toBeDefined();
         expect(["supported", "partial", "unsupported", "unknown"]).toContain(support[clientId]);
       }
+    }
+  });
+});
+
+// ============================================================================
+// Value-aware partial warnings — only flag a partial-support property on the
+// values that actually break, per each client's caniemail caveat note.
+// ============================================================================
+
+describe("value-aware partial warnings", () => {
+  const analyze = (decl: string) =>
+    analyzeEmail(`<html><body><div style="${decl}">x</div></body></html>`);
+  const warnsFor = (decl: string, client: string) => {
+    const prop = decl.split(":")[0].trim();
+    return analyze(decl).some((w) => w.property === prop && w.client === client);
+  };
+  const countFor = (decl: string) => {
+    const prop = decl.split(":")[0].trim();
+    return analyze(decl).filter((w) => w.property === prop).length;
+  };
+
+  it("ignores a safe margin, flags a negative one", () => {
+    expect(countFor("margin: 16px")).toBe(0);
+    expect(countFor("margin: -8px")).toBeGreaterThan(0);
+  });
+
+  it("flags margin: auto only where the client's note says auto is unsupported", () => {
+    expect(warnsFor("margin: 0 auto", "gmail-web")).toBe(false); // note: only negative
+    expect(warnsFor("margin: 0 auto", "outlook-windows")).toBe(true); // note: auto unsupported
+  });
+
+  it("gates position per-client from the caveat note", () => {
+    expect(warnsFor("position: sticky", "outlook-web")).toBe(false); // supports sticky
+    expect(warnsFor("position: absolute", "apple-mail-macos")).toBe(false); // supports absolute
+    expect(warnsFor("position: absolute", "yahoo-mail")).toBe(true); // relative-only
+    expect(warnsFor("position: relative", "outlook-web")).toBe(true); // sticky-only
+  });
+
+  it("suppresses overflow: hidden on partial clients, flags scroll on buggy ones", () => {
+    expect(warnsFor("overflow: hidden", "gmail-web")).toBe(false); // clipping works
+    expect(warnsFor("overflow: auto", "gmail-android")).toBe(true); // "cannot scroll" bug
+  });
+
+  it("enriches the warning message with the specific caveat note", () => {
+    const w = analyze("margin: -8px").find(
+      (x) => x.property === "margin" && x.client === "gmail-web",
+    );
+    expect(w?.message).toContain("Negative values");
+  });
+
+  // Guards against a caniemail resync changing note wording and silently
+  // breaking the per-client `position` value-gating parser.
+  it("every partial-position client has a parseable caveat note", () => {
+    const parseable = /supports\s+.+?\s+but not\s+/i;
+    for (const [client, level] of Object.entries(CSS_SUPPORT["position"])) {
+      if (level !== "partial") continue;
+      const note = (CSS_SUPPORT_NOTES["position"]?.[client] || []).join(" ");
+      // superhuman is a manual override with no caniemail note — uses a safe default.
+      if (client === "superhuman") {
+        expect(note).toBe("");
+        continue;
+      }
+      expect(note).toMatch(parseable);
     }
   });
 });
