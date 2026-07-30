@@ -10,6 +10,7 @@ import {
   CSS_FUNCTION_FEATURES,
 } from "./rules/css-support";
 import { EMAIL_CLIENTS } from "./clients";
+import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue } from "./style-utils";
 import { MAX_HTML_SIZE } from "./constants";
@@ -316,6 +317,9 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   for (const fn of detectedCssFunctions) {
     checkPropertySupport(fn, addWarning, framework, undefined, propertyLines.get(fn));
   }
+
+  // 6. Dark-mode opt-in / coverage (no-ops unless the email ships dark styles)
+  for (const w of checkDarkModeFromDom($)) addWarning(w);
 
   // Sort: errors first, then warnings, then info
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };

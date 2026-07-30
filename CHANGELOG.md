@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.1 — 2026-07-30
+
+### Added
+
+- **Dark-mode opt-in and coverage checks.** Two new analyzer warnings, both gated on the email actually shipping a `@media (prefers-color-scheme: dark)` block — emails with no dark styling are unaffected. `dark-mode-opt-in` fires when dark styles exist but neither `<meta name="color-scheme">` nor `<meta name="supported-color-schemes">` does, so Apple Mail and the other `prefers-color-scheme` clients may never enter dark mode and the media query silently never fires. `dark-mode-coverage` catches the **half-inverted render**: an element carrying a hardcoded light background (a `bgcolor` attribute or an inline `background`/`background-color`) that the dark block never overrides, so it stays white while the rest of the email inverts — the defect that leaves light text on a still-white card. Cascade-aware: an inline background needs an `!important` dark rule to be considered covered, a `bgcolor` attribute loses to any dark rule. Surfaced through `analyzeEmail()` and `auditEmail()` like every other compatibility warning; capped at 3 elements so a large email can't flood the report.
+
 ## 0.10.0 — 2026-07-29
 
 ### Added

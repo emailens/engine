@@ -7,9 +7,24 @@ import type { CSSWarning } from "./types";
 import { getClient } from "./clients";
 
 /** Luminance threshold — colors above this are considered "light" */
-const LIGHT_THRESHOLD = 0.7;
+export const LIGHT_THRESHOLD = 0.7;
 /** Luminance threshold — colors below this are considered "dark" */
 const DARK_THRESHOLD = 0.15;
+
+/**
+ * Clients whose `simulateDarkMode` branch below treats `prefers-color-scheme`
+ * as honoured — i.e. the ones that actually run an email's dark-mode CSS.
+ * Single source of truth, also used by `dark-mode-checker.ts`.
+ * Keep in sync with the switch below.
+ */
+export const PREFERS_COLOR_SCHEME_CLIENTS = [
+  "apple-mail-macos",
+  "apple-mail-ios",
+  "samsung-mail",
+  "thunderbird",
+  "hey-mail",
+  "superhuman",
+] as const;
 
 /**
  * Simulate dark mode rendering for an email.
