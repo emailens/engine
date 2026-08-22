@@ -62,8 +62,12 @@ export interface EmailSession {
    * Run all analysis checks in one call (shares pre-parsed DOM).
    *
    * Equivalent to `auditEmail()` but avoids re-parsing the HTML.
+   *
+   * `positions` is not accepted here: source positions are recorded at parse
+   * time, so the session's own option decides, and a per-call flag could only
+   * be ignored. Pass it to `createSession()` instead.
    */
-  audit(options?: Omit<AuditOptions, "framework">): AuditReport;
+  audit(options?: Omit<AuditOptions, "framework" | "positions">): AuditReport;
 
   /**
    * Analyze CSS compatibility warnings (shares pre-parsed DOM).
@@ -198,7 +202,7 @@ export function createSession(
     framework,
 
     audit(opts) {
-      return runAudit($, html, framework, { ...opts, positions: options?.positions });
+      return runAudit($, html, framework, opts);
     },
 
     analyze() {
@@ -234,7 +238,7 @@ export function createSession(
     },
 
     checkTemplateVariables() {
-      return checkTemplateVariablesFromDom($, options);
+      return checkTemplateVariablesFromDom($);
     },
 
     checkOverflow() {

@@ -12,20 +12,21 @@ import type { TemplateIssue, TemplateReport } from "./types";
  *
  * @internal Used by audit pipeline with pre-parsed DOM.
  */
-export function checkTemplateVariablesFromDom(
-  $: CheerioAPI,
-  options?: ParseOptions,
-): TemplateReport {
+export function checkTemplateVariablesFromDom($: CheerioAPI): TemplateReport {
   const issues: TemplateIssue[] = [];
   const seen = new Set<string>();
 
   // ── Scan visible text content ──
-  // With positions on, go node by node first so each finding carries the
-  // position of the text it was found in; the concatenated pass below then
-  // catches variables that straddle a node boundary (`{{ <b>name</b> }}`),
-  // which have no single node to point at. Without positions the node walk
-  // would find nothing the concatenated pass doesn't, so it is skipped.
-  for (const node of options?.positions ? visibleTextNodes($) : []) {
+  // Node by node first, so each finding carries the position of the text it
+  // was found in; then over the same nodes concatenated, which catches
+  // variables that straddle a node boundary (`{{ <b>name</b> }}`) and have no
+  // single node to point at.
+  const textNodes = visibleTextNodes($);
+  // Scanning node by node costs one regex pass per node instead of one over the
+  // whole document, and only buys something when the nodes carry positions.
+  const positioned = textNodes.some((n) => n.sourceCodeLocation);
+
+  for (const node of positioned ? textNodes : []) {
     const data: string = node.data ?? "";
     for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
       pattern.lastIndex = 0;
@@ -48,7 +49,7 @@ export function checkTemplateVariablesFromDom(
     }
   }
 
-  const textContent = extractTextContent($);
+  const textContent = textNodes.map((n) => n.data ?? "").join("");
   for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
     // Reset lastIndex for global regexes
     pattern.lastIndex = 0;
@@ -104,35 +105,32 @@ export function checkTemplateVariablesFromDom(
 }
 
 /**
- * Visible text nodes in document order, excluding head/style/script — the same
- * content `extractTextContent()` concatenates, one node at a time so positions
- * survive.
+ * Visible text nodes in document order, excluding head/style/script.
+ *
+ * Replaces a `$.root().clone()` + `.text()`, which allocated a second copy of
+ * the whole DOM and recursed once per level — deeply nested emails (tables in
+ * tables) could exhaust the stack before this checker saw them.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function visibleTextNodes($: CheerioAPI): any[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nodes: any[] = [];
+  // Iterative: emails nest tables inside tables, and a recursive walk would
+  // bound how deep a document we can handle by the JS stack.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function walk(node: any) {
+  const stack: any[] = [...($.root()[0]?.children ?? [])].reverse();
+  while (stack.length > 0) {
+    const node = stack.pop();
     const tag = (node.tagName as string | undefined)?.toLowerCase();
-    if (tag === "style" || tag === "script" || tag === "head") return;
+    if (tag === "style" || tag === "script" || tag === "head") continue;
     if (node.type === "text") {
       nodes.push(node);
-      return;
+      continue;
     }
-    for (const child of node.children ?? []) walk(child);
+    const children = node.children ?? [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
   }
-  for (const child of $.root()[0]?.children ?? []) walk(child);
   return nodes;
-}
-
-/**
- * Extract visible text content from DOM (excluding style/script).
- */
-function extractTextContent($: CheerioAPI): string {
-  const clone = $.root().clone();
-  clone.find("style, script, head").remove();
-  return clone.text();
 }
 
 /**
@@ -144,5 +142,5 @@ function extractTextContent($: CheerioAPI): string {
  * Returns the count of unresolved variables and detailed issues.
  */
 export function checkTemplateVariables(html: string, options?: ParseOptions): TemplateReport {
-  return fromHtml(html, EMPTY_TEMPLATE, ($) => checkTemplateVariablesFromDom($, options), options);
+  return fromHtml(html, EMPTY_TEMPLATE, checkTemplateVariablesFromDom, options);
 }

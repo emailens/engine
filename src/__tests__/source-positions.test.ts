@@ -11,7 +11,7 @@ import {
   validateLinks,
 } from "../index";
 import type { AuditReport } from "../audit";
-import type { BaseIssue, SourceLocation } from "../types";
+import type { SourceLocation, TemplateReport } from "../types";
 
 // ── Fixture with hand-counted line numbers ───────────────────────────────────
 // Kept as an array so a line's number is its index + 1, and an inserted line
@@ -416,6 +416,25 @@ describe("robustness", () => {
       (w) => w.property === "border-radius",
     );
     expect(w!.loc!.line).toBe(2);
+  });
+
+  test("a deeply nested document does not blow the stack", () => {
+    // Tables inside tables is how email markup is built. The text scan used to
+    // clone the DOM and recurse once per level; it now walks iteratively.
+    const depth = 20_000;
+    const deep = `<body>${"<div>".repeat(depth)}{{deep}}${"</div>".repeat(depth)}</body>`;
+    let report: TemplateReport | undefined;
+    expect(() => {
+      report = checkTemplateVariables(deep, { positions: true });
+    }).not.toThrow();
+    expect(report!.issues.some((i) => i.variable === "{{deep}}")).toBe(true);
+  });
+
+  test("text nodes are visited in document order", () => {
+    const ordered = ["<body>", "  <p>{{a}}</p>", "  <p>{{b}}</p>", "  <p>{{c}}</p>", "</body>"].join("\n");
+    const issues = checkTemplateVariables(ordered, { positions: true }).issues;
+    expect(issues.map((i) => i.variable)).toEqual(["{{a}}", "{{b}}", "{{c}}"]);
+    expect(issues.map((i) => i.loc!.line)).toEqual([2, 3, 4]);
   });
 
   test("empty and whitespace-only input is handled", () => {

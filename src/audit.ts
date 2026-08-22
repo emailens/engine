@@ -76,7 +76,7 @@ export function runAudit(
   $: CheerioAPI,
   html: string,
   framework: Framework | undefined,
-  options?: Pick<AuditOptions, "spam" | "skip" | "positions">,
+  options?: Pick<AuditOptions, "spam" | "skip">,
 ): AuditReport {
   const skip = new Set(options?.skip ?? []);
 
@@ -88,9 +88,7 @@ export function runAudit(
   const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
-  const templateVariables = skip.has("templateVariables")
-    ? EMPTY_TEMPLATE
-    : checkTemplateVariablesFromDom($, options);
+  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($);
 

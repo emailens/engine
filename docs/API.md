@@ -217,9 +217,9 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
   remains the line within the `<style>` block; with `positions` it is the
   document line.
 
-**Cost.** Roughly +20% on the parse and +3–9% on a full `auditEmail()` on the
-repo's fixtures — parsing is a small share of the work. Measure on your own
-fixtures with `bun run bench:positions`.
+**Cost.** Roughly +5–12% on the parse, and within measurement noise on a full
+`auditEmail()` — parsing is under a tenth of the work the analyzers do. Measure
+on your own fixtures with `bun run bench:positions`.
 
 ---
 
