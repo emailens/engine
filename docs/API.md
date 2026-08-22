@@ -7,6 +7,7 @@
 - [Core](#core)
   - [`auditEmail`](#auditemailhtml-string-options-auditoptions-auditreport)
   - [`createSession`](#createsessionhtml-string-options-createsessionoptions-emailsession)
+  - [Source positions](#source-positions)
 - [Standalone Analysis](#standalone-analysis)
   - [`analyzeEmail`](#analyzeemailhtml-string-framework-framework-csswarning)
   - [`generateCompatibilityScore`](#generatecompatibilityscorewarnings-recordstring-clientscore)
@@ -83,6 +84,7 @@ const report = auditEmail(html, {
 - `framework?: "jsx" | "mjml" | "maizzle"` — attach framework-specific fix snippets
 - `spam?: SpamAnalysisOptions` — options for spam analysis
 - `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">` — skip specific checks
+- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 ---
 
@@ -118,6 +120,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 
 **`CreateSessionOptions`:**
 - `framework?: "jsx" | "mjml" | "maizzle"` — framework for fix snippets (applies to all session methods)
+- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 **`EmailSession` methods:**
 
@@ -145,6 +148,78 @@ const darkMode = session.simulateDarkMode("gmail-web");
 - **Multiple analysis calls on the same HTML** → use `createSession()` to avoid redundant parsing
 - **Single analysis call** → use standalone functions (`auditEmail`, `analyzeEmail`, etc.)
 - **Server-side batch processing** → use `createSession()` per email for best throughput
+
+---
+
+### Source positions
+
+Pass `positions: true` and every issue that belongs to a specific node carries a
+`loc` — enough to underline it in an editor, annotate it on a pull request, or
+hand an agent the exact edit site.
+
+```typescript
+const report = auditEmail(html, { positions: true });
+
+for (const issue of report.links.issues) {
+  if (issue.loc) console.log(`${file}:${issue.loc.line}:${issue.loc.column}  ${issue.message}`);
+}
+// emails/welcome.html:11:6  Link uses HTTP instead of HTTPS
+
+const w = report.compatibility.warnings.find((w) => w.property === "border-radius");
+html.slice(w.loc.offset, w.loc.offset + w.loc.length);   // "border-radius: 8px"
+```
+
+```typescript
+interface SourceLocation {
+  line: number;       // 1-based, in the original HTML string
+  column: number;     // 1-based
+  endLine: number;
+  endColumn: number;
+  offset: number;     // 0-based character offset
+  length: number;
+}
+```
+
+Available on every `BaseIssue` (spam, links, accessibility, images, inbox
+preview, size, template variables, overflow, visual) and on `CSSWarning`. It is
+also accepted by the standalone analyzers — `analyzeEmail(html, framework,
+{ positions: true })`, `validateLinks(html, { positions: true })`, and the same
+for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
+
+**What each finding anchors to**
+
+| Finding | Anchor |
+|---|---|
+| CSS property in a `<style>` block | the declaration — `border-radius: 8px` |
+| CSS property in an inline style | the whole `style="…"` attribute |
+| Unsupported HTML feature (`<style>`, `<svg>`, `<form>`) | the first element that triggered it |
+| Link, image, accessibility finding about one attribute | that attribute — `href="http://…"` |
+| Link, image, accessibility finding about an element | the opening tag — `<img src="…">` |
+| Template variable in text | the variable itself — `{{first_name}}` |
+| Template variable in an attribute | the attribute holding it |
+
+**What has no position**
+
+- Document-level findings: Gmail clipping, aggregate image counts, heading
+  hierarchy summaries, most spam signals. `loc` is `undefined` — handle that.
+- Elements the parser synthesized rather than read from the source (an implicit
+  `<head>` in a fragment) — there is no source to point at.
+- Findings deduplicated across occurrences report the **first** occurrence.
+
+**Caveats**
+
+- Positions describe the HTML that was analyzed. For MJML, Maizzle, or React
+  Email, that is the *compiled* HTML, not your source file.
+- A text node containing character references (`&amp;`) can't be indexed into
+  reliably, so a template variable inside one anchors to the start of that text
+  node instead of the variable.
+- `CSSWarning.line` is deprecated in favour of `loc`. Without `positions` it
+  remains the line within the `<style>` block; with `positions` it is the
+  document line.
+
+**Cost.** Roughly +20% on the parse and +3–9% on a full `auditEmail()` on the
+repo's fixtures — parsing is a small share of the work. Measure on your own
+fixtures with `bun run bench:positions`.
 
 ---
 
@@ -573,6 +648,22 @@ type Framework = "jsx" | "mjml" | "maizzle";
 type InputFormat = "html" | Framework;
 type FixType = "css" | "structural";
 
+interface SourceLocation {
+  line: number;        // 1-based line in the analyzed HTML
+  column: number;      // 1-based column
+  endLine: number;
+  endColumn: number;
+  offset: number;      // 0-based character offset
+  length: number;
+}
+
+interface BaseIssue {          // every analyzer's issues extend this
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  loc?: SourceLocation;        // requires `positions: true`
+}
+
 interface CSSWarning {
   severity: "error" | "warning" | "info";
   client: string;
@@ -581,8 +672,9 @@ interface CSSWarning {
   suggestion?: string;
   fix?: CodeFix;
   fixType?: FixType;
-  line?: number;       // line number in <style> block
+  line?: number;       // deprecated — use `loc`
   selector?: string;   // element selector for inline styles
+  loc?: SourceLocation;        // requires `positions: true`
 }
 
 interface AuditReport {

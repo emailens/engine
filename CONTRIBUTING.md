@@ -102,7 +102,12 @@ Every analyzer follows this pattern:
 1. Accept HTML string (or Cheerio `$` for `FromDom` variants)
 2. Enforce `MAX_HTML_SIZE` limit (public functions only)
 3. Walk the DOM (elements, attributes, style blocks)
-4. Return a typed report interface
+4. Attach a `loc` to each issue via `src/source-location.ts` (`locOfElement`,
+   `locOfAttr`, `locInTextNode`) — the helpers return `undefined` when the DOM
+   was parsed without positions, so call them unconditionally. Anchor on the
+   attribute when the finding is about one attribute, the opening tag when it is
+   about the element, and leave `loc` off for document-level findings.
+5. Return a typed report interface
 
 ### Fix Snippet Resolution
 

@@ -14,7 +14,9 @@ import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue } from "./style-utils";
 import { MAX_HTML_SIZE } from "./constants";
-import type { CSSWarning, FixType, Framework, SupportLevel } from "./types";
+import { loadHtml, type ParseOptions } from "./parse-html";
+import { cssBlockAnchor, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
+import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel } from "./types";
 
 // ── Data-driven detection config ─────────────────────────────────────────────
 
@@ -126,12 +128,14 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   for (const feature of HTML_ELEMENT_FEATURES) {
     const selector = HTML_ELEMENT_SELECTORS[feature];
     if (!selector) continue; // Element not in our detection map — skip
-    if ($(selector).length === 0) continue;
+    const matches = $(selector);
+    if (matches.length === 0) continue;
 
     const supportData = CSS_SUPPORT[feature];
     if (!supportData) continue;
 
     const baseSeverity = HTML_ELEMENT_SEVERITY[feature] || "warning";
+    const featureLoc = locOfElement(matches[0]);
 
     for (const client of EMAIL_CLIENTS) {
       const support = supportData[client.id];
@@ -150,6 +154,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
           suggestion: sug.text,
           fix,
           fixType: getFixType(feature),
+          ...(featureLoc ? { loc: featureLoc } : {}),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(feature, client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -165,6 +170,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
           suggestion: sug.text,
           fix,
           fixType: getFixType("<style>"),
+          ...(featureLoc ? { loc: featureLoc } : {}),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<style>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -176,13 +182,22 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   const parsedAtRules = new Set<string>();
   const parsedProperties = new Set<string>();
   const propertyLines = new Map<string, number>();
+  const propertyLocs = new Map<string, SourceLocation>();
   const propertyValues = new Map<string, string[]>();
   const detectedCssFunctions = new Set<string>();
   const detectedPseudoClasses = new Set<string>();
   const detectedPseudoElements = new Set<string>();
 
+  /** Set inside the per-block walk below so `recordLoc` can see the block. */
+  let blockAnchor: ReturnType<typeof cssBlockAnchor>;
+  function recordLoc(key: string, cssLoc: csstree.CssLocation) {
+    const loc = locInCssBlock(blockAnchor, cssLoc);
+    if (loc) propertyLocs.set(key, loc);
+  }
+
   $("style").each((_, el) => {
     const cssText = $(el).text();
+    blockAnchor = cssBlockAnchor(el, cssText);
     try {
       const ast = csstree.parse(cssText, { parseCustomProperty: true, positions: true });
       csstree.walk(ast, {
@@ -202,6 +217,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
             parsedProperties.add(prop);
             if (node.loc && !propertyLines.has(prop)) {
               propertyLines.set(prop, node.loc.start.line);
+              recordLoc(prop, node.loc);
             }
 
             // Capture value(s) for value-aware support checks (a property may
@@ -217,6 +233,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
                 parsedProperties.add(det.key);
                 if (node.loc && !propertyLines.has(det.key)) {
                   propertyLines.set(det.key, node.loc.start.line);
+                  recordLoc(det.key, node.loc);
                 }
               }
             }
@@ -227,6 +244,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
                 detectedCssFunctions.add(fn.key);
                 if (node.loc && !propertyLines.has(fn.key)) {
                   propertyLines.set(fn.key, node.loc.start.line);
+                  recordLoc(fn.key, node.loc);
                 }
               }
             }
@@ -253,6 +271,10 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
     const style = $(el).attr("style") || "";
     const props = parseStyleProperties(style);
     const selector = describeSelector(el);
+    // The whole `style="…"` attribute. Pointing at the individual declaration
+    // inside it would need the raw source of the attribute, which the DOM
+    // doesn't keep — the attribute is a tight enough range to act on.
+    const loc = locOfAttr(el, "style");
 
     for (const prop of props) {
       // Data-driven compound value detection in inline styles
@@ -260,13 +282,13 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
         if (prop === det.property) {
           const value = getStyleValue(style, prop);
           if (value?.includes(det.valueIncludes)) {
-            checkPropertySupport(det.key, addWarning, framework, selector);
+            checkPropertySupport(det.key, addWarning, framework, selector, undefined, undefined, loc);
           }
         }
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
-        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined);
+        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined, loc);
       }
 
       // Data-driven CSS function detection in inline styles
@@ -274,7 +296,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
       if (value) {
         for (const fn of CSS_FUNCTION_DETECTORS) {
           if (value.includes(fn.pattern)) {
-            checkPropertySupport(fn.key, addWarning, framework, selector);
+            checkPropertySupport(fn.key, addWarning, framework, selector, undefined, undefined, loc);
           }
         }
       }
@@ -288,7 +310,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
     const values = propertyValues.get(prop);
     checkPropertySupport(
       prop, addWarning, framework, undefined, propertyLines.get(prop),
-      values ? values.join(" ") : undefined,
+      values ? values.join(" ") : undefined, propertyLocs.get(prop),
     );
   }
 
@@ -297,7 +319,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
     // Only check actual compound values (property:value pairs), not pseudo-selectors
     if (compound.startsWith(":") || compound.startsWith("::")) continue;
     if (parsedProperties.has(compound)) {
-      checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound));
+      checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound), undefined, propertyLocs.get(compound));
     }
   }
 
@@ -315,7 +337,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
 
   // Data-driven CSS functions from <style> blocks
   for (const fn of detectedCssFunctions) {
-    checkPropertySupport(fn, addWarning, framework, undefined, propertyLines.get(fn));
+    checkPropertySupport(fn, addWarning, framework, undefined, propertyLines.get(fn), undefined, propertyLocs.get(fn));
   }
 
   // 6. Dark-mode opt-in / coverage (no-ops unless the email ships dark styles)
@@ -338,7 +360,11 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
  * snippets reference source-level constructs so users know how to
  * modify their framework source code.
  */
-export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] {
+export function analyzeEmail(
+  html: string,
+  framework?: Framework,
+  options?: ParseOptions,
+): CSSWarning[] {
   if (!html || !html.trim()) {
     return [];
   }
@@ -346,7 +372,7 @@ export function analyzeEmail(html: string, framework?: Framework): CSSWarning[] 
     throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
-  const $ = cheerio.load(html);
+  const $ = loadHtml(html, options);
   return analyzeEmailFromDom($, framework);
 }
 
@@ -427,7 +453,12 @@ function checkPropertySupport(
   selector?: string,
   line?: number,
   value?: string,
+  loc?: SourceLocation,
 ) {
+  // With positions on, the legacy `line` reports the document line rather than
+  // the line within the <style> block — a strict improvement for consumers
+  // still reading it.
+  const reportedLine = loc?.line ?? line;
   const supportData = CSS_SUPPORT[prop];
   if (!supportData) return;
 
@@ -449,7 +480,8 @@ function checkPropertySupport(
         fix,
         fixType,
         ...(selector ? { selector } : {}),
-        ...(line !== undefined ? { line } : {}),
+        ...(reportedLine !== undefined ? { line: reportedLine } : {}),
+        ...(loc ? { loc } : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -469,7 +501,8 @@ function checkPropertySupport(
         fix,
         fixType,
         ...(selector ? { selector } : {}),
-        ...(line !== undefined ? { line } : {}),
+        ...(reportedLine !== undefined ? { line: reportedLine } : {}),
+        ...(loc ? { loc } : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });

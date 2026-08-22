@@ -1,4 +1,3 @@
-import * as cheerio from "cheerio";
 import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
@@ -31,10 +30,11 @@ import type {
   VisualReport,
   TransformResult,
 } from "./types";
+import { loadHtml, type ParseOptions } from "./parse-html";
 import { runAudit, EMPTY_AUDIT } from "./audit";
 import type { AuditOptions, AuditReport } from "./audit";
 
-export interface CreateSessionOptions {
+export interface CreateSessionOptions extends ParseOptions {
   /** Framework for fix snippets (applies to analyze/audit/transform). */
   framework?: Framework;
 }
@@ -190,7 +190,7 @@ export function createSession(
   }
 
   // Parse once — shared across all read-only analysis operations
-  const $ = cheerio.load(html);
+  const $ = loadHtml(html, options);
   const framework = options?.framework;
 
   return {
@@ -198,7 +198,7 @@ export function createSession(
     framework,
 
     audit(opts) {
-      return runAudit($, html, framework, opts);
+      return runAudit($, html, framework, { ...opts, positions: options?.positions });
     },
 
     analyze() {
@@ -234,7 +234,7 @@ export function createSession(
     },
 
     checkTemplateVariables() {
-      return checkTemplateVariablesFromDom($);
+      return checkTemplateVariablesFromDom($, options);
     },
 
     checkOverflow() {

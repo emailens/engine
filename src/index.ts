@@ -34,10 +34,12 @@ export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";
 export type { AuditOptions, AuditReport } from "./audit";
+export type { ParseOptions } from "./parse-html";
 export type { EmailSession, CreateSessionOptions } from "./session";
 export type { SandboxStrategy, CompileReactEmailOptions } from "./compile/react-email";
 export type {
   Severity,
+  SourceLocation,
   BaseIssue,
   EmailClient,
   CSSWarning,
