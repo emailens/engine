@@ -13,7 +13,7 @@ import { EMAIL_CLIENTS } from "./clients";
 import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue } from "./style-utils";
-import { MAX_HTML_SIZE } from "./constants";
+import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, type ParseOptions } from "./parse-html";
 import { cssBlockAnchor, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
 import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel } from "./types";
@@ -99,15 +99,33 @@ const CSS_FUNCTION_DETECTORS = CSS_FUNCTION_FEATURES.map((fn) => ({
  *
  * @internal
  */
-export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework): CSSWarning[] {
+export function analyzeEmailFromDom(
+  $: cheerio.CheerioAPI,
+  framework?: Framework,
+  source?: string,
+): CSSWarning[] {
   const warnings: CSSWarning[] = [];
-  const seenWarnings = new Set<string>();
+  const seenWarnings = new Map<string, CSSWarning>();
 
   function addWarning(w: CSSWarning) {
     const key = `${w.client}:${w.property}:${w.severity}:${w.selector || ""}`;
-    if (!seenWarnings.has(key)) {
-      seenWarnings.add(key);
+    const existing = seenWarnings.get(key);
+    if (!existing) {
+      seenWarnings.set(key, w);
       warnings.push(w);
+      return;
+    }
+    // Same finding, another element. One warning still covers the property —
+    // scores count properties, not elements — but the occurrence is worth
+    // keeping so a consumer can flag all of them, not just the first.
+    if (!existing.locs || !w.locs) return;
+    for (const loc of w.locs) {
+      if (existing.locs.some((l) => l.offset === loc.offset)) continue;
+      if (existing.locs.length >= MAX_WARNING_LOCATIONS) {
+        existing.locsTruncated = true;
+        break;
+      }
+      existing.locs.push(loc);
     }
   }
 
@@ -135,7 +153,17 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
     if (!supportData) continue;
 
     const baseSeverity = HTML_ELEMENT_SEVERITY[feature] || "warning";
-    const featureLoc = locOfElement(matches[0]);
+    const found = matches
+      .toArray()
+      .map((m) => locOfElement(m))
+      .filter((l): l is SourceLocation => l !== undefined);
+    const featureOccurrences: Occurrences | undefined = found.length
+      ? {
+          locs: found.slice(0, MAX_WARNING_LOCATIONS),
+          ...(found.length > MAX_WARNING_LOCATIONS ? { truncated: true } : {}),
+        }
+      : undefined;
+    const featureLoc = featureOccurrences?.locs[0];
 
     for (const client of EMAIL_CLIENTS) {
       const support = supportData[client.id];
@@ -154,7 +182,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
           suggestion: sug.text,
           fix,
           fixType: getFixType(feature),
-          ...(featureLoc ? { loc: featureLoc } : {}),
+          ...(featureOccurrences ? occurrenceFields(featureOccurrences) : {}),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(feature, client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -170,7 +198,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
           suggestion: sug.text,
           fix,
           fixType: getFixType("<style>"),
-          ...(featureLoc ? { loc: featureLoc } : {}),
+          ...(featureOccurrences ? occurrenceFields(featureOccurrences) : {}),
           ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback("<style>", client.id, framework)))
             ? { fixIsGenericFallback: true } : {}),
         });
@@ -182,7 +210,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   const parsedAtRules = new Set<string>();
   const parsedProperties = new Set<string>();
   const propertyLines = new Map<string, number>();
-  const propertyLocs = new Map<string, SourceLocation>();
+  const propertyLocs = new Map<string, Occurrences>();
   const propertyValues = new Map<string, string[]>();
   const detectedCssFunctions = new Set<string>();
   const detectedPseudoClasses = new Set<string>();
@@ -192,12 +220,23 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
   let blockAnchor: ReturnType<typeof cssBlockAnchor>;
   function recordLoc(key: string, cssLoc: csstree.CssLocation) {
     const loc = locInCssBlock(blockAnchor, cssLoc);
-    if (loc) propertyLocs.set(key, loc);
+    if (!loc) return;
+    const seen = propertyLocs.get(key);
+    if (!seen) {
+      propertyLocs.set(key, { locs: [loc] });
+      return;
+    }
+    if (seen.locs.some((l) => l.offset === loc.offset)) return;
+    if (seen.locs.length >= MAX_WARNING_LOCATIONS) {
+      seen.truncated = true;
+      return;
+    }
+    seen.locs.push(loc);
   }
 
   $("style").each((_, el) => {
     const cssText = $(el).text();
-    blockAnchor = cssBlockAnchor(el, cssText);
+    blockAnchor = cssBlockAnchor(el, cssText, source);
     try {
       const ast = csstree.parse(cssText, { parseCustomProperty: true, positions: true });
       csstree.walk(ast, {
@@ -215,8 +254,8 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
           if (node.type === "Declaration") {
             const prop = node.property.toLowerCase();
             parsedProperties.add(prop);
-            if (node.loc && !propertyLines.has(prop)) {
-              propertyLines.set(prop, node.loc.start.line);
+            if (node.loc) {
+              if (!propertyLines.has(prop)) propertyLines.set(prop, node.loc.start.line);
               recordLoc(prop, node.loc);
             }
 
@@ -231,8 +270,8 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
             for (const det of COMPOUND_DETECTORS) {
               if (prop === det.property && valueStr.includes(det.valueIncludes)) {
                 parsedProperties.add(det.key);
-                if (node.loc && !propertyLines.has(det.key)) {
-                  propertyLines.set(det.key, node.loc.start.line);
+                if (node.loc) {
+                  if (!propertyLines.has(det.key)) propertyLines.set(det.key, node.loc.start.line);
                   recordLoc(det.key, node.loc);
                 }
               }
@@ -242,8 +281,8 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
             for (const fn of CSS_FUNCTION_DETECTORS) {
               if (valueStr.includes(fn.pattern)) {
                 detectedCssFunctions.add(fn.key);
-                if (node.loc && !propertyLines.has(fn.key)) {
-                  propertyLines.set(fn.key, node.loc.start.line);
+                if (node.loc) {
+                  if (!propertyLines.has(fn.key)) propertyLines.set(fn.key, node.loc.start.line);
                   recordLoc(fn.key, node.loc);
                 }
               }
@@ -274,7 +313,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
     // The whole `style="…"` attribute. Pointing at the individual declaration
     // inside it would need the raw source of the attribute, which the DOM
     // doesn't keep — the attribute is a tight enough range to act on.
-    const loc = locOfAttr(el, "style");
+    const locs = elementLocs(locOfAttr(el, "style"));
 
     for (const prop of props) {
       // Data-driven compound value detection in inline styles
@@ -282,13 +321,13 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
         if (prop === det.property) {
           const value = getStyleValue(style, prop);
           if (value?.includes(det.valueIncludes)) {
-            checkPropertySupport(det.key, addWarning, framework, selector, undefined, undefined, loc);
+            checkPropertySupport(det.key, addWarning, framework, selector, undefined, undefined, locs);
           }
         }
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
-        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined, loc);
+        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined, locs);
       }
 
       // Data-driven CSS function detection in inline styles
@@ -296,7 +335,7 @@ export function analyzeEmailFromDom($: cheerio.CheerioAPI, framework?: Framework
       if (value) {
         for (const fn of CSS_FUNCTION_DETECTORS) {
           if (value.includes(fn.pattern)) {
-            checkPropertySupport(fn.key, addWarning, framework, selector, undefined, undefined, loc);
+            checkPropertySupport(fn.key, addWarning, framework, selector, undefined, undefined, locs);
           }
         }
       }
@@ -373,7 +412,7 @@ export function analyzeEmail(
   }
 
   const $ = loadHtml(html, options);
-  return analyzeEmailFromDom($, framework);
+  return analyzeEmailFromDom($, framework, options?.positions ? html : undefined);
 }
 
 function getFixType(prop: string): FixType {
@@ -453,8 +492,9 @@ function checkPropertySupport(
   selector?: string,
   line?: number,
   value?: string,
-  loc?: SourceLocation,
+  occurrences?: Occurrences,
 ) {
+  const loc = occurrences?.locs[0];
   // With positions on, the legacy `line` reports the document line rather than
   // the line within the <style> block — a strict improvement for consumers
   // still reading it.
@@ -481,7 +521,7 @@ function checkPropertySupport(
         fixType,
         ...(selector ? { selector } : {}),
         ...(reportedLine !== undefined ? { line: reportedLine } : {}),
-        ...(loc ? { loc } : {}),
+        ...(occurrences ? occurrenceFields(occurrences) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -502,7 +542,7 @@ function checkPropertySupport(
         fixType,
         ...(selector ? { selector } : {}),
         ...(reportedLine !== undefined ? { line: reportedLine } : {}),
-        ...(loc ? { loc } : {}),
+        ...(occurrences ? occurrenceFields(occurrences) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -539,6 +579,22 @@ export function generateCompatibilityScore(
   }
 
   return result;
+}
+
+/** The warning fields that carry a finding's positions. */
+function occurrenceFields({ locs, truncated }: Occurrences) {
+  return { loc: locs[0], locs: [...locs], ...(truncated ? { locsTruncated: true } : {}) };
+}
+
+/** Where a finding occurred, and whether that list is complete. */
+interface Occurrences {
+  locs: SourceLocation[];
+  truncated?: boolean;
+}
+
+/** Wrap a single optional location as the occurrence list a warning carries. */
+function elementLocs(loc: SourceLocation | undefined): Occurrences | undefined {
+  return loc ? { locs: [loc] } : undefined;
 }
 
 /** Filter warnings for a specific client. */

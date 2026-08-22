@@ -4,6 +4,8 @@ import { join } from "node:path";
 import {
   auditEmail,
   analyzeEmail,
+  generateCompatibilityScore,
+  MAX_WARNING_LOCATIONS,
   analyzeImages,
   checkAccessibility,
   checkTemplateVariables,
@@ -51,7 +53,9 @@ function slice(html: string, loc: SourceLocation): string {
 }
 
 /** Every issue in an audit report, across all ten analyzers. */
-function allIssues(r: AuditReport): Array<{ loc?: SourceLocation; variable?: string }> {
+function allIssues(
+  r: AuditReport,
+): Array<{ loc?: SourceLocation; locs?: SourceLocation[]; variable?: string }> {
   return [
     ...r.compatibility.warnings,
     ...r.spam.issues,
@@ -67,9 +71,10 @@ function allIssues(r: AuditReport): Array<{ loc?: SourceLocation; variable?: str
 }
 
 function locsOf(r: AuditReport): SourceLocation[] {
-  return allIssues(r)
-    .map((i) => (i as { loc?: SourceLocation }).loc)
-    .filter((l): l is SourceLocation => l !== undefined);
+  return allIssues(r).flatMap((i) => {
+    const issue = i as { loc?: SourceLocation; locs?: SourceLocation[] };
+    return issue.locs ?? (issue.loc ? [issue.loc] : []);
+  });
 }
 
 /**
@@ -124,11 +129,26 @@ function expectVariableAnchor(html: string, loc: SourceLocation, variable: strin
 }
 
 /** Dispatch to whichever anchor rule fits the issue that produced the loc. */
-function expectIssueAnchor(html: string, issue: { loc?: SourceLocation; variable?: string }) {
+function expectIssueAnchor(
+  html: string,
+  issue: { loc?: SourceLocation; locs?: SourceLocation[]; variable?: string },
+) {
   if (!issue.loc) return;
   expectWellFormed(html, issue.loc);
   if (issue.variable) expectVariableAnchor(html, issue.loc, issue.variable);
   else expectPlausibleAnchor(html, issue.loc);
+
+  if (!issue.locs) return;
+  // Occurrences: first is `loc`, in document order, no repeats, each anchored
+  // as strictly as the first. Applied to every fuzz document below.
+  expect(issue.locs[0]).toEqual(issue.loc);
+  const offsets = issue.locs.map((l) => l.offset);
+  expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+  expect(new Set(offsets).size).toBe(offsets.length);
+  for (const loc of issue.locs) {
+    expectWellFormed(html, loc);
+    expectPlausibleAnchor(html, loc);
+  }
 }
 
 describe("source positions — CSS compatibility", () => {
@@ -265,14 +285,11 @@ describe("source positions — template variables", () => {
     expect(slice(multi, issue.loc!)).toBe("{{name}}");
   });
 
-  test("character references fall back to the text node's start, still inside that node", () => {
+  test("character references do not shift the anchor", () => {
     const entities = ["<body>", "  <p>caf&eacute; {{name}}</p>", "</body>"].join("\n");
     const issue = checkTemplateVariables(entities, { positions: true }).issues[0];
     expect(issue.loc!.line).toBe(2);
-    // Approximate within the node, but never past it, and never the wrong node.
-    const nodeStart = entities.indexOf("caf&eacute;");
-    expect(issue.loc!.offset).toBe(nodeStart);
-    expect(issue.loc!.offset + issue.loc!.length).toBeLessThanOrEqual(entities.indexOf("</p>"));
+    expect(slice(entities, issue.loc!)).toBe("{{name}}");
   });
 
   test("a variable split across elements is still reported, without a position", () => {
@@ -301,7 +318,9 @@ describe("positions are opt-in", () => {
 
     const strip = (r: AuditReport) =>
       JSON.parse(
-        JSON.stringify(r, (key, value) => (key === "loc" || key === "line" ? undefined : value)),
+        JSON.stringify(r, (key, value) =>
+          key === "loc" || key === "locs" || key === "line" ? undefined : value,
+        ),
       );
     expect(strip(with_)).toEqual(strip(without));
   });
@@ -536,5 +555,283 @@ describe("fuzz — positions never drift", () => {
       }).not.toThrow();
       for (const issue of allIssues(report!)) expectIssueAnchor(html, issue);
     }
+  });
+});
+
+describe("character references and mixed line endings resolve exactly", () => {
+  // These decode to something shorter than their source, so an index into the
+  // text the analyzer sees is not an index into the file. Each case asserts the
+  // position lands on the variable itself, not on the text before it.
+  test.each([
+    ["a named reference", "<p>Tom &amp; Jerry, {{name}}</p>"],
+    ["several references", "<p>&nbsp;&mdash;&amp;&lt;&gt; {{name}} &copy;</p>"],
+    ["a numeric reference", "<p>&#8212;&#x2014; {{name}}</p>"],
+    ["an emoji", "<p>🎉🎉 {{name}}</p>"],
+    ["a reference in the variable's own line", "<p>caf&eacute; and {{name}}</p>"],
+  ])("%s", (_label, body) => {
+    const html = `<body>\n  ${body}\n</body>`;
+    const issue = checkTemplateVariables(html, { positions: true }).issues[0];
+    expect(slice(html, issue.loc!)).toBe("{{name}}");
+    expectWellFormed(html, issue.loc!);
+  });
+
+  test("references and CRLF together", () => {
+    const html = "<body>\r\n  <p>caf&eacute;\r\n  and {{name}}</p>\r\n</body>";
+    const issue = checkTemplateVariables(html, { positions: true }).issues[0];
+    expect(slice(html, issue.loc!)).toBe("{{name}}");
+    expect(issue.loc!.line).toBe(3);
+  });
+
+  test("the same variable twice resolves each occurrence to its own place", () => {
+    const html = "<body>\n  <p>&amp; {{a}} then &amp; {{a}}</p>\n</body>";
+    const issue = checkTemplateVariables(html, { positions: true }).issues[0];
+    // Deduplicated to one issue, anchored on the first occurrence.
+    expect(slice(html, issue.loc!)).toBe("{{a}}");
+    expect(issue.loc!.offset).toBe(html.indexOf("{{a}}"));
+  });
+
+  test("a style block mixing CRLF and LF still resolves the declaration", () => {
+    // A build that concatenates CSS with \n into a CRLF template produces this.
+    const html =
+      "<html><head>\r\n<style>\r\n.a { color: red; }\n.b { border-radius: 4px; }\r\n</style>\r\n</head><body>x</body></html>";
+    const w = analyzeEmail(html, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(slice(html, w!.loc!)).toBe("border-radius: 4px");
+    expectWellFormed(html, w!.loc!);
+  });
+
+  test("a variable that is itself encoded falls back rather than mislocating", () => {
+    const html = "<body>\n  <p>{{a&amp;b}}</p>\n</body>";
+    const issues = checkTemplateVariables(html, { positions: true }).issues;
+    for (const issue of issues) {
+      if (!issue.loc) continue;
+      expectWellFormed(html, issue.loc);
+      // Whatever it points at, it must be inside the paragraph that contains it.
+      expect(issue.loc.offset).toBeGreaterThanOrEqual(html.indexOf("<p>"));
+      expect(issue.loc.offset + issue.loc.length).toBeLessThanOrEqual(html.indexOf("</p>"));
+    }
+  });
+});
+
+describe("every occurrence is reported, not just the first", () => {
+  const twelve = ["<body>", ...Array.from({ length: 12 }, () => '  <div style="border-radius:4px">x</div>'), "</body>"].join("\n");
+
+  test("one warning still covers the property, but carries all twelve places", () => {
+    const w = analyzeEmail(twelve, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(w!.locs).toHaveLength(12);
+    expect(w!.locs!.map((l) => l.line)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    for (const loc of w!.locs!) expect(slice(twelve, loc)).toBe('style="border-radius:4px"');
+  });
+
+  test("`loc` is the first of `locs`", () => {
+    const w = analyzeEmail(twelve, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(w!.loc).toEqual(w!.locs![0]);
+  });
+
+  test("occurrence count does not change warning count or scores", () => {
+    const one = '<body>\n  <div style="border-radius:4px">x</div>\n</body>';
+    const warningsOne = analyzeEmail(one, undefined, { positions: true });
+    const warningsTwelve = analyzeEmail(twelve, undefined, { positions: true });
+
+    expect(warningsTwelve.length).toBe(warningsOne.length);
+    expect(generateCompatibilityScore(warningsTwelve)).toEqual(
+      generateCompatibilityScore(warningsOne),
+    );
+  });
+
+  test("a property used by several rules in a <style> block records each rule", () => {
+    const css = [
+      "<html><head><style>",
+      "  .a { border-radius: 4px; }",
+      "  .b { border-radius: 8px; }",
+      "</style></head><body>x</body></html>",
+    ].join("\n");
+    const w = analyzeEmail(css, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(w!.locs!.map((l) => l.line)).toEqual([2, 3]);
+  });
+
+  test("repeated elements are capped so a generated email can't flood the report", () => {
+    const many = `<body>${'<div style="border-radius:4px">x</div>'.repeat(250)}</body>`;
+    const w = analyzeEmail(many, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(w!.locs).toHaveLength(MAX_WARNING_LOCATIONS);
+  });
+
+  test("no occurrences are recorded when positions are off", () => {
+    const w = analyzeEmail(twelve).find((w) => w.property === "border-radius");
+    expect(w!.locs).toBeUndefined();
+    expect(w!.loc).toBeUndefined();
+  });
+});
+
+// ── Accuracy ─────────────────────────────────────────────────────────────────
+// The tests above assert positions look right. These assert they ARE right, by
+// three independent means: ground truth known by construction, an ordering
+// invariant, and an edit round-trip that fails if any offset is off by one.
+
+describe("accuracy — ground truth by construction", () => {
+  /**
+   * Build a document with `count` offenders at offsets we know, separated by
+   * filler chosen to break naive offset arithmetic: character references, CRLF,
+   * multi-byte characters.
+   */
+  function withOffenders(count: number, filler: string, eol: string) {
+    const offender = '<div style="border-radius:4px">x</div>';
+    const lines = ["<body>"];
+    for (let i = 0; i < count; i++) lines.push(`  <p>${filler}</p>`, `  ${offender}`);
+    lines.push("</body>");
+    const html = lines.join(eol);
+
+    // Ground truth: every position of the style attribute, found by string
+    // search on the source itself — no engine involved.
+    const expected: number[] = [];
+    for (let at = html.indexOf('style="border-radius:4px"'); at !== -1;
+         at = html.indexOf('style="border-radius:4px"', at + 1)) {
+      expected.push(at);
+    }
+    expect(expected).toHaveLength(count);
+    return { html, expected };
+  }
+
+  const FILLERS: Array<[string, string]> = [
+    ["plain text", "hello"],
+    ["character references", "Tom &amp; Jerry &nbsp;&mdash;"],
+    ["numeric references", "&#8212;&#x2014;"],
+    ["emoji", "🎉 party 🎉"],
+  ];
+  const EOLS: Array<[string, string]> = [["LF", "\n"], ["CRLF", "\r\n"]];
+
+  for (const [fillerName, filler] of FILLERS) {
+    for (const [eolName, eol] of EOLS) {
+      test(`${fillerName}, ${eolName}: every offender is found, at exactly its offset`, () => {
+        const { html, expected } = withOffenders(7, filler, eol);
+        const w = analyzeEmail(html, undefined, { positions: true }).find(
+          (w) => w.property === "border-radius",
+        );
+        expect(w!.locs!.map((l) => l.offset)).toEqual(expected);
+        for (const loc of w!.locs!) {
+          expect(slice(html, loc)).toBe('style="border-radius:4px"');
+          expectWellFormed(html, loc);
+        }
+      });
+    }
+  }
+
+  test("the count is exact — no occurrence missed, none invented", () => {
+    for (const count of [1, 2, 5, 37, 99, 100]) {
+      const { html, expected } = withOffenders(count, "Tom &amp; Jerry", "\n");
+      const w = analyzeEmail(html, undefined, { positions: true }).find(
+        (w) => w.property === "border-radius",
+      );
+      expect(w!.locs!.map((l) => l.offset)).toEqual(expected);
+      expect(w!.locsTruncated).toBeUndefined();
+    }
+  });
+
+  test("past the cap the list is marked partial, and keeps the first N in order", () => {
+    const { html, expected } = withOffenders(140, "hi", "\n");
+    const w = analyzeEmail(html, undefined, { positions: true }).find(
+      (w) => w.property === "border-radius",
+    );
+    expect(w!.locs).toHaveLength(MAX_WARNING_LOCATIONS);
+    expect(w!.locsTruncated).toBe(true);
+    expect(w!.locs!.map((l) => l.offset)).toEqual(expected.slice(0, MAX_WARNING_LOCATIONS));
+  });
+});
+
+describe("accuracy — ordering invariant", () => {
+  test.each(["cerberus-newsletter.html", "leemunroe-responsive.html", "receipt-notification.html"])(
+    "%s: every warning's occurrences are in document order, without duplicates",
+    (name) => {
+      const html = readFileSync(join(import.meta.dir, "fixtures", name), "utf8");
+      const warnings = analyzeEmail(html, undefined, { positions: true });
+      let checked = 0;
+
+      for (const w of warnings) {
+        if (!w.locs) continue;
+        checked++;
+        const offsets = w.locs.map((l) => l.offset);
+        expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+        expect(new Set(offsets).size).toBe(offsets.length);
+        expect(w.loc).toEqual(w.locs[0]);
+        for (const loc of w.locs) expectWellFormed(html, loc);
+      }
+
+      expect(checked).toBeGreaterThan(0);
+    },
+  );
+});
+
+describe("accuracy — the positions are actionable", () => {
+  /**
+   * The end-to-end property an editor depends on: use `locs` to edit the
+   * source, and the finding goes away. An offset that is off by one corrupts
+   * the document instead, and the warning survives — so this fails loudly for
+   * exactly the defect that is hardest to see by eye.
+   */
+  test("removing every occurrence by its position clears the warning", () => {
+    const html = [
+      "<body>",
+      "  <p>Tom &amp; Jerry</p>",
+      '  <div style="border-radius:4px">a</div>',
+      "  <p>caf&eacute; &mdash; 🎉</p>",
+      '  <div style="border-radius:4px">b</div>',
+      '  <span style="border-radius:4px">c</span>',
+      "</body>",
+    ].join("\r\n");
+
+    const before = analyzeEmail(html, undefined, { positions: true });
+    // Warnings are grouped per selector description, so `div` and `span` are
+    // separate warnings for the same property — an editor wanting every place
+    // it breaks unions their occurrences, which is what this does.
+    const occurrences = before
+      .filter((w) => w.property === "border-radius" && w.client === "outlook-windows")
+      .flatMap((w) => w.locs ?? []);
+    expect(occurrences.length).toBe(3);
+
+    // Apply back to front so earlier offsets stay valid.
+    let edited = html;
+    for (const loc of [...occurrences].sort((a, b) => b.offset - a.offset)) {
+      edited = edited.slice(0, loc.offset) + edited.slice(loc.offset + loc.length);
+    }
+
+    expect(edited).not.toContain("border-radius");
+    // Nothing but the style attributes was touched.
+    expect(edited).toContain("Tom &amp; Jerry");
+    expect(edited).toContain("caf&eacute; &mdash; 🎉");
+    expect(edited).toContain("<div >a</div>");
+
+    const after = analyzeEmail(edited, undefined, { positions: true });
+    expect(after.some((w) => w.property === "border-radius")).toBe(false);
+  });
+
+  test("the same round-trip holds on a real newsletter", () => {
+    const html = readFileSync(join(import.meta.dir, "fixtures", "cerberus-newsletter.html"), "utf8");
+    const warnings = analyzeEmail(html, undefined, { positions: true });
+
+    // Every inline-style occurrence the engine reported, edited out at once.
+    const inline = warnings.filter((w) => w.selector && w.locs);
+    const cuts = [...new Set(inline.flatMap((w) => w.locs!).map((l) => `${l.offset}:${l.length}`))]
+      .map((k) => k.split(":").map(Number))
+      .sort((a, b) => b[0] - a[0]);
+    expect(cuts.length).toBeGreaterThan(5);
+
+    let edited = html;
+    for (const [offset, length] of cuts) {
+      // Each cut must land exactly on a style attribute, not one character off.
+      expect(edited.slice(offset, offset + length)).toMatch(/^style\s*=/i);
+      edited = edited.slice(0, offset) + edited.slice(offset + length);
+    }
+
+    const after = analyzeEmail(edited, undefined, { positions: true });
+    expect(after.filter((w) => w.selector).length).toBe(0);
   });
 });

@@ -76,11 +76,14 @@ export function runAudit(
   $: CheerioAPI,
   html: string,
   framework: Framework | undefined,
-  options?: Pick<AuditOptions, "spam" | "skip">,
+  options?: Pick<AuditOptions, "spam" | "skip" | "positions">,
 ): AuditReport {
   const skip = new Set(options?.skip ?? []);
+  // Analyzers that resolve positions inside text need the raw source; handing
+  // it over only when positions were requested keeps the default path honest.
+  const source = options?.positions ? html : undefined;
 
-  const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework);
+  const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework, source);
   const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
   const spam = skip.has("spam") ? EMPTY_SPAM : analyzeSpamFromDom($, options?.spam);
   const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
@@ -88,7 +91,7 @@ export function runAudit(
   const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
-  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
+  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($);
 

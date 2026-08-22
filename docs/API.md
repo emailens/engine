@@ -180,6 +180,29 @@ interface SourceLocation {
 }
 ```
 
+**Every occurrence, not just the first.** A CSS warning covers a property, and
+one property can break in many places. `loc` is the first; `locs` lists them all
+in document order, so an editor can flag every offender and a fix can be applied
+everywhere:
+
+```typescript
+const w = report.compatibility.warnings.find((w) => w.property === "border-radius");
+w.loc;            // first occurrence
+w.locs;           // [{ line: 4, … }, { line: 9, … }, { line: 14, … }]
+w.locsTruncated;  // true if there were more than 100 and the list is partial
+```
+
+Warnings are deduplicated per client, property, severity and `selector`, so
+elements the analyzer describes differently (`div.card` vs `span`) produce
+separate warnings for the same property. To reach every place a property breaks,
+union `locs` across the warnings for it:
+
+```typescript
+const everywhere = report.compatibility.warnings
+  .filter((w) => w.property === "border-radius" && w.client === "outlook-windows")
+  .flatMap((w) => w.locs ?? []);
+```
+
 Available on every `BaseIssue` (spam, links, accessibility, images, inbox
 preview, size, template variables, overflow, visual) and on `CSSWarning`. It is
 also accepted by the standalone analyzers — `analyzeEmail(html, framework,
@@ -204,15 +227,18 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
   hierarchy summaries, most spam signals. `loc` is `undefined` — handle that.
 - Elements the parser synthesized rather than read from the source (an implicit
   `<head>` in a fragment) — there is no source to point at.
-- Findings deduplicated across occurrences report the **first** occurrence.
+- CSS warnings carry every occurrence in `locs` (first in `loc`), capped at 100
+  with `locsTruncated: true` when the list is partial. Other analyzers report
+  one issue per occurrence, so they carry `loc` only.
 
 **Caveats**
 
 - Positions describe the HTML that was analyzed. For MJML, Maizzle, or React
   Email, that is the *compiled* HTML, not your source file.
-- A text node containing character references (`&amp;`) can't be indexed into
-  reliably, so a template variable inside one anchors to the start of that text
-  node instead of the variable.
+- Character references and CRLF line endings are resolved against the original
+  source, so `&amp;` or `&#8212;` earlier in a line does not shift a position.
+  The one case that still falls back to the containing node is a token that was
+  itself encoded (`{{a&amp;b}}`).
 - `CSSWarning.line` is deprecated in favour of `loc`. Without `positions` it
   remains the line within the `<style>` block; with `positions` it is the
   document line.
@@ -672,9 +698,11 @@ interface CSSWarning {
   suggestion?: string;
   fix?: CodeFix;
   fixType?: FixType;
-  line?: number;       // deprecated — use `loc`
-  selector?: string;   // element selector for inline styles
-  loc?: SourceLocation;        // requires `positions: true`
+  line?: number;             // deprecated — use `loc`
+  selector?: string;         // element selector for inline styles
+  loc?: SourceLocation;      // first occurrence; requires `positions: true`
+  locs?: SourceLocation[];   // every occurrence, in document order
+  locsTruncated?: boolean;   // more than MAX_WARNING_LOCATIONS (100) occurrences
 }
 
 interface AuditReport {

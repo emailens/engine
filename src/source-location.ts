@@ -76,43 +76,142 @@ export function locOfFirst($: CheerioAPI, selector: string): SourceLocation | un
   return el ? locOfElement(el) : undefined;
 }
 
-/** A `<style>` block's start position plus how to undo newline normalization. */
+/** A `<style>` block's start position plus how to map offsets inside it. */
 export interface CssBlockAnchor {
   loc: Parse5Location;
-  /**
-   * Extra source characters consumed before a given index of the decoded text,
-   * or `null` when that can't be determined (see `crOffsetter`).
-   */
+  /** Extra source characters before a given index of the decoded text. */
   extraBefore: ((index: number) => number) | null;
-  /** The block's decoded CSS text, used to count newlines. */
-  text: string;
+  /** The whole document, when the caller had it — makes positions exact. */
+  source?: string;
 }
 
 /**
  * The document position where a `<style>` element's CSS text begins.
  *
- * `<style>` content is RAWTEXT — parse5 decodes no entities inside it — but it
- * does normalize CRLF to LF, so on a Windows-authored file the decoded text is
- * shorter than its source and offsets need adjusting. Returns `undefined` for a
- * style element whose content isn't a single text node.
+ * Returns `undefined` for a style element whose content isn't a single text
+ * node. Pass `source` (the original HTML) to get exact offsets whatever the
+ * file's line endings; without it the mapping holds only for a block whose
+ * endings are uniform.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function cssBlockAnchor(styleEl: any, cssText: string): CssBlockAnchor | undefined {
+export function cssBlockAnchor(
+  styleEl: any,
+  cssText: string,
+  source?: string,
+): CssBlockAnchor | undefined {
   const children = (styleEl as LocatedNode)?.children;
   if (!children || children.length !== 1) return undefined;
   const loc = children[0]?.sourceCodeLocation;
   if (!loc) return undefined;
-  return { loc, extraBefore: crOffsetter(cssText, loc.endOffset - loc.startOffset), text: cssText };
+
+  // `<style>` content is RAWTEXT: parse5 decodes no references inside it, so
+  // the only divergence from the source is newline normalization.
+  const mapper = source ? crMapper(source.slice(loc.startOffset, loc.endOffset), cssText) : null;
+  const extraBefore = mapper
+    ? (index: number) => mapper(index) - index
+    : crOffsetter(cssText, loc.endOffset - loc.startOffset);
+
+  return { loc, extraBefore, ...(mapper ? { source } : {}) };
 }
 
 /**
- * Maps an index in decoded text to the number of extra source characters that
- * preceded it — the `\r`s parse5 dropped.
+ * Maps an index in decoded text to the source offset it came from.
  *
- * Returns a zero function when the text wasn't normalized at all, and `null`
- * when the difference isn't explained by uniform CRLF endings (character
- * references, or a file mixing CRLF and LF inside one node). Callers then fall
- * back to the node's own start, which is always consistent even if coarser.
+ * parse5 hands analyzers decoded text — CRLF collapsed to LF, character
+ * references resolved — so an index into that text is not an index into the
+ * file. Walking the raw and decoded spans in step records exactly where they
+ * diverge, which is what makes `&amp;` and mixed line endings resolvable at
+ * all. Returns `null` if the two don't line up, so callers fall back rather
+ * than emit a position built on a guess.
+ */
+function crMapper(raw: string, decoded: string): ((index: number) => number) | null {
+  if (raw.length === decoded.length) return (index) => index;
+
+  const points: number[] = []; // decoded index where raw ran ahead
+  const extras: number[] = []; // cumulative extra raw characters from there on
+  let r = 0;
+  let d = 0;
+  let extra = 0;
+
+  while (d < decoded.length) {
+    if (r >= raw.length) return null;
+    if (raw[r] === decoded[d]) {
+      r++;
+      d++;
+      continue;
+    }
+    // The only divergence possible in raw text is a normalized line ending.
+    if (raw[r] === "\r" && decoded[d] === "\n") {
+      const consumed = raw[r + 1] === "\n" ? 2 : 1;
+      extra += consumed - 1;
+      points.push(d);
+      extras.push(extra);
+      r += consumed;
+      d += 1;
+      continue;
+    }
+    return null;
+  }
+
+  if (r !== raw.length) return null;
+  return (index) => index + lookup(points, extras, index);
+}
+
+/** Cumulative extra characters recorded at or before `index`. */
+function lookup(points: number[], extras: number[], index: number): number {
+  let lo = 0;
+  let hi = points.length - 1;
+  let found = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (points[mid] < index) {
+      found = extras[mid];
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found;
+}
+
+/**
+ * Where a decoded substring sits in the raw source.
+ *
+ * Walking the two in step doesn't work for text: `&amp;` decodes to `&`, so a
+ * left-to-right walk can't tell a literal ampersand from the start of a
+ * reference without backtracking. Counting occurrences sidesteps it — the nth
+ * occurrence of the token in the decoded text is the nth in the source, as
+ * long as the token itself wasn't encoded. Returns -1 when it was.
+ */
+function findRawOffset(raw: string, decoded: string, index: number, token: string): number {
+  if (!token) return -1;
+
+  let occurrence = 0;
+  for (let at = decoded.indexOf(token); at !== -1 && at < index; at = decoded.indexOf(token, at + 1)) {
+    occurrence++;
+  }
+
+  let found = -1;
+  let from = 0;
+  for (let i = 0; i <= occurrence; i++) {
+    found = raw.indexOf(token, from);
+    if (found === -1) return -1;
+    from = found + 1;
+  }
+  return found;
+}
+
+/** Line and column (both 1-based) of an absolute offset in the source. */
+export function positionOf(source: string, offset: number): { line: number; column: number } {
+  const prefix = source.slice(0, offset);
+  return { line: prefix.split("\n").length, column: offset - prefix.lastIndexOf("\n") };
+}
+
+/**
+ * Fallback for when the raw source isn't available: assume every newline in
+ * the block was a CRLF, which is true of a normally-authored Windows file.
+ * Returns a zero function when nothing was normalized, and `null` when the
+ * difference isn't explained by uniform endings.
  */
 function crOffsetter(text: string, rawLength: number): ((index: number) => number) | null {
   const removed = rawLength - text.length;
@@ -164,6 +263,21 @@ export function locInCssBlock(
   const start = block.startOffset + cssLoc.start.offset + extraBefore(cssLoc.start.offset);
   const end = block.startOffset + cssLoc.end.offset + extraBefore(cssLoc.end.offset);
 
+  // With the source, read the line and column off the offset rather than
+  // deriving them — they can't disagree with each other that way.
+  if (anchor.source) {
+    const from = positionOf(anchor.source, start);
+    const to = positionOf(anchor.source, end);
+    return {
+      line: from.line,
+      column: from.column,
+      endLine: to.line,
+      endColumn: to.column,
+      offset: start,
+      length: end - start,
+    };
+  }
+
   return { line, column, endLine, endColumn, offset: start, length: end - start };
 }
 
@@ -176,12 +290,40 @@ export function locInCssBlock(
  * only the column within it is approximate.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function locInTextNode(node: any, index: number, length: number): SourceLocation | undefined {
+export function locInTextNode(
+  node: any,
+  index: number,
+  length: number,
+  source?: string,
+): SourceLocation | undefined {
   const anchor = (node as LocatedNode)?.sourceCodeLocation;
   if (!anchor) return undefined;
 
   const data = (node as LocatedNode).data ?? "";
   const rawLength = anchor.endOffset - anchor.startOffset;
+
+  // The exact path: find the matched text in the node's raw source, so a
+  // `&amp;` or a CRLF earlier in the node shifts the result by the right amount
+  // instead of forcing a fallback.
+  if (source) {
+    const raw = source.slice(anchor.startOffset, anchor.endOffset);
+    const token = data.slice(index, index + length);
+    const at = findRawOffset(raw, data, index, token);
+    if (at !== -1) {
+      const start = anchor.startOffset + at;
+      const from = positionOf(source, start);
+      const to = positionOf(source, start + token.length);
+      return {
+        line: from.line,
+        column: from.column,
+        endLine: to.line,
+        endColumn: to.column,
+        offset: start,
+        length: token.length,
+      };
+    }
+  }
+
   const extraBefore = crOffsetter(data, rawLength);
 
   // Character references shifted every index in this node — point at the node,

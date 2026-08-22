@@ -12,7 +12,7 @@ import type { TemplateIssue, TemplateReport } from "./types";
  *
  * @internal Used by audit pipeline with pre-parsed DOM.
  */
-export function checkTemplateVariablesFromDom($: CheerioAPI): TemplateReport {
+export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): TemplateReport {
   const issues: TemplateIssue[] = [];
   const seen = new Set<string>();
 
@@ -36,7 +36,7 @@ export function checkTemplateVariablesFromDom($: CheerioAPI): TemplateReport {
         const key = `text:${variable}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const loc = locInTextNode(node, match.index, variable.length);
+        const loc = locInTextNode(node, match.index, variable.length, source);
         issues.push({
           rule: "unresolved-variable",
           severity: "error",
@@ -142,5 +142,10 @@ function visibleTextNodes($: CheerioAPI): any[] {
  * Returns the count of unresolved variables and detailed issues.
  */
 export function checkTemplateVariables(html: string, options?: ParseOptions): TemplateReport {
-  return fromHtml(html, EMPTY_TEMPLATE, checkTemplateVariablesFromDom, options);
+  return fromHtml(
+    html,
+    EMPTY_TEMPLATE,
+    ($, h) => checkTemplateVariablesFromDom($, options?.positions ? h : undefined),
+    options,
+  );
 }

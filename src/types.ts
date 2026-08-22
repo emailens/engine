@@ -69,8 +69,27 @@ export interface CSSWarning {
    */
   line?: number;
   selector?: string;
-  /** Position in the source HTML. Requires `positions: true`. */
+  /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
   loc?: SourceLocation;
+  /**
+   * Every occurrence, in document order — `loc` is the first of them.
+   *
+   * Warnings are deduplicated per client, property, severity and `selector`,
+   * so twelve elements the analyzer describes the same way collapse into one
+   * warning — this is how a consumer reaches the other eleven. Elements
+   * described differently (`div.card` vs `span`) still produce separate
+   * warnings for the same property, so a consumer that wants every place a
+   * property breaks should union `locs` across the warnings for that property.
+   * Ordered by position, capped at {@link MAX_WARNING_LOCATIONS}.
+   */
+  locs?: SourceLocation[];
+  /**
+   * `locs` hit the cap and does not list every occurrence.
+   *
+   * A consumer that acts on all of them (an editor applying a fix everywhere)
+   * needs to know the list is partial rather than infer it from the length.
+   */
+  locsTruncated?: boolean;
 }
 
 /**

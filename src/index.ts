@@ -23,7 +23,7 @@ export { auditEmail } from "./audit";
 export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
-export { GENERIC_LINK_TEXT, MAX_HTML_SIZE } from "./constants";
+export { GENERIC_LINK_TEXT, MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 export { EMPTY_DELIVERABILITY } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
 export type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";

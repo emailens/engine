@@ -196,17 +196,18 @@ export function createSession(
   // Parse once — shared across all read-only analysis operations
   const $ = loadHtml(html, options);
   const framework = options?.framework;
+  const source = options?.positions ? html : undefined;
 
   return {
     html,
     framework,
 
     audit(opts) {
-      return runAudit($, html, framework, opts);
+      return runAudit($, html, framework, { ...opts, positions: options?.positions });
     },
 
     analyze() {
-      return analyzeEmailFromDom($, framework);
+      return analyzeEmailFromDom($, framework, source);
     },
 
     score(warnings) {
@@ -238,7 +239,7 @@ export function createSession(
     },
 
     checkTemplateVariables() {
-      return checkTemplateVariablesFromDom($);
+      return checkTemplateVariablesFromDom($, source);
     },
 
     checkOverflow() {
