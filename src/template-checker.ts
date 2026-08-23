@@ -1,6 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import { TEMPLATE_VARIABLE_PATTERNS, EMPTY_TEMPLATE } from "./constants";
 import { fromHtml, type ParseOptions } from "./parse-html";
+import { visibleTextNodes } from "./dom-text";
 import { locInTextNode, locOfAttr } from "./source-location";
 import type { TemplateIssue, TemplateReport } from "./types";
 
@@ -102,35 +103,6 @@ export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): T
   }
 
   return { unresolvedCount: issues.length, issues };
-}
-
-/**
- * Visible text nodes in document order, excluding head/style/script.
- *
- * Replaces a `$.root().clone()` + `.text()`, which allocated a second copy of
- * the whole DOM and recursed once per level — deeply nested emails (tables in
- * tables) could exhaust the stack before this checker saw them.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function visibleTextNodes($: CheerioAPI): any[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodes: any[] = [];
-  // Iterative: emails nest tables inside tables, and a recursive walk would
-  // bound how deep a document we can handle by the JS stack.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stack: any[] = [...($.root()[0]?.children ?? [])].reverse();
-  while (stack.length > 0) {
-    const node = stack.pop();
-    const tag = (node.tagName as string | undefined)?.toLowerCase();
-    if (tag === "style" || tag === "script" || tag === "head") continue;
-    if (node.type === "text") {
-      nodes.push(node);
-      continue;
-    }
-    const children = node.children ?? [];
-    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
-  }
-  return nodes;
 }
 
 /**

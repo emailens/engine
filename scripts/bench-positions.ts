@@ -24,11 +24,19 @@ const FIXTURES = [
 const ITERATIONS = 200;
 const WARMUP = 20;
 
-function bench(run: () => void): number {
-  for (let i = 0; i < WARMUP; i++) run();
+/**
+ * Cost is not flat in document size — the fixtures are ~10KB, which is typical
+ * for an email (Gmail clips at ~102KB), but an editor will occasionally be
+ * pointed at something much larger. These sizes bracket that.
+ */
+const SCALED_KB = [100, 450];
+const SCALED_ITERATIONS = 5;
+
+function bench(run: () => void, iterations = ITERATIONS): number {
+  for (let i = 0; i < Math.min(WARMUP, iterations); i++) run();
   const start = performance.now();
-  for (let i = 0; i < ITERATIONS; i++) run();
-  return (performance.now() - start) / ITERATIONS;
+  for (let i = 0; i < iterations; i++) run();
+  return (performance.now() - start) / iterations;
 }
 
 function delta(off: number, on: number): string {
@@ -36,25 +44,42 @@ function delta(off: number, on: number): string {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
 }
 
-console.log(`mean of ${ITERATIONS} runs — parse only, then a full auditEmail()\n`);
+console.log(`parse only, then a full auditEmail() — mean of ${ITERATIONS} runs (${SCALED_ITERATIONS} for the scaled sizes)\n`);
 console.log(
   "fixture                        size   parse off   parse on   audit off   audit on   delta",
 );
 console.log("─".repeat(94));
 
+const fixtures: Array<{ name: string; html: string; iterations: number }> = [];
 for (const name of FIXTURES) {
-  const html = readFileSync(
-    join(import.meta.dir, "..", "src", "__tests__", "fixtures", name),
-    "utf8",
-  );
-  const parseOff = bench(() => loadHtml(html));
-  const parseOn = bench(() => loadHtml(html, { positions: true }));
-  const auditOff = bench(() => auditEmail(html));
-  const auditOn = bench(() => auditEmail(html, { positions: true }));
+  fixtures.push({
+    name,
+    html: readFileSync(join(import.meta.dir, "..", "src", "__tests__", "fixtures", name), "utf8"),
+    iterations: ITERATIONS,
+  });
+}
+
+// Scaled-up copies of the largest fixture, to show how the cost grows.
+const largest = fixtures.reduce((a, b) => (a.html.length > b.html.length ? a : b));
+for (const kb of SCALED_KB) {
+  const copies = Math.max(1, Math.round((kb * 1024) / largest.html.length));
+  fixtures.push({
+    name: `${largest.name} ×${copies}`,
+    html: largest.html.repeat(copies),
+    iterations: SCALED_ITERATIONS,
+  });
+}
+
+for (const { name, html, iterations } of fixtures) {
+  const runs = iterations;
+  const parseOff = bench(() => loadHtml(html), runs);
+  const parseOn = bench(() => loadHtml(html, { positions: true }), runs);
+  const auditOff = bench(() => auditEmail(html), runs);
+  const auditOn = bench(() => auditEmail(html, { positions: true }), runs);
 
   const ms = (n: number) => `${n.toFixed(2)}ms`.padStart(10);
   console.log(
-    `${name.padEnd(30)} ${`${Math.round(html.length / 1024)}KB`.padStart(5)} ` +
+    `${name.padEnd(30).slice(0, 30)} ${`${Math.round(html.length / 1024)}KB`.padStart(5)} ` +
       `${ms(parseOff)} ${ms(parseOn)} ${ms(auditOff)} ${ms(auditOn)} ` +
       `${delta(auditOff, auditOn).padStart(7)}`,
   );

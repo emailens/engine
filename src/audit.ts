@@ -92,8 +92,8 @@ export function runAudit(
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
-  const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($);
-  const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($);
+  const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
+  const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);
 
   return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual };
 }

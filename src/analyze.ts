@@ -208,6 +208,7 @@ export function analyzeEmailFromDom(
 
   // 2. Parse <style> blocks with css-tree
   const parsedAtRules = new Set<string>();
+  const selectorLocs = new Map<string, Occurrences>();
   const parsedProperties = new Set<string>();
   const propertyLines = new Map<string, number>();
   const propertyLocs = new Map<string, Occurrences>();
@@ -218,6 +219,24 @@ export function analyzeEmailFromDom(
 
   /** Set inside the per-block walk below so `recordLoc` can see the block. */
   let blockAnchor: ReturnType<typeof cssBlockAnchor>;
+  /** At-rules and pseudo-selectors are keyed by name, not by property. */
+  function recordSelectorLoc(key: string, cssLoc: csstree.CssLocation | null | undefined) {
+    if (!cssLoc) return;
+    const loc = locInCssBlock(blockAnchor, cssLoc);
+    if (!loc) return;
+    const seen = selectorLocs.get(key);
+    if (!seen) {
+      selectorLocs.set(key, { locs: [loc] });
+      return;
+    }
+    if (seen.locs.some((l) => l.offset === loc.offset)) return;
+    if (seen.locs.length >= MAX_WARNING_LOCATIONS) {
+      seen.truncated = true;
+      return;
+    }
+    seen.locs.push(loc);
+  }
+
   function recordLoc(key: string, cssLoc: csstree.CssLocation) {
     const loc = locInCssBlock(blockAnchor, cssLoc);
     if (!loc) return;
@@ -243,13 +262,16 @@ export function analyzeEmailFromDom(
         enter(node: csstree.CssNode) {
           if (node.type === "Atrule") {
             parsedAtRules.add(`@${node.name}`);
+            recordSelectorLoc(`@${node.name}`, node.loc);
           }
           // Detect pseudo-classes and pseudo-elements in selectors
           if (node.type === "PseudoClassSelector") {
             detectedPseudoClasses.add(`:${node.name}`);
+            recordSelectorLoc(`:${node.name}`, node.loc);
           }
           if (node.type === "PseudoElementSelector") {
             detectedPseudoElements.add(`::${node.name}`);
+            recordSelectorLoc(`::${node.name}`, node.loc);
           }
           if (node.type === "Declaration") {
             const prop = node.property.toLowerCase();
@@ -298,7 +320,7 @@ export function analyzeEmailFromDom(
   // 3. Data-driven at-rule checking
   for (const atRule of AT_RULE_FEATURES) {
     if (!parsedAtRules.has(atRule)) continue;
-    checkPropertySupport(atRule, addWarning, framework);
+    checkPropertySupport(atRule, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(atRule));
   }
 
   // 4. Scan inline styles
@@ -365,12 +387,12 @@ export function analyzeEmailFromDom(
   // Data-driven pseudo-class/element detection from <style> blocks
   for (const pseudo of detectedPseudoClasses) {
     if (CSS_SUPPORT[pseudo]) {
-      checkPropertySupport(pseudo, addWarning, framework);
+      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo));
     }
   }
   for (const pseudo of detectedPseudoElements) {
     if (CSS_SUPPORT[pseudo]) {
-      checkPropertySupport(pseudo, addWarning, framework);
+      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo));
     }
   }
 

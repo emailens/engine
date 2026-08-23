@@ -40,8 +40,18 @@ export interface BaseIssue {
   rule: string;
   severity: Severity;
   message: string;
-  /** Position in the source HTML. Requires `positions: true`. */
+  /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
   loc?: SourceLocation;
+  /**
+   * Every occurrence, in document order — `loc` is the first of them.
+   *
+   * Present on analyzers that report one issue per *kind* of problem rather
+   * than one per element (overflow, visual). Analyzers that already emit an
+   * issue per element carry `loc` alone. Capped at {@link MAX_WARNING_LOCATIONS}.
+   */
+  locs?: SourceLocation[];
+  /** `locs` hit the cap and does not list every occurrence. */
+  locsTruncated?: boolean;
 }
 
 export interface CodeFix {

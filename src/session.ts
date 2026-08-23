@@ -243,11 +243,11 @@ export function createSession(
     },
 
     checkOverflow() {
-      return checkOverflowFromDom($);
+      return checkOverflowFromDom($, source);
     },
 
     checkVisual() {
-      return checkVisualFromDom($);
+      return checkVisualFromDom($, source);
     },
 
     // Transforms create isolated copies since they mutate the DOM

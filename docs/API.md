@@ -220,6 +220,11 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 | Link, image, accessibility finding about an element | the opening tag — `<img src="…">` |
 | Template variable in text | the variable itself — `{{first_name}}` |
 | Template variable in an attribute | the attribute holding it |
+| At-rule (`@media`, `@font-face`) | the rule that triggered it |
+| Fixed-width overflow | the `width` attribute or `style` that set it |
+| Visual finding (gradient, font stack) | the declaration that caused it |
+| Unbreakable string | the string itself |
+| Dark-mode coverage | the `bgcolor` or `style` keeping the element light |
 
 **What has no position**
 
@@ -227,9 +232,10 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
   hierarchy summaries, most spam signals. `loc` is `undefined` — handle that.
 - Elements the parser synthesized rather than read from the source (an implicit
   `<head>` in a fragment) — there is no source to point at.
-- CSS warnings carry every occurrence in `locs` (first in `loc`), capped at 100
-  with `locsTruncated: true` when the list is partial. Other analyzers report
-  one issue per occurrence, so they carry `loc` only.
+- Findings that describe a *kind* of problem rather than one element — CSS
+  warnings, overflow, visual — carry every occurrence in `locs` (first in
+  `loc`), capped at 100 with `locsTruncated: true` when the list is partial.
+  Analyzers that already emit one issue per element carry `loc` alone.
 
 **Caveats**
 
@@ -243,9 +249,10 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
   remains the line within the `<style>` block; with `positions` it is the
   document line.
 
-**Cost.** Roughly +5–12% on the parse, and within measurement noise on a full
-`auditEmail()` — parsing is under a tenth of the work the analyzers do. Measure
-on your own fixtures with `bun run bench:positions`.
+**Cost.** It grows with the document: about +6–14% on a full `auditEmail()` at
+typical email size (~10KB), +30% at Gmail's ~102KB clipping limit, and +79% on a
+450KB document — locating a finding means walking text and CSS the analyzers
+would otherwise skim. Measure on your own fixtures with `bun run bench:positions`.
 
 ---
 

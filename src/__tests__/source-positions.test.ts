@@ -4,6 +4,8 @@ import { join } from "node:path";
 import {
   auditEmail,
   analyzeEmail,
+  checkOverflow,
+  checkVisual,
   generateCompatibilityScore,
   MAX_WARNING_LOCATIONS,
   analyzeImages,
@@ -55,7 +57,7 @@ function slice(html: string, loc: SourceLocation): string {
 /** Every issue in an audit report, across all ten analyzers. */
 function allIssues(
   r: AuditReport,
-): Array<{ loc?: SourceLocation; locs?: SourceLocation[]; variable?: string }> {
+): Array<{ rule?: string; loc?: SourceLocation; locs?: SourceLocation[]; variable?: string }> {
   return [
     ...r.compatibility.warnings,
     ...r.spam.issues,
@@ -103,6 +105,7 @@ const ANCHOR_SHAPES = [
   /^<[a-zA-Z]/,              // an opening tag
   /^[a-zA-Z-]+\s*=/,         // an attribute
   /^[a-zA-Z-]+\s*:/,         // a CSS declaration
+  /^@[a-zA-Z-]+/,            // an at-rule
   /^[{$%*<]/,                // a template variable
 ];
 
@@ -128,26 +131,37 @@ function expectVariableAnchor(html: string, loc: SourceLocation, variable: strin
   expect(idx, `anchor is ${idx} chars before the variable`).toBeLessThan(2000);
 }
 
+/**
+ * An unbreakable-string finding anchors on the token itself, which by
+ * definition is one long run of non-whitespace.
+ */
+function expectTokenAnchor(html: string, loc: SourceLocation) {
+  expect(slice(html, loc)).toMatch(/^\S+$/);
+}
+
 /** Dispatch to whichever anchor rule fits the issue that produced the loc. */
 function expectIssueAnchor(
   html: string,
-  issue: { loc?: SourceLocation; locs?: SourceLocation[]; variable?: string },
+  issue: { rule?: string; loc?: SourceLocation; locs?: SourceLocation[]; variable?: string },
 ) {
   if (!issue.loc) return;
   expectWellFormed(html, issue.loc);
   if (issue.variable) expectVariableAnchor(html, issue.loc, issue.variable);
+  else if (issue.rule === "unbreakable-string") expectTokenAnchor(html, issue.loc);
   else expectPlausibleAnchor(html, issue.loc);
 
   if (!issue.locs) return;
   // Occurrences: first is `loc`, in document order, no repeats, each anchored
   // as strictly as the first. Applied to every fuzz document below.
+  const anchorEach =
+    issue.rule === "unbreakable-string" ? expectTokenAnchor : expectPlausibleAnchor;
   expect(issue.locs[0]).toEqual(issue.loc);
   const offsets = issue.locs.map((l) => l.offset);
   expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
   expect(new Set(offsets).size).toBe(offsets.length);
   for (const loc of issue.locs) {
     expectWellFormed(html, loc);
-    expectPlausibleAnchor(html, loc);
+    anchorEach(html, loc);
   }
 }
 
@@ -669,6 +683,104 @@ describe("every occurrence is reported, not just the first", () => {
     const w = analyzeEmail(twelve).find((w) => w.property === "border-radius");
     expect(w!.locs).toBeUndefined();
     expect(w!.loc).toBeUndefined();
+  });
+});
+
+describe("source positions — layout and visual findings", () => {
+  // These carry a concrete `fix`, so they are the findings an editor is most
+  // likely to offer to apply — and the ones that had no position at all until
+  // they were wired up.
+  const LAYOUT = [
+    /* 1 */ "<body>",
+    /* 2 */ '  <table width="900"><tr><td>wide</td></tr></table>',
+    /* 3 */ '  <div style="width:800px">also wide</div>',
+    /* 4 */ '  <div style="background:linear-gradient(#fff,#000)">no fallback</div>',
+    /* 5 */ '  <div style="font-family:Comic">no fallback</div>',
+    /* 6 */ "</body>",
+  ].join("\n");
+
+  test("a fixed width points at whichever of attribute or style declared it", () => {
+    const issues = checkOverflow(LAYOUT, { positions: true }).issues;
+    const attr = issues.find((i) => i.message.includes("900"));
+    const style = issues.find((i) => i.message.includes("800"));
+    expect(slice(LAYOUT, attr!.loc!)).toBe('width="900"');
+    expect(slice(LAYOUT, style!.loc!)).toBe('style="width:800px"');
+  });
+
+  test("visual findings point at the declaration that caused them", () => {
+    const issues = checkVisual(LAYOUT, { positions: true }).issues;
+    const bg = issues.find((i) => i.rule === "missing-background-fallback");
+    const font = issues.find((i) => i.rule === "missing-font-fallback");
+    expect(bg!.loc!.line).toBe(4);
+    expect(font!.loc!.line).toBe(5);
+  });
+
+  test("inside a <style> block each check points at its own declaration", () => {
+    const css = [
+      "<html><head><style>",
+      "  .hero { background: linear-gradient(#fff,#000); }",
+      "  .body { font-family: Comic; }",
+      "</style></head><body>x</body></html>",
+    ].join("\n");
+    const issues = checkVisual(css, { positions: true }).issues;
+    expect(slice(css, issues.find((i) => i.rule === "missing-background-fallback")!.loc!)).toBe(
+      "background: linear-gradient(#fff,#000)",
+    );
+    expect(slice(css, issues.find((i) => i.rule === "missing-font-fallback")!.loc!)).toBe(
+      "font-family: Comic",
+    );
+  });
+
+  test("an unbreakable string points at the string itself", () => {
+    const html = `<body>\n  <p>see https://example.com/${"x".repeat(90)}</p>\n</body>`;
+    const issue = checkOverflow(html, { positions: true }).issues[0];
+    expect(slice(html, issue.loc!)).toMatch(/^https:\/\/example\.com\/x+$/);
+    expect(issue.loc!.line).toBe(2);
+  });
+
+  test("repeated offenders are collected onto one issue", () => {
+    const repeated = ["<body>", ...Array.from({ length: 4 }, () => '  <div style="width:800px">x</div>'), "</body>"].join("\n");
+    const issue = checkOverflow(repeated, { positions: true }).issues[0];
+    expect(issue.locs!.map((l) => l.line)).toEqual([2, 3, 4, 5]);
+  });
+
+  test("at-rules point at the rule that triggered them", () => {
+    const css = [
+      "<html><head><style>",
+      "@media (max-width: 600px) { .a { color: red } }",
+      "</style></head><body>x</body></html>",
+    ].join("\n");
+    const w = analyzeEmail(css, undefined, { positions: true }).find((w) => w.property === "@media");
+    expect(w!.loc!.line).toBe(2);
+    expect(slice(css, w!.loc!)).toBe("@media (max-width: 600px) { .a { color: red } }");
+  });
+
+  test("a light background the dark block misses points at the attribute keeping it light", () => {
+    const html = [
+      "<html><head><style>",
+      "@media (prefers-color-scheme: dark) { .a { background: #000 !important } }",
+      "</style></head>",
+      "<body>",
+      '  <table><tr><td bgcolor="#ffffff">x</td></tr></table>',
+      "</body></html>",
+    ].join("\n");
+    const w = analyzeEmail(html, undefined, { positions: true }).find(
+      (w) => w.property === "dark-mode-coverage",
+    );
+    expect(slice(html, w!.loc!)).toBe('bgcolor="#ffffff"');
+  });
+
+  test("nothing in a full audit is left unplaceable except document-level findings", () => {
+    const report = auditEmail(LAYOUT, { positions: true });
+    const unplaced = allIssues(report).filter((i) => !i.loc);
+    // Whatever remains must be about the document as a whole, not an element.
+    for (const issue of unplaced) {
+      expect(["no-links", "missing-subject", "preheader-too-short", "gmail-clipped", "image-only",
+        "missing-unsubscribe", "missing-physical-address", "text-to-image-ratio", "no-preheader",
+        "missing-charset", "missing-lang", "missing-title", "high-image-count", "tracking-pixel",
+        "total-data-uri-size", "duplicate-links", "small-text-multiple", "heading-skip",
+      ]).toContain((issue as { rule?: string }).rule);
+    }
   });
 });
 
