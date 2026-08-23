@@ -1,7 +1,7 @@
 {
   "name": "@emailens/engine",
   "version": "0.10.3",
-  "description": "Email compatibility engine — transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link, and image quality analysis.",
+  "description": "Email compatibility engine for HTML, MJML, Maizzle and React Email: transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link and image quality analysis.",
   "type": "module",
   "exports": {
     ".": {
@@ -110,7 +110,10 @@
     "spam-scoring",
     "accessibility",
     "link-validation",
-    "image-analysis"
+    "image-analysis",
+    "mjml",
+    "maizzle",
+    "react-email"
   ],
   "license": "MIT",
   "repository": {
