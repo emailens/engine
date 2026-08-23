@@ -188,9 +188,13 @@ function namesAProperty(layer: string): boolean {
  * predicates read them). True = the warning is warranted.
  *
  * Every branch ends in `return true` for a note it does not recognise: a note
- * we cannot read is a caveat we cannot rule out, so it stays reported. The
- * value still gets the first word — `position: static` and `overflow: hidden`
- * cannot break under any note, and stay silent whatever it says.
+ * we cannot read is a caveat we cannot rule out, so it stays reported.
+ *
+ * The value gets the first word in one case: where it means the feature is not
+ * in play at all. `position: static` positions nothing and `overflow: hidden`
+ * scrolls nothing, so no reading of any note reaches them and they stay silent
+ * whatever it says. Every other value engages its property, so an unreadable
+ * note about that property might be about it.
  */
 function triggers(prop: string, value: string, note: string, noteLc: string): boolean {
   switch (prop) {
@@ -220,8 +224,12 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       // values (separate props people rarely write) plus a "cannot scroll to hidden
       // content" bug on some mobile clients. Physical `overflow: hidden`/`clip`
       // (clipping) renders fine; only scrollable values hit the bug.
-      if (!noteLc.includes("cannot scroll") && !noteLc.includes("overflow-block")) return true;
+      // The value decides first, as it does for `position: static`: a value
+      // that does not scroll cannot hit either caveat, whatever the note turns
+      // out to say. `overflow: hidden` is too common to report on a reworded
+      // note — that would be the noise this gate exists to remove.
       if (!/\b(?:auto|scroll|overlay)\b/.test(value)) return false;
+      if (!noteLc.includes("cannot scroll") && !noteLc.includes("overflow-block")) return true;
       return noteLc.includes("cannot scroll");
     }
 

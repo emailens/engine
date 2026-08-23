@@ -474,11 +474,25 @@ describe("value-aware partial support — an unreadable note reports", () => {
     expect(quiet).toEqual([]);
   });
 
-  it("covers every gated property except overflow, whose values decide first", () => {
-    // `overflow: hidden` cannot break under any note — it is not scrollable —
-    // so it is the one property the contract does not reach.
+  it("covers every gated property except overflow, whose probe value is inert", () => {
     expect([...PROBES.map(([p]) => p), "overflow"].sort()).toEqual([...VALUE_CAVEAT_PROPS].sort());
     expect(caveatApplies("overflow", ["auto"], NONSENSE)).toBe(true);
+  });
+
+  it("yields to a value that means the property is not in play", () => {
+    // The one exception, and it has to be the same in both places it applies.
+    // `position: static` positions nothing and `overflow: hidden` scrolls
+    // nothing, so no reading of any note reaches them. Reporting these on a
+    // reworded note would be exactly the noise the gate exists to remove —
+    // `overflow: hidden` appears in almost every email built on tables.
+    expect(caveatApplies("position", ["static"], NONSENSE)).toBe(false);
+    expect(caveatApplies("overflow", ["hidden"], NONSENSE)).toBe(false);
+    expect(caveatApplies("overflow", ["clip"], NONSENSE)).toBe(false);
+    // …and only for those values. Anything that engages the property is
+    // reported, because an unreadable note about it might be about them.
+    expect(caveatApplies("position", ["relative"], NONSENSE)).toBe(true);
+    expect(caveatApplies("overflow", ["auto"], NONSENSE)).toBe(true);
+    expect(caveatApplies("overflow", ["scroll"], NONSENSE)).toBe(true);
   });
 
   it("holds when an `only supports` note is reworded past the parser", () => {
