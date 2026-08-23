@@ -502,6 +502,21 @@ Compares two sets of analysis results to show what improved, regressed, or staye
 
 Compile email templates from JSX, MJML, or Maizzle to HTML.
 
+Each compiler is an **optional peer dependency**, installed by you rather than
+by us — email projects rarely use more than one, and MJML alone pulls in 56MB.
+The versions these are tested against:
+
+| Format | Package | Supported |
+|---|---|---|
+| `mjml` | `mjml` | `>=4.0.0`, tested on 5.x |
+| `jsx` | `@react-email/render`, `@react-email/components`, `react` | `>=1.0.0` / `>=0.0.36`, tested on 2.x / 1.x |
+| `maizzle` | `@maizzle/framework` | `>=5.0.0 <6.0.0` |
+
+Maizzle 6 is deliberately excluded: it moved to Vue single-file components, so
+`render()` takes an SFC source or a file path where `compileMaizzle()` passes
+template text. Installing it would satisfy the peer range and then fail at
+runtime, so the range says so instead.
+
 ```typescript
 import { compile, detectFormat, CompileError } from "@emailens/engine/compile";
 
