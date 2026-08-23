@@ -9,6 +9,7 @@ import {
   COMPOUND_VALUE_FEATURES,
   CSS_FUNCTION_FEATURES,
 } from "./rules/css-support";
+import { caveatApplies } from "./rules/value-caveats";
 import { EMAIL_CLIENTS } from "./clients";
 import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
@@ -349,7 +350,11 @@ export function analyzeEmailFromDom(
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
-        checkPropertySupport(prop, addWarning, framework, selector, undefined, getStyleValue(style, prop) ?? undefined, locs);
+        const declared = getStyleValue(style, prop);
+        checkPropertySupport(
+          prop, addWarning, framework, selector, undefined,
+          declared !== undefined && declared !== null ? [declared] : undefined, locs,
+        );
       }
 
       // Data-driven CSS function detection in inline styles
@@ -371,7 +376,7 @@ export function analyzeEmailFromDom(
     const values = propertyValues.get(prop);
     checkPropertySupport(
       prop, addWarning, framework, undefined, propertyLines.get(prop),
-      values ? values.join(" ") : undefined, propertyLocs.get(prop),
+      values, propertyLocs.get(prop),
     );
   }
 
@@ -442,59 +447,6 @@ function getFixType(prop: string): FixType {
 }
 
 /**
- * Properties whose "partial" rating is value-level: the property usually
- * renders fine and only a specific value breaks. For these we gate the warning
- * on the value (using the per-client caniemail note) instead of flagging every
- * use. Properties not listed here keep the plain "partial → warn" behaviour.
- */
-const VALUE_CAVEAT_PROPS = new Set(["margin", "position", "overflow"]);
-
-const POSITION_KEYWORDS = ["relative", "absolute", "fixed", "sticky"] as const;
-
-/**
- * Does `value` actually trigger this client's partial-support caveat? Driven by
- * the caniemail note, which is per-client (e.g. Outlook supports `sticky` but
- * not `relative`/`absolute`, whereas Yahoo supports only `relative`). Returns
- * true = the warning is warranted, false = this value renders fine.
- *
- * ponytail: element-scoped caveats (margin on `<span>`/`<body>`) aren't checked
- * here — we only have the value, not the element — so margin-on-span under-warns.
- */
-function valueTriggersCaveat(prop: string, value: string, notes: string[] | undefined): boolean {
-  const note = (notes ?? []).join(" ");
-  const noteLc = note.toLowerCase();
-
-  if (prop === "margin") {
-    // Negative is unsupported everywhere that's "partial"; `auto` only where the
-    // note says so (e.g. Outlook), so don't flag `margin: 0 auto` on Gmail.
-    if (/(?:^|[\s:(])-\.?\d/.test(value) && noteLc.includes("negative")) return true;
-    if (/\bauto\b/.test(value) && noteLc.includes("auto")) return true;
-    return false;
-  }
-
-  if (prop === "position") {
-    const used = POSITION_KEYWORDS.find((k) => new RegExp(`\\b${k}\\b`).test(value));
-    if (!used) return false; // e.g. position: static — nothing breaks
-    // Note form: "Supports `x` [and `y`] but not `z`[, `w`]." — parse the "not" list.
-    const m = note.match(/supports\s+.+?\s+but not\s+([^.]+)/i);
-    if (m) return m[1].toLowerCase().includes(used);
-    // No parseable note (e.g. Superhuman override): fixed/sticky are the usual break.
-    return used === "fixed" || used === "sticky";
-  }
-
-  if (prop === "overflow") {
-    // caniemail's "partial" is about the logical `overflow-block`/`overflow-inline`
-    // values (separate props people rarely write) plus a "cannot scroll to hidden
-    // content" bug on some mobile clients. Physical `overflow: hidden`/`clip`
-    // (clipping) renders fine; only scrollable values hit the bug.
-    if (!/\b(?:auto|scroll)\b/.test(value)) return false;
-    return noteLc.includes("cannot scroll");
-  }
-
-  return true;
-}
-
-/**
  * Turn caniemail cell notes into a message suffix. Strips the redundant
  * "Partial."/"Buggy."/"Not supported." prefix since the message already states
  * the support level.
@@ -513,7 +465,7 @@ function checkPropertySupport(
   framework?: Framework,
   selector?: string,
   line?: number,
-  value?: string,
+  values?: string[],
   occurrences?: Occurrences,
 ) {
   const loc = occurrences?.locs[0];
@@ -525,7 +477,6 @@ function checkPropertySupport(
   if (!supportData) return;
 
   const fixType = getFixType(prop);
-  const valueGated = VALUE_CAVEAT_PROPS.has(prop);
 
   for (const client of EMAIL_CLIENTS) {
     const support: SupportLevel = supportData[client.id] || "unknown";
@@ -548,10 +499,10 @@ function checkPropertySupport(
           ? { fixIsGenericFallback: true } : {}),
       });
     } else if (support === "partial") {
-      // Value-aware: skip when we have the value and this client's caveat
-      // doesn't apply to it (e.g. margin: 16px, or position: relative on a
-      // client that only breaks on fixed/sticky).
-      if (valueGated && value !== undefined && !valueTriggersCaveat(prop, value, notes)) continue;
+      // Value-aware: skip when we know the values written and this client's
+      // caveat doesn't apply to any of them (e.g. margin: 16px, font-size: 14px,
+      // or position: relative on a client that only breaks on fixed/sticky).
+      if (!caveatApplies(prop, values, notes)) continue;
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
       addWarning({
