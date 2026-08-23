@@ -77,6 +77,23 @@ export function getStyleValue(style: string, property: string): string | null {
 }
 
 /**
+ * Every value declared for a property in an inline style, in source order.
+ * A property may legally be declared twice — `display:block;display:flex` is
+ * the standard progressive-enhancement idiom — and which one applies depends
+ * on the client, so a checker that reads support needs to see all of them.
+ */
+export function getStyleValues(style: string, property: string): string[] {
+  const values: string[] = [];
+  for (const part of splitStyleDeclarations(style)) {
+    const colonIndex = part.indexOf(":");
+    if (colonIndex === -1) continue;
+    if (part.slice(0, colonIndex).trim().toLowerCase() !== property) continue;
+    values.push(part.slice(colonIndex + 1).trim());
+  }
+  return values;
+}
+
+/**
  * Parse an inline style string into a Map of property → value.
  */
 export function parseInlineStyle(style: string): Map<string, string> {

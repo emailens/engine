@@ -8,6 +8,12 @@ export { generateFixPrompt } from "./export-prompt";
 export { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "./ai-fix";
 export { estimateAiFixTokens, heuristicTokenCount } from "./token-utils";
 export { STRUCTURAL_FIX_PROPERTIES, CSS_SUPPORT, HTML_ELEMENT_FEATURES, AT_RULE_FEATURES, COMPOUND_VALUE_FEATURES, CSS_FUNCTION_FEATURES } from "./rules/css-support";
+export { CSS_SUPPORT_NOTES } from "./rules/css-support";
+// So a consumer showing the support table can answer the same question the
+// analyzer answers: is this client's caveat about the value in front of me?
+// Without it a hover says "partial in 7 clients" over a line the linter is
+// deliberately silent about.
+export { caveatApplies, VALUE_CAVEAT_PROPS } from "./rules/value-caveats";
 export { analyzeSpam } from "./spam-scorer";
 // checkDeliverability and checkSpamAssassin use Node.js builtins (dns, child_process)
 // and are exported from "@emailens/engine/server" to avoid breaking client-side bundles.
