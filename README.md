@@ -7,6 +7,7 @@
 
 **The rendering linter for email**
 
+[![CI](https://github.com/emailens/engine/actions/workflows/ci.yml/badge.svg)](https://github.com/emailens/engine/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-900%20passing-brightgreen)]()
