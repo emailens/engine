@@ -24,13 +24,35 @@ export const VALUE_CAVEAT_PROPS = new Set([
   "transition",
 ]);
 
-/** Lowercase, drop `!important`, collapse whitespace. */
+/**
+ * Lowercase, drop comments and `!important`, collapse whitespace. A comment
+ * becomes a space rather than nothing, so a comment wedged between the colon
+ * and the value does not fuse into the keyword. Inline styles reach us as raw
+ * attribute text, so this is the only place either is removed.
+ */
 function normalize(value: string): string {
   return value
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
     .toLowerCase()
-    .replace(/!\s*important\s*$/, "")
+    .replace(/!\s*important/g, " ")
+    .replace(/;+\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Normalized, de-duplicated values, cached per array. `checkPropertySupport`
+ * calls the gate once per client with the same array, and a large stylesheet
+ * repeats the same handful of values across hundreds of rules.
+ */
+const preparedValues = new WeakMap<readonly string[], string[]>();
+function prepare(values: readonly string[]): string[] {
+  let out = preparedValues.get(values);
+  if (!out) {
+    out = [...new Set(values.map(normalize))];
+    preparedValues.set(values, out);
+  }
+  return out;
 }
 
 /** Split on `sep` at paren depth 0, so `rgb(0, 0, 0)` stays one part. */
@@ -67,17 +89,32 @@ function hasUnit(value: string, units: string[]): boolean {
 /** Bare `<number>` tokens — `700`, not `700px`. */
 function bareNumbers(value: string): number[] {
   return tokens(value)
-    .filter((t) => /^\d+(?:\.\d+)?$/.test(t))
+    .filter((t) => /^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/.test(t))
     .map(Number);
 }
 
+/**
+ * A negative number, not the minus of `calc(100% - 10px)`. The sign must be
+ * glued to the digits: a space after it makes it a subtraction operator.
+ */
 function hasNegative(value: string): boolean {
-  return /(?:^|[\s,(])-\s*\.?\d/.test(value);
+  return /(?:^|[\s,(])-\.?\d/.test(value);
 }
 
 /** caniemail writes some multi-word values with a space (`inline flow-root`). */
 function dashed(v: string): string {
   return v.replace(/\s+/g, "-");
+}
+
+/**
+ * `-webkit-sticky` is `sticky`. A note that does not name the prefixed form
+ * still describes it — the client is not going to resolve a keyword it does
+ * not implement — so caveats are matched against the unprefixed value too.
+ * The exception is a note that explicitly says the prefixed form works, which
+ * `quotedValues()` separates out.
+ */
+function unprefixed(token: string): string {
+  return token.replace(/^-(?:webkit|moz|ms|o)-/, "");
 }
 
 /**
@@ -98,6 +135,10 @@ function quotedValues(note: string): { supported: string[]; banned: string[] } {
 
 /** A `background` value that is only a colour, or resolves to nothing. */
 function isColorOnly(value: string): boolean {
+  // `parseColor` does not validate hex digits and returns NaN channels for
+  // anything `#`-prefixed, so `#fff #000` would pass as a colour. Decide hex
+  // here and let `parseColor` handle the named/functional forms.
+  if (value.startsWith("#")) return /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(value);
   if (parseColor(value)) return true;
   return (
     ["none", "inherit", "initial", "unset", "revert", "currentcolor"].includes(value) ||
@@ -108,24 +149,37 @@ function isColorOnly(value: string): boolean {
 
 const POSITION_KEYWORDS = ["relative", "absolute", "fixed", "sticky"] as const;
 
-/** `font-size` units that are relative to something else. */
-const RELATIVE_FONT_UNITS = ["rem", "em", "ex", "ch", "vw", "vh", "vmin", "vmax"];
+/**
+ * `font-size` units that are relative to something else. The note is
+ * categorical ("`relative` and `percentage` size values"), so this covers the
+ * font-relative, viewport and container units rather than the common few.
+ */
+const RELATIVE_FONT_UNITS = [
+  "cqmin", "cqmax", "vmin", "vmax", "rlh", "rex", "rch", "ric", "rem",
+  "svw", "svh", "lvw", "lvh", "dvw", "dvh", "cqw", "cqh", "cqi", "cqb",
+  "cap", "ic", "lh", "em", "ex", "ch", "vw", "vh", "vi", "vb",
+];
 
-const TIMING_KEYWORDS = new Set([
+/**
+ * Everything a `transition` layer can hold that is not the name of the
+ * property being animated: easings, `transition-behavior`, and the CSS-wide
+ * keywords.
+ */
+const NOT_A_PROPERTY_NAME = new Set([
+  "all", "allow-discrete", "normal",
   "ease", "ease-in", "ease-out", "ease-in-out", "linear",
-  "step-start", "step-end", "normal", "none", "initial", "inherit",
+  "step-start", "step-end",
+  "none", "initial", "inherit", "unset", "revert", "revert-layer",
 ]);
 
-/** Does one `transition` layer name the property it animates? */
+/**
+ * Does one `transition` layer name the property it animates? Decided
+ * positively — a bare identifier that is not one of the above — so that a
+ * duration, a `var()`, a `steps()` or anything else unrecognised leaves the
+ * layer meaning `all`, which is what CSS says it means.
+ */
 function namesAProperty(layer: string): boolean {
-  return tokens(layer).some(
-    (t) =>
-      t !== "all" &&
-      !TIMING_KEYWORDS.has(t) &&
-      !/^-?[\d.]+m?s$/.test(t) &&
-      !/^-?[\d.]+$/.test(t) &&
-      !/^(?:steps|cubic-bezier|linear)\(/.test(t)
-  );
+  return tokens(layer).some((t) => /^[a-z][a-z0-9-]*$/.test(t) && !NOT_A_PROPERTY_NAME.has(t));
 }
 
 /**
@@ -134,26 +188,31 @@ function namesAProperty(layer: string): boolean {
  * predicates read them). True = the warning is warranted.
  *
  * Every branch ends in `return true` for a note it does not recognise: a note
- * we cannot read is a caveat we cannot rule out, so it stays reported.
+ * we cannot read is a caveat we cannot rule out, so it stays reported. The
+ * value still gets the first word — `position: static` and `overflow: hidden`
+ * cannot break under any note, and stay silent whatever it says.
  */
 function triggers(prop: string, value: string, note: string, noteLc: string): boolean {
   switch (prop) {
     case "margin": {
       // Negative is unsupported everywhere that's "partial"; `auto` only where
       // the note says so (e.g. Outlook), so don't flag `margin: 0 auto` on Gmail.
-      if (hasNegative(value) && noteLc.includes("negative")) return true;
-      if (/\bauto\b/.test(value) && noteLc.includes("auto")) return true;
-      return false;
+      const negative = noteLc.includes("negative");
+      const auto = noteLc.includes("auto");
+      if (!negative && !auto) return true; // a note we cannot read
+      return (negative && hasNegative(value)) || (auto && /\bauto\b/.test(value));
     }
 
     case "position": {
-      const used = POSITION_KEYWORDS.find((k) => tokens(value).includes(k));
+      const used = POSITION_KEYWORDS.find((k) => tokens(value).some((t) => unprefixed(t) === k));
       if (!used) return false; // e.g. position: static — nothing breaks
       // Note form: "Supports `x` [and `y`] but not `z`[, `w`]." — read the "not" list.
       const m = note.match(/supports\s+.+?\s+but not\s+([^.]+)/i);
       if (m) return m[1].toLowerCase().includes(used);
-      // No parseable note (e.g. Superhuman override): fixed/sticky are the usual break.
-      return used === "fixed" || used === "sticky";
+      // No note (the Superhuman override) or one we cannot parse: report. Which
+      // keyword a client drops is not guessable, and positioning is the kind of
+      // caveat that ruins a layout rather than nudging it.
+      return true;
     }
 
     case "overflow": {
@@ -161,7 +220,8 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       // values (separate props people rarely write) plus a "cannot scroll to hidden
       // content" bug on some mobile clients. Physical `overflow: hidden`/`clip`
       // (clipping) renders fine; only scrollable values hit the bug.
-      if (!/\b(?:auto|scroll)\b/.test(value)) return false;
+      if (!noteLc.includes("cannot scroll") && !noteLc.includes("overflow-block")) return true;
+      if (!/\b(?:auto|scroll|overlay)\b/.test(value)) return false;
       return noteLc.includes("cannot scroll");
     }
 
@@ -185,13 +245,17 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       const only = note.match(/only supports\s+([^.]*)/i);
       if (only) {
         const allowed = quotedValues(only[1])
-          .banned.filter((q) => /^(?:display:)?[a-z-]+$/.test(q))
-          .map((q) => q.replace(/^display:/, ""));
-        return allowed.length > 0 && !allowed.includes(dashed(value));
+          .banned.map((q) => q.replace(/^display:-?/, ""))
+          .filter((q) => /^[a-z-]+$/.test(q));
+        if (!allowed.length) return true; // an "only supports" we cannot read
+        return !allowed.includes(dashed(value));
       }
       // Gmail, Yahoo: an explicit list of values that are dropped.
       const { banned } = quotedValues(note);
-      if (banned.length) return banned.includes(dashed(value));
+      if (banned.length) {
+        const v = dashed(value);
+        return banned.includes(v) || banned.includes(unprefixed(v));
+      }
       // Fastmail: "Two-value syntax are combined into a single one with a dash."
       if (noteLc.includes("two-value syntax")) return tokens(value).length > 1;
       return true;
@@ -217,9 +281,11 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
     }
 
     case "text-align": {
-      const { banned } = quotedValues(note);
+      const { supported, banned } = quotedValues(note);
       if (!banned.length) return true;
-      return tokens(value).some((t) => banned.includes(t));
+      return tokens(value).some(
+        (t) => !supported.includes(t) && (banned.includes(t) || banned.includes(unprefixed(t))),
+      );
     }
 
     case "background": {
@@ -243,6 +309,8 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       // "The `all` keyword is not supported" — and an omitted property name
       // means `all`, so `transition: 0.3s ease` hits it too.
       if (noteLc.includes("`all`")) {
+        // `transition: none` (and the CSS-wide keywords) animate nothing.
+        if (["none", "inherit", "initial", "unset", "revert"].includes(value)) return false;
         return topLevelSplit(value, ",").some((layer) => !namesAProperty(layer));
       }
       // Notes that are not about the value (a global reset, an account type)
@@ -274,5 +342,5 @@ export function caveatApplies(
   if (!values?.length) return true;
   const note = (notes ?? []).join(" ");
   const noteLc = note.toLowerCase();
-  return values.some((value) => triggers(prop, normalize(value), note, noteLc));
+  return prepare(values).some((value) => triggers(prop, value, note, noteLc));
 }

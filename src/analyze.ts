@@ -13,7 +13,7 @@ import { caveatApplies } from "./rules/value-caveats";
 import { EMAIL_CLIENTS } from "./clients";
 import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
-import { parseStyleProperties, getStyleValue } from "./style-utils";
+import { parseStyleProperties, getStyleValue, getStyleValues } from "./style-utils";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, type ParseOptions } from "./parse-html";
 import { cssBlockAnchor, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
@@ -238,12 +238,12 @@ export function analyzeEmailFromDom(
     seen.locs.push(loc);
   }
 
-  function recordLoc(key: string, cssLoc: csstree.CssLocation) {
+  function recordLoc(key: string, cssLoc: csstree.CssLocation, value?: string) {
     const loc = locInCssBlock(blockAnchor, cssLoc);
     if (!loc) return;
     const seen = propertyLocs.get(key);
     if (!seen) {
-      propertyLocs.set(key, { locs: [loc] });
+      propertyLocs.set(key, { locs: [loc], ...(value !== undefined ? { values: [value] } : {}) });
       return;
     }
     if (seen.locs.some((l) => l.offset === loc.offset)) return;
@@ -252,6 +252,7 @@ export function analyzeEmailFromDom(
       return;
     }
     seen.locs.push(loc);
+    if (seen.values && value !== undefined) seen.values.push(value);
   }
 
   $("style").each((_, el) => {
@@ -277,10 +278,6 @@ export function analyzeEmailFromDom(
           if (node.type === "Declaration") {
             const prop = node.property.toLowerCase();
             parsedProperties.add(prop);
-            if (node.loc) {
-              if (!propertyLines.has(prop)) propertyLines.set(prop, node.loc.start.line);
-              recordLoc(prop, node.loc);
-            }
 
             // Capture value(s) for value-aware support checks (a property may
             // appear multiple times across rules).
@@ -289,9 +286,14 @@ export function analyzeEmailFromDom(
             if (seenValues) seenValues.push(valueStr);
             else propertyValues.set(prop, [valueStr]);
 
+            if (node.loc) {
+              if (!propertyLines.has(prop)) propertyLines.set(prop, node.loc.start.line);
+              recordLoc(prop, node.loc, valueStr);
+            }
+
             // Data-driven compound value detection
             for (const det of COMPOUND_DETECTORS) {
-              if (prop === det.property && valueStr.includes(det.valueIncludes)) {
+              if (prop === det.property && valueStr.toLowerCase().includes(det.valueIncludes)) {
                 parsedProperties.add(det.key);
                 if (node.loc) {
                   if (!propertyLines.has(det.key)) propertyLines.set(det.key, node.loc.start.line);
@@ -343,17 +345,17 @@ export function analyzeEmailFromDom(
       for (const det of COMPOUND_DETECTORS) {
         if (prop === det.property) {
           const value = getStyleValue(style, prop);
-          if (value?.includes(det.valueIncludes)) {
+          if (value?.toLowerCase().includes(det.valueIncludes)) {
             checkPropertySupport(det.key, addWarning, framework, selector, undefined, undefined, locs);
           }
         }
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
-        const declared = getStyleValue(style, prop);
+        const declared = getStyleValues(style, prop);
         checkPropertySupport(
           prop, addWarning, framework, selector, undefined,
-          declared !== undefined && declared !== null ? [declared] : undefined, locs,
+          declared.length ? declared : undefined, locs,
         );
       }
 
@@ -503,6 +505,7 @@ function checkPropertySupport(
       // caveat doesn't apply to any of them (e.g. margin: 16px, font-size: 14px,
       // or position: relative on a client that only breaks on fixed/sticky).
       if (!caveatApplies(prop, values, notes)) continue;
+      const hits = triggeringOccurrences(prop, occurrences, notes);
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
       addWarning({
@@ -514,8 +517,9 @@ function checkPropertySupport(
         fix,
         fixType,
         ...(selector ? { selector } : {}),
-        ...(reportedLine !== undefined ? { line: reportedLine } : {}),
-        ...(occurrences ? occurrenceFields(occurrences) : {}),
+        ...((hits?.locs[0]?.line ?? reportedLine) !== undefined
+          ? { line: hits?.locs[0]?.line ?? reportedLine } : {}),
+        ...(hits ? occurrenceFields(hits) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -559,10 +563,38 @@ function occurrenceFields({ locs, truncated }: Occurrences) {
   return { loc: locs[0], locs: [...locs], ...(truncated ? { locsTruncated: true } : {}) };
 }
 
+/**
+ * Narrow a property's occurrences to the declarations that actually trigger
+ * this client's caveat. A sheet setting `font-size: 14px` in one rule and
+ * `font-size: 1rem` in another reports once, and it should underline the
+ * `1rem` — pointing at the `14px` next to "rem values are not supported" is
+ * worse than no position at all. Falls back to the full list when the
+ * declaration behind each location is unknown (inline styles, where the
+ * location is the whole `style` attribute) or when nothing narrows.
+ */
+function triggeringOccurrences(
+  prop: string,
+  occurrences: Occurrences | undefined,
+  notes: string[] | undefined,
+): Occurrences | undefined {
+  const values = occurrences?.values;
+  if (!occurrences || !values) return occurrences;
+  const locs = occurrences.locs.filter((_, i) => caveatApplies(prop, [values[i]], notes));
+  if (!locs.length || locs.length === occurrences.locs.length) return occurrences;
+  return { locs, ...(occurrences.truncated ? { truncated: true } : {}) };
+}
+
 /** Where a finding occurred, and whether that list is complete. */
 interface Occurrences {
   locs: SourceLocation[];
   truncated?: boolean;
+  /**
+   * The declaration value behind `locs[i]`, where one is known (the `<style>`
+   * path). Value-gated properties use it to point the warning at the
+   * declarations that actually triggered the caveat rather than at every
+   * declaration of the property.
+   */
+  values?: string[];
 }
 
 /** Wrap a single optional location as the occurrence list a warning carries. */

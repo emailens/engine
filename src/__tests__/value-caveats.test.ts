@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { analyzeEmail, generateCompatibilityScore } from "../analyze";
+import { auditEmail } from "../audit";
 import { CSS_SUPPORT, CSS_SUPPORT_NOTES } from "../rules/css-support";
 import { caveatApplies, VALUE_CAVEAT_PROPS } from "../rules/value-caveats";
 import type { CSSWarning } from "../types";
@@ -121,8 +122,12 @@ describe("value-aware partial support — the value the note is about", () => {
       sorted(OUTLOOK_WORD, YAHOO_AOL, ["gmail-android", "samsung-mail"]),
     );
     // Gmail and Samsung name `-webkit-match-parent` as the value that works,
-    // in the same note that rules out `match-parent`.
-    expect(partialClients("text-align: -webkit-match-parent")).toEqual([]);
+    // in the same note that rules out `match-parent`. Nobody else does, and a
+    // client that cannot resolve `match-parent` will not resolve the WebKit
+    // spelling of it either, so the prefixed form is still reported there.
+    expect(partialClients("text-align: -webkit-match-parent")).toEqual(
+      sorted(OUTLOOK_WORD, YAHOO_AOL),
+    );
   });
 
   it("background: Outlook wants a colour; Yahoo loses extra layers", () => {
@@ -147,6 +152,12 @@ describe("value-aware partial support — the value the note is about", () => {
     expect(yahoo("transition: opacity 0.3s ease")).toEqual([]);
     expect(yahoo("transition: all 0.3s")).toEqual(YAHOO_AOL.sort());
     expect(yahoo("transition: 0.3s ease")).toEqual(YAHOO_AOL.sort());
+    // A layer whose only non-timing token is a `var()` or `allow-discrete`
+    // still names no property, so it too means `all`.
+    expect(yahoo("transition: 0.3s var(--ease)")).toEqual(YAHOO_AOL.sort());
+    expect(yahoo("transition: 0.2s ease allow-discrete")).toEqual(YAHOO_AOL.sort());
+    // …but a value that animates nothing cannot hit the `all` bug.
+    expect(yahoo("transition: none")).toEqual([]);
     // Notes that are not about the value — Samsung's "not supported with
     // Outlook accounts", Hey's forced `transition-duration: 0` — still apply.
     expect(partialClients("transition: opacity 0.3s ease")).toContain("samsung-mail");
@@ -355,6 +366,287 @@ describe("value-aware partial support — nothing else moves", () => {
     const withoutInfo = generateCompatibilityScore(warnings.filter((w) => w.severity !== "info"));
     for (const client of Object.keys(withInfo)) {
       expect(withInfo[client].score).toBe(withoutInfo[client].score);
+    }
+  });
+});
+
+// =============================================================================
+// The second pass. Everything below closes a hole that mutation testing found:
+// each test here kills at least one mutation of `value-caveats.ts` that the
+// first pass let through.
+// =============================================================================
+
+const sheetClients = (decl: string): string[] => {
+  const prop = decl.split(":")[0].trim().toLowerCase();
+  return analyzeEmail(
+    `<html><body><style>.a { ${decl} }</style><div class="a">x</div></body></html>`,
+  )
+    .filter((w) => w.property === prop && w.severity === "info")
+    .map((w) => w.client)
+    .sort();
+};
+
+describe("value-aware partial support — the three inherited properties", () => {
+  // margin, position and overflow were gated in 0.10.0 and had no per-client
+  // assertion here, which is why five mutations of their branches survived.
+  const CANNOT_SCROLL = ["gmail-android", "outlook-android", "yahoo-mail-android"];
+
+  it("overflow: a scrollable value fires only where the note says scrolling breaks", () => {
+    expect(partialClients("overflow: auto")).toEqual(CANNOT_SCROLL.sort());
+    expect(partialClients("overflow: scroll")).toEqual(CANNOT_SCROLL.sort());
+    expect(partialClients("overflow: overlay")).toEqual(CANNOT_SCROLL.sort());
+    expect(partialClients("overflow: clip")).toEqual([]);
+  });
+
+  it("overflow: the clients excluded from reachability really are unreachable", () => {
+    // The reachability test can only catch under-reporting. This pins the
+    // other half: for the clients whose only caveat is the
+    // `overflow-block`/`overflow-inline` longhands, no shorthand value fires.
+    for (const [client, level] of Object.entries(CSS_SUPPORT["overflow"])) {
+      if (level !== "partial") continue;
+      const notes = CSS_SUPPORT_NOTES["overflow"]?.[client];
+      if (/cannot scroll/i.test((notes ?? []).join(" "))) continue;
+      for (const v of ["auto", "scroll", "overlay", "hidden", "visible", "clip"]) {
+        expect([client, v, caveatApplies("overflow", [v], notes)]).toEqual([client, v, false]);
+      }
+    }
+  });
+
+  it("position: a client with no note at all is reported, not guessed at", () => {
+    // Superhuman is a manual override with no caniemail note. Which keyword it
+    // drops is not knowable, and a broken position ruins a layout, so it is
+    // reported for every positioning keyword — but not for `static`.
+    expect(CSS_SUPPORT["position"]["superhuman"]).toBe("partial");
+    expect((CSS_SUPPORT_NOTES["position"]?.["superhuman"] ?? []).join(" ")).toBe("");
+    for (const v of ["relative", "absolute", "fixed", "sticky"]) {
+      expect([v, partialClients(`position: ${v}`)]).toEqual([
+        v,
+        expect.arrayContaining(["superhuman"]),
+      ]);
+    }
+    expect(partialClients("position: static")).toEqual([]);
+  });
+
+  it("position: a vendor-prefixed keyword is the same keyword", () => {
+    expect(partialClients("position: -webkit-sticky")).toEqual(partialClients("position: sticky"));
+    expect(partialClients("position: -webkit-sticky")).not.toEqual([]);
+  });
+
+  it("margin: a calc() subtraction is not a negative margin", () => {
+    // The minus of `calc(100% - 10px)` is an operator. Requiring the sign to be
+    // glued to its digits is the whole difference.
+    expect(partialClients("margin: calc(100% - 10px)")).toEqual([]);
+    expect(partialClients("margin: 0 calc(50% - 10px)")).toEqual([]);
+    expect(partialClients("letter-spacing: calc(1px - 2px)")).toEqual([]);
+    expect(partialClients("margin: -8px")).not.toEqual([]);
+  });
+
+  it("margin: reads its own note rather than assuming what it says", () => {
+    const neg = ["Partial. Negative values are not supported."];
+    const auto = ["Partial. The `auto` value is not supported."];
+    expect(caveatApplies("margin", ["-8px"], neg)).toBe(true);
+    expect(caveatApplies("margin", ["-8px"], auto)).toBe(false);
+    expect(caveatApplies("margin", ["0 auto"], neg)).toBe(false);
+    expect(caveatApplies("margin", ["0 auto"], auto)).toBe(true);
+  });
+});
+
+describe("value-aware partial support — an unreadable note reports", () => {
+  // The module's stated contract. Every branch's fallthrough is dead under
+  // today's caniemail data, so nothing exercised it and three `return true`
+  // clauses could be flipped without failing a test.
+  const NONSENSE = ["Partial. Something nobody has written before."];
+  const PROBES: Array<[string, string]> = [
+    ["background", "#ffffff"],
+    ["border-radius", "8px"],
+    ["display", "block"],
+    ["font-size", "14px"],
+    ["font-weight", "500"],
+    ["letter-spacing", "0.5px"],
+    ["margin", "16px"],
+    ["position", "relative"],
+    ["text-align", "center"],
+    ["transition", "opacity 0.3s"],
+  ];
+
+  it("holds for every value-gated property", () => {
+    const quiet = PROBES.filter(([p, v]) => !caveatApplies(p, [v], NONSENSE)).map(([p]) => p);
+    expect(quiet).toEqual([]);
+  });
+
+  it("covers every gated property except overflow, whose values decide first", () => {
+    // `overflow: hidden` cannot break under any note — it is not scrollable —
+    // so it is the one property the contract does not reach.
+    expect([...PROBES.map(([p]) => p), "overflow"].sort()).toEqual([...VALUE_CAVEAT_PROPS].sort());
+    expect(caveatApplies("overflow", ["auto"], NONSENSE)).toBe(true);
+  });
+
+  it("holds when an `only supports` note is reworded past the parser", () => {
+    // Reword Outlook's display note and the allow-list comes out empty. That
+    // must report everything, not silence everything.
+    for (const note of ["Partial. Only supports the none value.", "Partial. Only supports e.g. none."]) {
+      expect([note, caveatApplies("display", ["block"], [note])]).toEqual([note, true]);
+      expect([note, caveatApplies("display", ["none"], [note])]).toEqual([note, true]);
+    }
+    // The current wording, and the same wording with a space after the colon.
+    expect(caveatApplies("display", ["none"], ["Only supports `display: none`."])).toBe(false);
+    expect(caveatApplies("display", ["block"], ["Only supports `display: none`."])).toBe(true);
+  });
+});
+
+describe("value-aware partial support — reading the declaration", () => {
+  it("strips `!important` before judging the value", () => {
+    // `getStyleValue` does not strip it, so without this the gate compares
+    // "none !important" against "none" and reports a false positive.
+    for (const decl of [
+      "display: none !important",
+      "background: #ffffff !important",
+      "text-align: center !important",
+      "font-weight: 700 !important",
+      "position: static !important",
+      "overflow: hidden !important",
+      "transition: opacity 0.3s ease !important",
+    ]) {
+      expect([decl, partialClients(decl)]).toEqual([
+        decl,
+        partialClients(decl.replace(" !important", "")),
+      ]);
+    }
+    // …without swallowing the value itself.
+    expect(partialClients("display: flex !important")).toEqual(
+      sorted(OUTLOOK_WORD, ["gmail-android", "gmail-ios"]),
+    );
+  });
+
+  it("strips comments wedged into an inline value", () => {
+    expect(partialClients("position:/*safe*/relative")).toEqual(partialClients("position:relative"));
+    expect(partialClients("text-align:/*x*/start")).toEqual(partialClients("text-align:start"));
+    expect(partialClients("display:/*x*/none")).toEqual([]);
+  });
+
+  it("a custom property is neither a unit nor a negative", () => {
+    // What stops these reporting is `hasUnit`'s digit anchor and
+    // `hasNegative`'s boundary — drop either and all three fire.
+    expect(partialClients("font-size: var(--rem-base)")).toEqual([]);
+    expect(partialClients("margin: var(--gap-negative)")).toEqual([]);
+    expect(partialClients("letter-spacing: var(--tracking-em)")).toEqual([]);
+  });
+
+  it("sees every declaration when a property is declared twice", () => {
+    // `display:block;display:flex` is the progressive-enhancement idiom. Which
+    // one applies is per client, so the caveat applies if either value hits it.
+    expect(partialClients("display: block; display: flex")).toEqual(
+      sorted(OUTLOOK_WORD, ["gmail-android", "gmail-ios"]),
+    );
+    expect(partialClients("background: #fff; background: url(a.png)")).toEqual(OUTLOOK_WORD.sort());
+    expect(partialClients("font-size: 14px; font-size: 1rem")).not.toEqual([]);
+  });
+
+  it("font-weight: a signed or exponent number is still a number", () => {
+    expect(partialClients("font-weight: +350")).toEqual(partialClients("font-weight: 350"));
+    expect(partialClients("font-weight: 3.5e2")).toEqual(partialClients("font-weight: 350"));
+  });
+
+  it("background: a malformed hex is not a colour", () => {
+    // `parseColor` returns NaN channels rather than null for anything
+    // `#`-prefixed, so the hex has to be validated before trusting it.
+    expect(partialClients("background: #fff #000")).toEqual(OUTLOOK_WORD.sort());
+    expect(partialClients("background: #ffff")).toEqual([]);
+    expect(partialClients("background: #ggg")).toEqual(OUTLOOK_WORD.sort());
+  });
+
+  it("background: the `/ <size>` shorthand is Yahoo's other caveat", () => {
+    expect(partialClients("background: url(a.png) / cover")).toEqual(
+      sorted(OUTLOOK_WORD, YAHOO_AOL),
+    );
+    // A slash inside a data URI is not the size shorthand.
+    expect(partialClients("background: #fff url(data:image/png;base64,AAAA)")).toEqual(
+      OUTLOOK_WORD.sort(),
+    );
+  });
+});
+
+describe("value-aware partial support — both paths, and the public one", () => {
+  it("gates a <style> block the same way it gates an inline style", () => {
+    // The stylesheet path reaches the gate through csstree and the inline path
+    // through the raw attribute; only `position` covered this, in one test.
+    for (const decl of [
+      "font-size: 14px",
+      "font-size: 1rem",
+      "display: none",
+      "display: flex",
+      "background: #ffffff",
+      "background: url(a.png)",
+      "border-radius: 8px",
+      "border-radius: 10% 20% / 30% 40%",
+      "text-align: center",
+      "letter-spacing: -1px",
+    ]) {
+      expect([decl, sheetClients(decl)]).toEqual([decl, partialClients(decl)]);
+    }
+  });
+
+  it("anchors the finding on the declaration that triggered it", () => {
+    // One warning covers the property across the whole sheet, so its positions
+    // have to be narrowed to the declarations the caveat is about. Underlining
+    // `font-size: 14px` next to "rem values are not supported" is worse than
+    // having no position at all.
+    const mixed = `<!doctype html>\n<html><head><style>\n.a { font-size: 14px; }\n.b { font-size: 1rem; }\n</style></head><body></body></html>`;
+    const w = analyzeEmail(mixed, undefined, { positions: true }).find(
+      (x) => x.property === "font-size" && x.client === "outlook-windows",
+    );
+    expect(w?.severity).toBe("info");
+    expect(w?.locs?.map((l) => l.line)).toEqual([4]);
+    expect(w?.loc?.line).toBe(4);
+
+    // Both declarations trigger: both are listed, in document order.
+    const both = `<!doctype html>\n<html><head><style>\n.a { font-size: 2rem; }\n.b { font-size: 1rem; }\n</style></head><body></body></html>`;
+    const w2 = analyzeEmail(both, undefined, { positions: true }).find(
+      (x) => x.property === "font-size" && x.client === "outlook-windows",
+    );
+    expect(w2?.locs?.map((l) => l.line)).toEqual([3, 4]);
+
+    // A client the caveat does not reach still reports nothing at all.
+    expect(
+      analyzeEmail(mixed, undefined, { positions: true }).find(
+        (x) => x.property === "font-size" && x.client === "gmail-web",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("auditEmail surfaces exactly the gated findings", () => {
+    const html = `<html><body><div style="font-size: 14px; display: block; background: #ffffff">x</div></body></html>`;
+    const info = auditEmail(html).compatibility.warnings.filter(
+      (w) => w.severity === "info" && ["font-size", "display", "background"].includes(w.property),
+    );
+    expect(info.map((w) => `${w.property}/${w.client}`).sort()).toEqual([
+      "display/outlook-windows",
+      "display/outlook-windows-legacy",
+    ]);
+  });
+
+  it("every value-gated property can silence somebody with an ordinary value", () => {
+    // A property added to VALUE_CAVEAT_PROPS without a `triggers()` branch
+    // falls to `default: return true` and gates nothing. This catches that.
+    const BENIGN: Record<string, string> = {
+      background: "#ffffff",
+      "border-radius": "8px",
+      display: "none",
+      "font-size": "14px",
+      "font-weight": "400",
+      "letter-spacing": "normal",
+      margin: "16px",
+      overflow: "hidden",
+      position: "static",
+      "text-align": "center",
+      transition: "opacity 0.3s ease",
+    };
+    expect(Object.keys(BENIGN).sort()).toEqual([...VALUE_CAVEAT_PROPS].sort());
+    for (const [prop, value] of Object.entries(BENIGN)) {
+      const silenced = Object.entries(CSS_SUPPORT[prop] ?? {})
+        .filter(([, level]) => level === "partial")
+        .filter(([client]) => !caveatApplies(prop, [value], CSS_SUPPORT_NOTES[prop]?.[client]));
+      expect([prop, silenced.length > 0]).toEqual([prop, true]);
     }
   });
 });

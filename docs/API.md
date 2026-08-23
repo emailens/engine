@@ -272,7 +272,14 @@ const warnings = analyzeEmail(html, "mjml");  // MJML fixes
 
 ### `generateCompatibilityScore(warnings): Record<string, ClientScore>`
 
-Generates a 0–100 compatibility score per email client. Formula: `100 - (errors × 15) - (warnings × 5) - (info × 1)`.
+Generates a 0–100 compatibility score per email client. Formula:
+`100 - (errors × 10) - (warnings × 3)`, clamped to 0–100, counting **distinct
+properties** rather than occurrences so one mistake repeated in twelve elements
+costs what it costs once.
+
+Partial support (`info`) is not scored. It is counted and returned in
+`ClientScore.info`, but it does not move the number — a property that mostly
+works is not a defect.
 
 ### `warningsForClient(warnings, clientId): CSSWarning[]`
 
