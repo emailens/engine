@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.4 — 2026-08-23
+
+### Added
+
+- **`featureUrl(code)` and `FEATURE_URLS`: caniemail's page for each feature.** 250 of the 255. VS Code renders a diagnostic's `codeDescription` as a link on the rule name, which is where every other linter sends people to read about a rule; ours had nowhere to point, so the code was a dead string.
+
+  Generated rather than derived, because the URL cannot be computed from the key: `border-radius` is `/features/css-border-radius/`, `<abbr>` is `/features/html-abbr/`, `:hover` is `/features/css-pseudo-class-hover/`. Guessing means shipping 404s, and a link that goes nowhere is worse than no link. The five features with no caniemail entry of their own — `top`, `right`, `bottom` (documented under `css-position`), `color` and `font-family` — get nothing, and a test names them so the gap stays deliberate.
+
+  `bun run sync:feature-urls` regenerates it, separately from `sync:caniemail`. That one rewrites the support matrix and moves reported output; a link map should not need a release that does.
+
 ## 0.10.3 — 2026-08-23
 
 ### Changed
