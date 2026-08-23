@@ -16,7 +16,7 @@ import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snipp
 import { parseStyleProperties, getStyleValue, getStyleValues } from "./style-utils";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, type ParseOptions } from "./parse-html";
-import { cssBlockAnchor, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
+import { cssBlockAnchor, locInAttr, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
 import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel } from "./types";
 
 // ── Data-driven detection config ─────────────────────────────────────────────
@@ -335,10 +335,16 @@ export function analyzeEmailFromDom(
     const style = $(el).attr("style") || "";
     const props = parseStyleProperties(style);
     const selector = describeSelector(el);
-    // The whole `style="…"` attribute. Pointing at the individual declaration
-    // inside it would need the raw source of the attribute, which the DOM
-    // doesn't keep — the attribute is a tight enough range to act on.
-    const locs = elementLocs(locOfAttr(el, "style"));
+    const attrLoc = locOfAttr(el, "style");
+    /**
+     * The declaration, where the raw source lets us find it exactly, and the
+     * whole `style="…"` attribute where it does not. An attribute holding six
+     * declarations underlined end to end says "something in here", when the
+     * engine knows which one it means.
+     */
+    const declarationLocs = (prop: string, occurrence = 0) =>
+      elementLocs(locInAttr(attrLoc, source, prop, occurrence)) ?? elementLocs(attrLoc);
+    const locs = elementLocs(attrLoc);
 
     for (const prop of props) {
       // Data-driven compound value detection in inline styles
@@ -346,16 +352,32 @@ export function analyzeEmailFromDom(
         if (prop === det.property) {
           const value = getStyleValue(style, prop);
           if (value?.toLowerCase().includes(det.valueIncludes)) {
-            checkPropertySupport(det.key, addWarning, framework, selector, undefined, undefined, locs);
+            checkPropertySupport(
+              det.key, addWarning, framework, selector, undefined, undefined,
+              declarationLocs(prop),
+            );
           }
         }
       }
 
       if (cssPropertiesToCheck.includes(prop)) {
         const declared = getStyleValues(style, prop);
+        // A property declared twice is two places, not one — and the value at
+        // each is what decides whether a given client's caveat applies there.
+        // Values and locations stay in step, so a client that only breaks on
+        // the second is pointed at the second.
+        const placed: Array<{ value: string; loc: SourceLocation }> = [];
+        declared.forEach((value, i) => {
+          const at = locInAttr(attrLoc, source, prop, i);
+          if (at) placed.push({ value, loc: at });
+        });
+        const occurrences =
+          placed.length === declared.length && placed.length > 0
+            ? { locs: placed.map((p) => p.loc), values: placed.map((p) => p.value) }
+            : locs;
         checkPropertySupport(
           prop, addWarning, framework, selector, undefined,
-          declared.length ? declared : undefined, locs,
+          declared.length ? declared : undefined, occurrences,
         );
       }
 
@@ -364,7 +386,10 @@ export function analyzeEmailFromDom(
       if (value) {
         for (const fn of CSS_FUNCTION_DETECTORS) {
           if (value.includes(fn.pattern)) {
-            checkPropertySupport(fn.key, addWarning, framework, selector, undefined, undefined, locs);
+            checkPropertySupport(
+              fn.key, addWarning, framework, selector, undefined, undefined,
+              declarationLocs(prop),
+            );
           }
         }
       }
@@ -409,7 +434,7 @@ export function analyzeEmailFromDom(
   }
 
   // 6. Dark-mode opt-in / coverage (no-ops unless the email ships dark styles)
-  for (const w of checkDarkModeFromDom($)) addWarning(w);
+  for (const w of checkDarkModeFromDom($, source)) addWarning(w);
 
   // Sort: errors first, then warnings, then info
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };

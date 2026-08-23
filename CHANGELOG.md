@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.3 — 2026-08-23
+
+### Changed
+
+- **An inline-style finding anchors on the declaration, not the whole attribute** ([#16](https://github.com/emailens/engine/issues/16)). `style="margin:0;padding:0;font-size:1rem;color:#333"` underlined end to end says "something in here"; the engine knows it means `font-size:1rem`, and now says so. Every occurrence in `locs` narrows the same way, so an editor underlines the declaration and a fix can be applied to it.
+
+  Finding it needs the raw source, since the DOM keeps the decoded attribute value and an index into that is not an index into the file — so this arrives with `positions: true` and nothing changes without it. A declaration is matched at the head of its own declaration, never inside a value: `background: url(font-size.png)` is a `background`, not a `font-size`. Semicolons inside parentheses do not split it. Where the declaration cannot be found exactly — an entity in the attribute, so the decoded property name is not in the source at that place — it falls back to the whole attribute rather than inventing an offset that would look right.
+
+  **`dark-mode-coverage` moves with it.** It names one colour ("keeps its hardcoded light background (#faf8f5)"), so it points at the declaration that set it rather than at the five others sharing the attribute.
+
+  **A property declared twice is two places.** `style="display:block;display:flex"` is the progressive-enhancement idiom, and the value at each place decides which clients it is about: Gmail, which drops `flex` and renders `block`, is pointed at `display:flex` alone, while Outlook, which supports only `display:none`, gets both.
+
+  Positions move, so anything asserting on them needs regenerating. Warning counts, messages and scores are unchanged.
+
 ## 0.10.2 — 2026-08-23
 
 ### Added

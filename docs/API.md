@@ -214,7 +214,7 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 | Finding | Anchor |
 |---|---|
 | CSS property in a `<style>` block | the declaration — `border-radius: 8px` |
-| CSS property in an inline style | the whole `style="…"` attribute |
+| CSS property in an inline style | the declaration — `font-size: 1rem`, not the whole `style="…"` |
 | Unsupported HTML feature (`<style>`, `<svg>`, `<form>`) | the first element that triggered it |
 | Link, image, accessibility finding about one attribute | that attribute — `href="http://…"` |
 | Link, image, accessibility finding about an element | the opening tag — `<img src="…">` |

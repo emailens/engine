@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { CSSWarning } from "../types";
 import {
   auditEmail,
   analyzeEmail,
@@ -181,12 +182,12 @@ describe("source positions — CSS compatibility", () => {
     expect(slice(HTML, w!.loc!)).toBe("box-shadow: 0 2px 4px #000");
   });
 
-  test("an inline style anchors on the style attribute", () => {
+  test("an inline style anchors on the declaration, not the whole attribute", () => {
+    // The attribute holds three declarations and the engine knows which one it
+    // means. Underlining all of it says "something in here".
     const w = warnings.find((w) => w.property === "box-shadow" && w.selector);
     expect(w!.loc!.line).toBe(14);
-    expect(slice(HTML, w!.loc!)).toBe(
-      'style="color: #eee; background-color: #fff; box-shadow: 0 0 2px #000"',
-    );
+    expect(slice(HTML, w!.loc!)).toBe("box-shadow: 0 0 2px #000");
   });
 
   test("an unsupported HTML feature anchors on the element that triggered it", () => {
@@ -628,6 +629,93 @@ describe("character references and mixed line endings resolve exactly", () => {
   });
 });
 
+describe("an inline style anchors on the declaration", () => {
+  // engine#16. `locOfAttr` gives the whole attribute, which is a fair place to
+  // act but a poor place to look: six declarations underlined end to end says
+  // "something in here", when the engine knows which one it means.
+  const at = (html: string, pick: (w: CSSWarning) => boolean) => {
+    const w = analyzeEmail(html, undefined, { positions: true }).find(pick);
+    return w?.loc ? slice(html, w.loc) : undefined;
+  };
+
+  test("picks its own declaration out of a crowded attribute", () => {
+    const html = `<body><div style="margin:0;padding:0;font-size:1rem;color:#333">x</div></body>`;
+    expect(at(html, (w) => w.property === "font-size")).toBe("font-size:1rem");
+    expect(at(html, (w) => w.property === "padding")).toBe("padding:0");
+  });
+
+  test("keeps the declaration's own spacing, not the space around it", () => {
+    const html = `<body><div style="color: red ;  box-shadow: 0 0 2px #000  ">x</div></body>`;
+    expect(at(html, (w) => w.property === "box-shadow")).toBe("box-shadow: 0 0 2px #000");
+  });
+
+  test("a property name inside a value is not a declaration", () => {
+    // `background: url(font-size.png)` must not read as a `font-size`, and the
+    // background finding must anchor on the whole declaration.
+    const html = `<body><p style="background: url(font-size.png) no-repeat">x</p></body>`;
+    expect(at(html, (w) => w.property === "font-size")).toBeUndefined();
+    expect(at(html, (w) => w.property === "background")).toBe(
+      "background: url(font-size.png) no-repeat",
+    );
+  });
+
+  test("a semicolon inside a value does not split the declaration", () => {
+    const html = `<body><p style="background:url(a;b.png);color:red">x</p></body>`;
+    expect(at(html, (w) => w.property === "background")).toBe("background:url(a;b.png)");
+  });
+
+  test("a property declared twice is two places, and each client gets the right one", () => {
+    // Gmail drops `flex` and renders `block`; Outlook supports only `none`, so
+    // both declarations are its problem. Neither should be pointed at a
+    // declaration that is fine for it.
+    const html = `<body><img style="display:block;display:flex" src="x.png" alt="x"></body>`;
+    const warnings = analyzeEmail(html, undefined, { positions: true });
+    const places = (client: string) =>
+      warnings
+        .filter((w) => w.property === "display" && w.client === client)
+        .flatMap((w) => w.locs ?? [])
+        .map((l) => slice(html, l));
+
+    expect(places("gmail-android")).toEqual(["display:flex"]);
+    expect(places("outlook-windows")).toEqual(["display:block", "display:flex"]);
+  });
+
+  test("uppercase and odd spacing still resolve", () => {
+    const html = `<body><div style="FONT-SIZE : 1REM">x</div></body>`;
+    expect(at(html, (w) => w.property === "font-size")).toBe("FONT-SIZE : 1REM");
+  });
+
+  test("single quotes are handled like double", () => {
+    const html = `<body><div style='margin:0;font-size:1rem'>x</div></body>`;
+    expect(at(html, (w) => w.property === "font-size")).toBe("font-size:1rem");
+  });
+
+  test("falls back to the whole attribute rather than guessing", () => {
+    // parse5 hands us the decoded attribute, so the DOM sees `font-size` where
+    // the source says `font&#45;size`. There is no exact place to point, so it
+    // points at the attribute — still reported, still actionable, just less
+    // precise. Inventing an offset that looked right would be worse.
+    const html = `<body><div style="font&#45;size:1rem">x</div></body>`;
+    expect(at(html, (w) => w.property === "font-size")).toBe('style="font&#45;size:1rem"');
+  });
+
+  test("dark-mode coverage points at the background it is about", () => {
+    // It names one colour — "keeps its hardcoded light background (#faf8f5)" —
+    // so it should underline the declaration that set it, not the five others
+    // sharing the attribute.
+    const html = [
+      "<html><head><style>",
+      "@media (prefers-color-scheme: dark) { .x { color: #fff } }",
+      "</style></head><body>",
+      '<div class="y" style="margin:0;background-color:#faf8f5;padding:8px">x</div>',
+      "</body></html>",
+    ].join("\n");
+    expect(at(html, (w) => w.property === "dark-mode-coverage")).toBe(
+      "background-color:#faf8f5",
+    );
+  });
+});
+
 describe("every occurrence is reported, not just the first", () => {
   const twelve = ["<body>", ...Array.from({ length: 12 }, () => '  <div style="border-radius:4px">x</div>'), "</body>"].join("\n");
 
@@ -637,7 +725,7 @@ describe("every occurrence is reported, not just the first", () => {
     );
     expect(w!.locs).toHaveLength(12);
     expect(w!.locs!.map((l) => l.line)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
-    for (const loc of w!.locs!) expect(slice(twelve, loc)).toBe('style="border-radius:4px"');
+    for (const loc of w!.locs!) expect(slice(twelve, loc)).toBe("border-radius:4px");
   });
 
   test("`loc` is the first of `locs`", () => {
@@ -814,11 +902,11 @@ describe("accuracy — ground truth by construction", () => {
     lines.push("</body>");
     const html = lines.join(eol);
 
-    // Ground truth: every position of the style attribute, found by string
-    // search on the source itself — no engine involved.
+    // Ground truth: every position of the declaration inside the attribute,
+    // found by string search on the source itself — no engine involved.
     const expected: number[] = [];
-    for (let at = html.indexOf('style="border-radius:4px"'); at !== -1;
-         at = html.indexOf('style="border-radius:4px"', at + 1)) {
+    for (let at = html.indexOf("border-radius:4px"); at !== -1;
+         at = html.indexOf("border-radius:4px", at + 1)) {
       expected.push(at);
     }
     expect(expected).toHaveLength(count);
@@ -842,7 +930,7 @@ describe("accuracy — ground truth by construction", () => {
         );
         expect(w!.locs!.map((l) => l.offset)).toEqual(expected);
         for (const loc of w!.locs!) {
-          expect(slice(html, loc)).toBe('style="border-radius:4px"');
+          expect(slice(html, loc)).toBe("border-radius:4px");
           expectWellFormed(html, loc);
         }
       });
@@ -928,10 +1016,11 @@ describe("accuracy — the positions are actionable", () => {
     }
 
     expect(edited).not.toContain("border-radius");
-    // Nothing but the style attributes was touched.
+    // Only the declarations went: the attribute that held them stays, which is
+    // what makes this a surgical edit rather than a blunt one.
     expect(edited).toContain("Tom &amp; Jerry");
     expect(edited).toContain("caf&eacute; &mdash; 🎉");
-    expect(edited).toContain("<div >a</div>");
+    expect(edited).toContain('<div style="">a</div>');
 
     const after = analyzeEmail(edited, undefined, { positions: true });
     expect(after.some((w) => w.property === "border-radius")).toBe(false);
@@ -942,7 +1031,16 @@ describe("accuracy — the positions are actionable", () => {
     const warnings = analyzeEmail(html, undefined, { positions: true });
 
     // Every inline-style occurrence the engine reported, edited out at once.
-    const inline = warnings.filter((w) => w.selector && w.locs);
+    //
+    // Except dark-mode coverage, which reports at most three elements so a
+    // large email cannot flood the report. Removing those three promotes the
+    // next three, so the round-trip never terminates for it — a property of
+    // the cap, not of the positions. It became visible here only once cuts got
+    // precise: excising a whole `style="…"` attribute used to take its
+    // neighbouring declarations with it, and now it does not.
+    const inline = warnings.filter(
+      (w) => w.selector && w.locs && w.property !== "dark-mode-coverage",
+    );
     const cuts = [...new Set(inline.flatMap((w) => w.locs!).map((l) => `${l.offset}:${l.length}`))]
       .map((k) => k.split(":").map(Number))
       .sort((a, b) => b[0] - a[0]);
@@ -950,12 +1048,13 @@ describe("accuracy — the positions are actionable", () => {
 
     let edited = html;
     for (const [offset, length] of cuts) {
-      // Each cut must land exactly on a style attribute, not one character off.
-      expect(edited.slice(offset, offset + length)).toMatch(/^style\s*=/i);
+      // Each cut must land exactly on one declaration — `property: value`,
+      // starting at the property name, not a character either side of it.
+      expect(edited.slice(offset, offset + length)).toMatch(/^[-a-z]+\s*:\s*\S/i);
       edited = edited.slice(0, offset) + edited.slice(offset + length);
     }
 
     const after = analyzeEmail(edited, undefined, { positions: true });
-    expect(after.filter((w) => w.selector).length).toBe(0);
+    expect(after.filter((w) => w.selector && w.property !== "dark-mode-coverage").length).toBe(0);
   });
 });
