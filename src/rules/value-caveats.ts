@@ -10,7 +10,7 @@ import { parseColor } from "../color-utils";
  * Adding a property here is a promise to read its notes: the gate is only as
  * honest as the predicate below, and a wrong `false` is a missed rendering bug.
  */
-export const VALUE_CAVEAT_PROPS = new Set([
+export const VALUE_CAVEAT_PROPS: ReadonlySet<string> = new Set([
   "background",
   "border-radius",
   "display",
