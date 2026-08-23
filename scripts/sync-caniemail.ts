@@ -561,4 +561,5 @@ if (import.meta.main) {
   });
 }
 
-export { mapSupportCode, getLatestSupport, getLatestNotes };
+export { mapSupportCode, getLatestSupport, getLatestNotes, featureToPropertyKey };
+export type { CanIEmailFeature };
