@@ -1,7 +1,8 @@
 import * as cheerio from "cheerio";
 import type { AccessibilityIssue, AccessibilityReport } from "./types";
 import { GENERIC_LINK_TEXT, EMPTY_ACCESSIBILITY } from "./constants";
-import { fromHtml } from "./parse-html";
+import { fromHtml, type ParseOptions } from "./parse-html";
+import { locOfAttr, locOfElement, locOfFirst } from "./source-location";
 import { getStyleValue } from "./style-utils";
 import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
 
@@ -29,23 +30,32 @@ function describeElement($: cheerio.CheerioAPI, el: any): string {
 function checkLangAttribute($: cheerio.CheerioAPI): AccessibilityIssue | null {
   const lang = $("html").attr("lang");
   if (!lang || !lang.trim()) {
+    const loc = locOfFirst($, "html");
     return {
       severity: "error",
       rule: "missing-lang",
       message: "Missing lang attribute on <html> element",
+      ...(loc ? { loc } : {}),
       details: 'Screen readers use the lang attribute to determine pronunciation. Add lang="en" (or appropriate language code).',
     };
   }
   return null;
 }
 
+/** The empty <title> when there is one, otherwise the <head> that should hold it. */
+function titleLoc($: cheerio.CheerioAPI) {
+  return $("title").length ? locOfFirst($, "title") : locOfFirst($, "head");
+}
+
 function checkTitle($: cheerio.CheerioAPI): AccessibilityIssue | null {
   const title = $("title").text().trim();
   if (!title) {
+    const loc = titleLoc($);
     return {
       severity: "warning",
       rule: "missing-title",
       message: "Missing or empty <title> element",
+      ...(loc ? { loc } : {}),
       details: "The <title> helps screen readers identify the email content.",
     };
   }
@@ -59,6 +69,7 @@ function checkImageAlt($: cheerio.CheerioAPI): AccessibilityIssue[] {
     const alt = $(el).attr("alt");
     const src = $(el).attr("src") || "";
     const role = $(el).attr("role");
+    const elLoc = locOfElement(el);
 
     if (role === "presentation" || role === "none") return;
 
@@ -68,6 +79,7 @@ function checkImageAlt($: cheerio.CheerioAPI): AccessibilityIssue[] {
         rule: "img-missing-alt",
         message: "Image missing alt attribute",
         element: describeElement($, el),
+        ...(elLoc ? { loc: elLoc } : {}),
         details: 'Every image must have an alt attribute. Use alt="" for decorative images.',
       });
     } else if (alt.trim() === "") {
@@ -84,6 +96,7 @@ function checkImageAlt($: cheerio.CheerioAPI): AccessibilityIssue[] {
           rule: "img-empty-alt",
           message: "Image has empty alt text — verify it is decorative",
           element: describeElement($, el),
+        ...(locOfAttr(el, "alt") ? { loc: locOfAttr(el, "alt") } : {}),
           details: "Empty alt is correct for decorative images, but content images need descriptive alt text.",
         });
       }
@@ -93,6 +106,7 @@ function checkImageAlt($: cheerio.CheerioAPI): AccessibilityIssue[] {
         rule: "img-filename-alt",
         message: "Image alt text is a filename, not a description",
         element: describeElement($, el),
+        ...(locOfAttr(el, "alt") ? { loc: locOfAttr(el, "alt") } : {}),
         details: `Alt "${alt}" should describe the image content, not the file name.`,
       });
     }
@@ -105,6 +119,7 @@ function checkLinkAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
 
   $("a").each((_, el) => {
+    const elLoc = locOfElement(el);
     const text = $(el).text().trim().toLowerCase();
     const ariaLabel = $(el).attr("aria-label");
     const title = $(el).attr("title");
@@ -116,6 +131,7 @@ function checkLinkAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
         rule: "link-no-accessible-name",
         message: "Link has no accessible name",
         element: describeElement($, el),
+        ...(elLoc ? { loc: elLoc } : {}),
         details: "Links need visible text, aria-label, or an image with alt text.",
       });
       return;
@@ -127,6 +143,7 @@ function checkLinkAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
         rule: "link-generic-text",
         message: `Link text "${$(el).text().trim()}" is not descriptive`,
         element: describeElement($, el),
+        ...(elLoc ? { loc: elLoc } : {}),
         details: "Screen readers often list links out of context. Use text that describes the destination.",
       });
     }
@@ -143,6 +160,7 @@ function checkTableAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
     if ($(el).parents('table[role="presentation"], table[role="none"]').length > 0) return;
 
     const role = $(el).attr("role");
+    const tableLoc = locOfElement(el);
     const hasHeaders = $(el).find("th").length > 0;
     const looksLikeLayout = !hasHeaders;
 
@@ -153,6 +171,7 @@ function checkTableAccessibility($: cheerio.CheerioAPI): AccessibilityIssue[] {
           severity: "info",
           rule: "table-missing-role",
           message: 'Layout table missing role="presentation"',
+          ...(tableLoc ? { loc: tableLoc } : {}),
           element: `<table> with ${$(el).find("td").length} cells`,
           details: 'Add role="presentation" to tables used for layout so screen readers don\'t announce them as data tables.',
         });
@@ -169,6 +188,7 @@ function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
 
   $("[style]").each((_, el) => {
     const style = $(el).attr("style") || "";
+    const styleLoc = locOfAttr(el, "style");
 
     // --- Small text check (threshold lowered to 9px) ---
     const fontSizeMatch = style.match(/font-size\s*:\s*(\d+(?:\.\d+)?)(px|pt)/i);
@@ -185,6 +205,7 @@ function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
             rule: "small-text",
             message: `Very small text (${fontSizeMatch[0].trim()})`,
             element: describeElement($, el),
+            ...(styleLoc ? { loc: styleLoc } : {}),
             details: "Text smaller than 9px is difficult to read, especially on mobile devices.",
           });
         }
@@ -249,6 +270,7 @@ function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
             rule: "low-contrast",
             message: `Low contrast ratio ${ratio.toFixed(1)}:1 — fails WCAG minimum`,
             element: describeElement($, el),
+            ...(styleLoc ? { loc: styleLoc } : {}),
             details: `Foreground ${colorValue} on background needs at least ${isLargeText ? "3:1" : "4.5:1"} contrast ratio.`,
           });
         } else if (!isLargeText && grade === "AA Large") {
@@ -258,6 +280,7 @@ function checkTextSizeAndContrast($: cheerio.CheerioAPI): AccessibilityIssue[] {
             rule: "low-contrast",
             message: `Low contrast ratio ${ratio.toFixed(1)}:1 — fails WCAG AA for normal text`,
             element: describeElement($, el),
+            ...(styleLoc ? { loc: styleLoc } : {}),
             details: `Foreground ${colorValue} on background needs at least 4.5:1 for normal-sized text.`,
           });
         }
@@ -289,10 +312,12 @@ function checkCharsetDeclaration($: cheerio.CheerioAPI): AccessibilityIssue | nu
     if (/charset\s*=/i.test(content)) return null;
   }
 
+  const loc = locOfFirst($, "head");
   return {
     severity: "warning",
     rule: "missing-charset",
     message: "Missing charset declaration",
+    ...(loc ? { loc } : {}),
     details: 'Add <meta charset="utf-8"> in <head> to prevent encoding issues across email clients.',
   };
 }
@@ -300,10 +325,10 @@ function checkCharsetDeclaration($: cheerio.CheerioAPI): AccessibilityIssue | nu
 function checkSemanticStructure($: cheerio.CheerioAPI): AccessibilityIssue[] {
   const issues: AccessibilityIssue[] = [];
 
-  const headings: { level: number; text: string }[] = [];
+  const headings: { level: number; text: string; loc: ReturnType<typeof locOfElement> }[] = [];
   $("h1, h2, h3, h4, h5, h6").each((_, el) => {
     const level = parseInt(el.tagName.replace(/h/i, ""), 10);
-    headings.push({ level, text: $(el).text().trim().slice(0, 60) });
+    headings.push({ level, text: $(el).text().trim().slice(0, 60), loc: locOfElement(el) });
   });
 
   for (let i = 1; i < headings.length; i++) {
@@ -313,6 +338,7 @@ function checkSemanticStructure($: cheerio.CheerioAPI): AccessibilityIssue[] {
         severity: "info",
         rule: "heading-skip",
         message: `Heading level skipped: h${headings[i - 1].level} to h${headings[i].level}`,
+        ...(headings[i].loc ? { loc: headings[i].loc } : {}),
         details: "Skipped heading levels can confuse screen readers. Use sequential heading levels.",
       });
       break;
@@ -377,6 +403,6 @@ export function checkAccessibilityFromDom($: cheerio.CheerioAPI): AccessibilityR
  * layout table roles, link accessibility, heading hierarchy, and
  * color contrast. Returns a 0–100 score and detailed issues.
  */
-export function checkAccessibility(html: string): AccessibilityReport {
-  return fromHtml(html, EMPTY_ACCESSIBILITY, checkAccessibilityFromDom);
+export function checkAccessibility(html: string, options?: ParseOptions): AccessibilityReport {
+  return fromHtml(html, EMPTY_ACCESSIBILITY, checkAccessibilityFromDom, options);
 }

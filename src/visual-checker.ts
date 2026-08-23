@@ -1,10 +1,11 @@
 import type { CheerioAPI } from "cheerio";
 import * as csstree from "css-tree";
-import { EMPTY_VISUAL, WEB_SAFE_FONTS, GENERIC_FONT_FAMILIES } from "./constants";
-import { fromHtml } from "./parse-html";
+import { EMPTY_VISUAL, WEB_SAFE_FONTS, GENERIC_FONT_FAMILIES, MAX_WARNING_LOCATIONS } from "./constants";
+import { fromHtml, type ParseOptions } from "./parse-html";
+import { cssBlockAnchor, locInCssBlock, locOfAttr } from "./source-location";
 import { parseInlineStyle } from "./style-utils";
 import { parseColor } from "./color-utils";
-import type { VisualIssue, VisualReport } from "./types";
+import type { SourceLocation, VisualIssue, VisualReport } from "./types";
 
 const CSS_WIDE_KEYWORDS = new Set(["inherit", "initial", "unset", "revert", "revert-layer"]);
 const GRADIENT_RE = /(?:linear|radial|conic)-gradient\(/i;
@@ -69,8 +70,30 @@ function hasFontFallback(value: string): boolean {
   });
 }
 
-/** Run the visual checks over one declaration block (inline style or a rule). */
-function inspectDeclarations(style: Map<string, string>, issues: VisualIssue[], seen: Set<string>): void {
+/** Append another place this issue occurs, respecting the cap. */
+function addOccurrence(issue: VisualIssue, loc?: SourceLocation) {
+  if (!loc || !issue.locs) return;
+  if (issue.locs.some((l) => l.offset === loc.offset)) return;
+  if (issue.locs.length >= MAX_WARNING_LOCATIONS) {
+    issue.locsTruncated = true;
+    return;
+  }
+  issue.locs.push(loc);
+}
+
+/**
+ * Run the visual checks over one declaration block (inline style or a rule).
+ *
+ * `locs` resolves the position of the declaration that triggered each check —
+ * the background or the font stack — so the two checks on one block can point
+ * at different lines.
+ */
+function inspectDeclarations(
+  style: Map<string, string>,
+  issues: VisualIssue[],
+  seen: Map<string, VisualIssue>,
+  locs?: Map<string, SourceLocation>,
+): void {
   // 1. Background image/gradient without a solid colour fallback.
   const combined = `${style.get("background-image") ?? ""} ${style.get("background") ?? ""}`;
   const isGradient = GRADIENT_RE.test(combined);
@@ -82,9 +105,12 @@ function inspectDeclarations(style: Map<string, string>, issues: VisualIssue[], 
       ? `background-color: ${stop};`
       : `background-color: <solid colour matching the image>;`;
     const key = `bg:${fix}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      issues.push({
+    const loc = locs?.get("background-image") ?? locs?.get("background");
+    const existing = seen.get(key);
+    if (existing) {
+      addOccurrence(existing, loc);
+    } else {
+      const issue: VisualIssue = {
         rule: "missing-background-fallback",
         severity: "warning",
         message: `${isGradient ? "Gradient" : "Background image"} has no background-color fallback — it renders as a blank area (and can hide overlaid text) in Outlook and other clients that drop image backgrounds.`,
@@ -92,7 +118,10 @@ function inspectDeclarations(style: Map<string, string>, issues: VisualIssue[], 
           ? `Add a solid fallback beneath the gradient using its first colour stop.`
           : `Add a solid background-color so the area still has colour when the image is dropped.`,
         fix,
-      });
+        ...(loc ? { loc, locs: [loc] } : {}),
+      };
+      seen.set(key, issue);
+      issues.push(issue);
     }
   }
 
@@ -101,15 +130,21 @@ function inspectDeclarations(style: Map<string, string>, issues: VisualIssue[], 
   if (font && !CSS_WIDE_KEYWORDS.has(font.trim().toLowerCase()) && !hasFontFallback(font)) {
     const fix = `font-family: ${font.trim()}, Arial, sans-serif;`;
     const key = `font:${font.trim().toLowerCase()}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      issues.push({
+    const loc = locs?.get("font-family");
+    const existing = seen.get(key);
+    if (existing) {
+      addOccurrence(existing, loc);
+    } else {
+      const issue: VisualIssue = {
         rule: "missing-font-fallback",
         severity: "warning",
         message: `font-family "${font.trim()}" has no web-safe fallback — clients that strip web fonts (Gmail, Outlook) fall back to Times New Roman.`,
         detail: `End the stack with a web-safe font and a generic family.`,
         fix,
-      });
+        ...(loc ? { loc, locs: [loc] } : {}),
+      };
+      seen.set(key, issue);
+      issues.push(issue);
     }
   }
 }
@@ -139,25 +174,41 @@ function ruleToMap(node: csstree.Rule): Map<string, string> {
  *
  * Scans both inline styles and `<style>` block rules (incl. inside @media).
  */
-export function checkVisualFromDom($: CheerioAPI): VisualReport {
+export function checkVisualFromDom($: CheerioAPI, source?: string): VisualReport {
   const issues: VisualIssue[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, VisualIssue>();
 
   $("[style]").each((_, el) => {
-    inspectDeclarations(parseInlineStyle($(el).attr("style") || ""), issues, seen);
+    // Both checks on an inline style point at the attribute — it is the only
+    // range the DOM keeps for it.
+    const attrLoc = locOfAttr(el, "style");
+    const style = parseInlineStyle($(el).attr("style") || "");
+    const locs = attrLoc
+      ? new Map([...style.keys()].map((prop) => [prop, attrLoc] as const))
+      : undefined;
+    inspectDeclarations(style, issues, seen, locs);
   });
 
   $("style").each((_, el) => {
+    const cssText = $(el).text();
+    const anchor = cssBlockAnchor(el, cssText, source);
     let ast: csstree.CssNode;
     try {
-      ast = csstree.parse($(el).text());
+      ast = csstree.parse(cssText, { positions: true });
     } catch {
       return;
     }
     csstree.walk(ast, {
       visit: "Rule",
       enter(node: csstree.CssNode) {
-        if (node.type === "Rule") inspectDeclarations(ruleToMap(node), issues, seen);
+        if (node.type !== "Rule") return;
+        const locs = new Map<string, SourceLocation>();
+        node.block.children.forEach((child) => {
+          if (child.type !== "Declaration") return;
+          const loc = locInCssBlock(anchor, child.loc);
+          if (loc) locs.set(child.property.toLowerCase(), loc);
+        });
+        inspectDeclarations(ruleToMap(node), issues, seen, locs);
       },
     });
   });
@@ -170,6 +221,11 @@ export function checkVisualFromDom($: CheerioAPI): VisualReport {
  * with no colour fallback, and font stacks with no web-safe fallback. Each
  * issue includes a concrete fix.
  */
-export function checkVisual(html: string): VisualReport {
-  return fromHtml(html, EMPTY_VISUAL, checkVisualFromDom);
+export function checkVisual(html: string, options?: ParseOptions): VisualReport {
+  return fromHtml(
+    html,
+    EMPTY_VISUAL,
+    ($, h) => checkVisualFromDom($, options?.positions ? h : undefined),
+    options,
+  );
 }

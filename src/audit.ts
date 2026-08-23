@@ -9,7 +9,7 @@ import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
-import { fromHtml } from "./parse-html";
+import { fromHtml, type ParseOptions } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
   EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL,
@@ -29,7 +29,7 @@ import type {
   VisualReport,
 } from "./types";
 
-export interface AuditOptions {
+export interface AuditOptions extends ParseOptions {
   framework?: Framework;
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
@@ -76,11 +76,14 @@ export function runAudit(
   $: CheerioAPI,
   html: string,
   framework: Framework | undefined,
-  options?: Pick<AuditOptions, "spam" | "skip">,
+  options?: Pick<AuditOptions, "spam" | "skip" | "positions">,
 ): AuditReport {
   const skip = new Set(options?.skip ?? []);
+  // Analyzers that resolve positions inside text need the raw source; handing
+  // it over only when positions were requested keeps the default path honest.
+  const source = options?.positions ? html : undefined;
 
-  const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework);
+  const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework, source);
   const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
   const spam = skip.has("spam") ? EMPTY_SPAM : analyzeSpamFromDom($, options?.spam);
   const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
@@ -88,9 +91,9 @@ export function runAudit(
   const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
-  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($);
-  const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($);
-  const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($);
+  const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
+  const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
+  const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);
 
   return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual };
 }
@@ -106,5 +109,5 @@ export function runAudit(
  * all analyzers to avoid redundant parsing overhead.
  */
 export function auditEmail(html: string, options?: AuditOptions): AuditReport {
-  return fromHtml(html, EMPTY_AUDIT, ($, h) => runAudit($, h, options?.framework, options));
+  return fromHtml(html, EMPTY_AUDIT, ($, h) => runAudit($, h, options?.framework, options), options);
 }

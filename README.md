@@ -116,6 +116,17 @@ const { code } = await generateAiFix({
 - **Domain authentication** — SPF, DKIM, DMARC, MX, and BIMI DNS record validation
 - **Template variables** — unresolved merge tags across 6 template systems (Handlebars, ERB, Mailchimp, etc.)
 
+Every finding can carry its **source position** — line, column and offset, plus
+every place it occurs — so a result can be pointed at, annotated on a pull
+request, or fixed in place:
+
+```typescript
+const report = auditEmail(html, { positions: true });
+const w = report.compatibility.warnings[0];
+`${file}:${w.loc.line}:${w.loc.column}`;   // emails/welcome.html:42:8
+w.locs.length;                              // every element it breaks on
+```
+
 ## Installation
 
 ```bash

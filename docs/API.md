@@ -7,6 +7,7 @@
 - [Core](#core)
   - [`auditEmail`](#auditemailhtml-string-options-auditoptions-auditreport)
   - [`createSession`](#createsessionhtml-string-options-createsessionoptions-emailsession)
+  - [Source positions](#source-positions)
 - [Standalone Analysis](#standalone-analysis)
   - [`analyzeEmail`](#analyzeemailhtml-string-framework-framework-csswarning)
   - [`generateCompatibilityScore`](#generatecompatibilityscorewarnings-recordstring-clientscore)
@@ -83,6 +84,7 @@ const report = auditEmail(html, {
 - `framework?: "jsx" | "mjml" | "maizzle"` — attach framework-specific fix snippets
 - `spam?: SpamAnalysisOptions` — options for spam analysis
 - `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">` — skip specific checks
+- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 ---
 
@@ -118,6 +120,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 
 **`CreateSessionOptions`:**
 - `framework?: "jsx" | "mjml" | "maizzle"` — framework for fix snippets (applies to all session methods)
+- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 **`EmailSession` methods:**
 
@@ -145,6 +148,111 @@ const darkMode = session.simulateDarkMode("gmail-web");
 - **Multiple analysis calls on the same HTML** → use `createSession()` to avoid redundant parsing
 - **Single analysis call** → use standalone functions (`auditEmail`, `analyzeEmail`, etc.)
 - **Server-side batch processing** → use `createSession()` per email for best throughput
+
+---
+
+### Source positions
+
+Pass `positions: true` and every issue that belongs to a specific node carries a
+`loc` — enough to underline it in an editor, annotate it on a pull request, or
+hand an agent the exact edit site.
+
+```typescript
+const report = auditEmail(html, { positions: true });
+
+for (const issue of report.links.issues) {
+  if (issue.loc) console.log(`${file}:${issue.loc.line}:${issue.loc.column}  ${issue.message}`);
+}
+// emails/welcome.html:11:6  Link uses HTTP instead of HTTPS
+
+const w = report.compatibility.warnings.find((w) => w.property === "border-radius");
+html.slice(w.loc.offset, w.loc.offset + w.loc.length);   // "border-radius: 8px"
+```
+
+```typescript
+interface SourceLocation {
+  line: number;       // 1-based, in the original HTML string
+  column: number;     // 1-based
+  endLine: number;
+  endColumn: number;
+  offset: number;     // 0-based character offset
+  length: number;
+}
+```
+
+**Every occurrence, not just the first.** A CSS warning covers a property, and
+one property can break in many places. `loc` is the first; `locs` lists them all
+in document order, so an editor can flag every offender and a fix can be applied
+everywhere:
+
+```typescript
+const w = report.compatibility.warnings.find((w) => w.property === "border-radius");
+w.loc;            // first occurrence
+w.locs;           // [{ line: 4, … }, { line: 9, … }, { line: 14, … }]
+w.locsTruncated;  // true if there were more than 100 and the list is partial
+```
+
+Warnings are deduplicated per client, property, severity and `selector`, so
+elements the analyzer describes differently (`div.card` vs `span`) produce
+separate warnings for the same property. To reach every place a property breaks,
+union `locs` across the warnings for it:
+
+```typescript
+const everywhere = report.compatibility.warnings
+  .filter((w) => w.property === "border-radius" && w.client === "outlook-windows")
+  .flatMap((w) => w.locs ?? []);
+```
+
+Available on every `BaseIssue` (spam, links, accessibility, images, inbox
+preview, size, template variables, overflow, visual) and on `CSSWarning`. It is
+also accepted by the standalone analyzers — `analyzeEmail(html, framework,
+{ positions: true })`, `validateLinks(html, { positions: true })`, and the same
+for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
+
+**What each finding anchors to**
+
+| Finding | Anchor |
+|---|---|
+| CSS property in a `<style>` block | the declaration — `border-radius: 8px` |
+| CSS property in an inline style | the whole `style="…"` attribute |
+| Unsupported HTML feature (`<style>`, `<svg>`, `<form>`) | the first element that triggered it |
+| Link, image, accessibility finding about one attribute | that attribute — `href="http://…"` |
+| Link, image, accessibility finding about an element | the opening tag — `<img src="…">` |
+| Template variable in text | the variable itself — `{{first_name}}` |
+| Template variable in an attribute | the attribute holding it |
+| At-rule (`@media`, `@font-face`) | the rule that triggered it |
+| Fixed-width overflow | the `width` attribute or `style` that set it |
+| Visual finding (gradient, font stack) | the declaration that caused it |
+| Unbreakable string | the string itself |
+| Dark-mode coverage | the `bgcolor` or `style` keeping the element light |
+
+**What has no position**
+
+- Document-level findings: Gmail clipping, aggregate image counts, heading
+  hierarchy summaries, most spam signals. `loc` is `undefined` — handle that.
+- Elements the parser synthesized rather than read from the source (an implicit
+  `<head>` in a fragment) — there is no source to point at.
+- Findings that describe a *kind* of problem rather than one element — CSS
+  warnings, overflow, visual — carry every occurrence in `locs` (first in
+  `loc`), capped at 100 with `locsTruncated: true` when the list is partial.
+  Analyzers that already emit one issue per element carry `loc` alone.
+
+**Caveats**
+
+- Positions describe the HTML that was analyzed. For MJML, Maizzle, or React
+  Email, that is the *compiled* HTML, not your source file.
+- Character references and CRLF line endings are resolved against the original
+  source, so `&amp;` or `&#8212;` earlier in a line does not shift a position.
+  The one case that still falls back to the containing node is a token that was
+  itself encoded (`{{a&amp;b}}`).
+- `CSSWarning.line` is deprecated in favour of `loc`. Without `positions` it
+  remains the line within the `<style>` block; with `positions` it is the
+  document line.
+
+**Cost.** It grows with the document: about +6–14% on a full `auditEmail()` at
+typical email size (~10KB), +30% at Gmail's ~102KB clipping limit, and +79% on a
+450KB document — locating a finding means walking text and CSS the analyzers
+would otherwise skim. Measure on your own fixtures with `bun run bench:positions`.
 
 ---
 
@@ -573,6 +681,22 @@ type Framework = "jsx" | "mjml" | "maizzle";
 type InputFormat = "html" | Framework;
 type FixType = "css" | "structural";
 
+interface SourceLocation {
+  line: number;        // 1-based line in the analyzed HTML
+  column: number;      // 1-based column
+  endLine: number;
+  endColumn: number;
+  offset: number;      // 0-based character offset
+  length: number;
+}
+
+interface BaseIssue {          // every analyzer's issues extend this
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  loc?: SourceLocation;        // requires `positions: true`
+}
+
 interface CSSWarning {
   severity: "error" | "warning" | "info";
   client: string;
@@ -581,8 +705,11 @@ interface CSSWarning {
   suggestion?: string;
   fix?: CodeFix;
   fixType?: FixType;
-  line?: number;       // line number in <style> block
-  selector?: string;   // element selector for inline styles
+  line?: number;             // deprecated — use `loc`
+  selector?: string;         // element selector for inline styles
+  loc?: SourceLocation;      // first occurrence; requires `positions: true`
+  locs?: SourceLocation[];   // every occurrence, in document order
+  locsTruncated?: boolean;   // more than MAX_WARNING_LOCATIONS (100) occurrences
 }
 
 interface AuditReport {

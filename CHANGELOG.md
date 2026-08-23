@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.2 — 2026-08-23
+
+### Added
+
+- **Source positions on every issue (`loc`).** Pass `positions: true` to `auditEmail()`, `createSession()`, or any of the standalone analyzers and each finding that belongs to a specific node carries a `SourceLocation` — 1-based `line`/`column`, `endLine`/`endColumn`, plus a 0-based `offset` and `length` for consumers that prefer offsets. A CSS declaration in a `<style>` block resolves to the declaration itself, an inline style to its `style="…"` attribute, link/image/accessibility findings to the attribute or opening tag they are about, and a template variable to the variable in the text. Document-level findings (Gmail clipping, aggregate counts) leave `loc` undefined. This is what lets `@emailens/cli` print `file:line:col`, the GitHub Action post inline annotations, and an editor draw squiggles. Additive and opt-in; the cost grows with document size — about +6–14% on a full audit at typical email size, +30% at Gmail's ~102KB clip limit (`bun run bench:positions`, which now includes scaled-up inputs).
+
+- **Positions on the layout and visual analyzers.** Content overflow, visual bugs, dark-mode coverage and at-rule warnings each describe a specific element or declaration, and each now carries one: a fixed width points at the `width` attribute or the `style` that set it, a gradient with no fallback at the declaration that caused it, an unbreakable string at the string, `@media`/`@font-face` at the rule, and a light background the dark block misses at the `bgcolor` keeping it light. These carry a concrete `fix`, so they are the findings an editor is most likely to offer to apply.
+
+- **`CSSWarning.locs` — every place a property breaks, not just the first.** One warning covers a property, and one property can break in a dozen elements; `loc` is the first occurrence and `locs` lists them all in document order, so an editor can flag each one and a fix can be applied everywhere. Capped at 100 occurrences with `locsTruncated: true` when the list is partial, rather than silently dropping the rest. Purely additive — warning counts and compatibility scores are unchanged, which is asserted by test.
+
+### Changed
+
+- **Positions resolve against the original source, so character references and mixed line endings no longer shift them.** parse5 hands analyzers decoded text — `&amp;` collapsed to `&`, CRLF to LF — so an index into that text is not an index into the file. Previously a template variable in a text node containing `&nbsp;` anchored to the start of the node (an editor would have underlined the wrong words), and a `<style>` block mixing CRLF and LF produced a zero-length position at the block start. Both are now exact. The only remaining fallback is a token that was itself encoded (`{{a&amp;b}}`).
+
+- **The template-variable scan no longer clones the DOM.** It walked `$.root().clone()` and recursed once per level, so a deeply nested email (tables inside tables) could exhaust the stack before the checker ran; it now walks text nodes iteratively and reuses that walk for both the per-node and whole-document passes. Same findings, no second copy of the DOM.
+
+- **`CSSWarning.line` is deprecated in favour of `loc`.** Its meaning is unchanged without `positions` (the line within the `<style>` block, absent for inline styles); with `positions: true` it reports the document line, i.e. `loc.line`.
+
 ## 0.10.1 — 2026-07-30
 
 ### Added

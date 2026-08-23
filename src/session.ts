@@ -1,4 +1,3 @@
-import * as cheerio from "cheerio";
 import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
@@ -31,10 +30,11 @@ import type {
   VisualReport,
   TransformResult,
 } from "./types";
+import { loadHtml, type ParseOptions } from "./parse-html";
 import { runAudit, EMPTY_AUDIT } from "./audit";
 import type { AuditOptions, AuditReport } from "./audit";
 
-export interface CreateSessionOptions {
+export interface CreateSessionOptions extends ParseOptions {
   /** Framework for fix snippets (applies to analyze/audit/transform). */
   framework?: Framework;
 }
@@ -62,8 +62,12 @@ export interface EmailSession {
    * Run all analysis checks in one call (shares pre-parsed DOM).
    *
    * Equivalent to `auditEmail()` but avoids re-parsing the HTML.
+   *
+   * `positions` is not accepted here: source positions are recorded at parse
+   * time, so the session's own option decides, and a per-call flag could only
+   * be ignored. Pass it to `createSession()` instead.
    */
-  audit(options?: Omit<AuditOptions, "framework">): AuditReport;
+  audit(options?: Omit<AuditOptions, "framework" | "positions">): AuditReport;
 
   /**
    * Analyze CSS compatibility warnings (shares pre-parsed DOM).
@@ -190,19 +194,20 @@ export function createSession(
   }
 
   // Parse once — shared across all read-only analysis operations
-  const $ = cheerio.load(html);
+  const $ = loadHtml(html, options);
   const framework = options?.framework;
+  const source = options?.positions ? html : undefined;
 
   return {
     html,
     framework,
 
     audit(opts) {
-      return runAudit($, html, framework, opts);
+      return runAudit($, html, framework, { ...opts, positions: options?.positions });
     },
 
     analyze() {
-      return analyzeEmailFromDom($, framework);
+      return analyzeEmailFromDom($, framework, source);
     },
 
     score(warnings) {
@@ -234,15 +239,15 @@ export function createSession(
     },
 
     checkTemplateVariables() {
-      return checkTemplateVariablesFromDom($);
+      return checkTemplateVariablesFromDom($, source);
     },
 
     checkOverflow() {
-      return checkOverflowFromDom($);
+      return checkOverflowFromDom($, source);
     },
 
     checkVisual() {
-      return checkVisualFromDom($);
+      return checkVisualFromDom($, source);
     },
 
     // Transforms create isolated copies since they mutate the DOM

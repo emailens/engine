@@ -15,11 +15,43 @@ export interface EmailClient {
 
 export type Severity = "error" | "warning" | "info";
 
+/**
+ * Where an issue lives in the analyzed HTML.
+ *
+ * Lines and columns are 1-based; `offset` is a 0-based character index into
+ * the HTML string. Populated only when the analysis ran with `positions: true`
+ * — and only for findings that belong to a specific node, so document-level
+ * findings (email size, aggregate spam signals) leave it undefined.
+ */
+export interface SourceLocation {
+  /** 1-based line in the original HTML string. */
+  line: number;
+  /** 1-based column. */
+  column: number;
+  endLine: number;
+  endColumn: number;
+  /** 0-based character offset, for consumers that prefer offsets. */
+  offset: number;
+  length: number;
+}
+
 /** Shared shape for every analyzer's issue objects. */
 export interface BaseIssue {
   rule: string;
   severity: Severity;
   message: string;
+  /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
+  loc?: SourceLocation;
+  /**
+   * Every occurrence, in document order — `loc` is the first of them.
+   *
+   * Present on analyzers that report one issue per *kind* of problem rather
+   * than one per element (overflow, visual). Analyzers that already emit an
+   * issue per element carry `loc` alone. Capped at {@link MAX_WARNING_LOCATIONS}.
+   */
+  locs?: SourceLocation[];
+  /** `locs` hit the cap and does not list every occurrence. */
+  locsTruncated?: boolean;
 }
 
 export interface CodeFix {
@@ -40,8 +72,34 @@ export interface CSSWarning {
   fix?: CodeFix;
   fixIsGenericFallback?: boolean;
   fixType?: FixType;
+  /**
+   * @deprecated Use `loc`. Without `positions: true` this is the line within
+   * the `<style>` block that declared the property (and is absent for inline
+   * styles); with positions on it is `loc.line`, i.e. absolute in the document.
+   */
   line?: number;
   selector?: string;
+  /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
+  loc?: SourceLocation;
+  /**
+   * Every occurrence, in document order — `loc` is the first of them.
+   *
+   * Warnings are deduplicated per client, property, severity and `selector`,
+   * so twelve elements the analyzer describes the same way collapse into one
+   * warning — this is how a consumer reaches the other eleven. Elements
+   * described differently (`div.card` vs `span`) still produce separate
+   * warnings for the same property, so a consumer that wants every place a
+   * property breaks should union `locs` across the warnings for that property.
+   * Ordered by position, capped at {@link MAX_WARNING_LOCATIONS}.
+   */
+  locs?: SourceLocation[];
+  /**
+   * `locs` hit the cap and does not list every occurrence.
+   *
+   * A consumer that acts on all of them (an editor applying a fix everywhere)
+   * needs to know the list is partial rather than infer it from the length.
+   */
+  locsTruncated?: boolean;
 }
 
 /**

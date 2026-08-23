@@ -1,7 +1,8 @@
 import * as cheerio from "cheerio";
 import type { LinkIssue, LinkReport } from "./types";
 import { GENERIC_LINK_TEXT, EMPTY_LINKS } from "./constants";
-import { fromHtml } from "./parse-html";
+import { fromHtml, type ParseOptions } from "./parse-html";
+import { locOfAttr, locOfElement } from "./source-location";
 
 function classifyHref(href: string): string {
   if (!href || !href.trim()) return "empty";
@@ -51,6 +52,10 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     const href = $(el).attr("href") || "";
     const text = $(el).text().trim();
     const category = classifyHref(href);
+    // Findings about the URL point at the href; findings about the link as a
+    // whole (no href, no text) point at the opening tag.
+    const elLoc = locOfElement(el);
+    const hrefLoc = href ? locOfAttr(el, "href") : elLoc;
 
     // Count breakdown
     switch (category) {
@@ -76,6 +81,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         rule: "empty-href",
         message: "Link has no href attribute",
         text: text.slice(0, 80) || "(no text)",
+        ...(elLoc ? { loc: elLoc } : {}),
       });
       return;
     }
@@ -88,6 +94,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "Link uses javascript: protocol",
         href: href.slice(0, 100),
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
       return;
     }
@@ -100,6 +107,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "Link has a placeholder href (# or javascript:void)",
         href,
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
       return;
     }
@@ -112,6 +120,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "Link uses HTTP instead of HTTPS",
         href: href.slice(0, 120),
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
     }
 
@@ -123,6 +132,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "Protocol-relative URL may break in email clients — use https:// explicitly",
         href: href.slice(0, 120),
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
     }
 
@@ -134,6 +144,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: `Link text "${text}" is vague — use descriptive text for accessibility and engagement`,
         href: href.slice(0, 120),
         text,
+        ...(elLoc ? { loc: elLoc } : {}),
       });
     }
 
@@ -144,6 +155,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         rule: "empty-link-text",
         message: "Link has no visible text or aria-label",
         href: href.slice(0, 120),
+        ...(elLoc ? { loc: elLoc } : {}),
       });
     }
 
@@ -155,6 +167,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "mailto: link has no email address",
         href,
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
     }
 
@@ -166,6 +179,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "tel: link has no phone number",
         href,
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
     }
 
@@ -177,6 +191,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
         message: "URL exceeds 2000 characters — may be truncated by some email clients",
         href: href.slice(0, 120) + "...",
         text: text.slice(0, 80) || "(no text)",
+        ...(hrefLoc ? { loc: hrefLoc } : {}),
       });
     }
   });
@@ -188,6 +203,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     if (trimmed.startsWith("#") && trimmed.length > 1) {
       const targetId = trimmed.slice(1);
       const target = $(`[id="${targetId}"]`);
+      const anchorLoc = locOfAttr(el, "href");
       if (target.length === 0) {
         issues.push({
           severity: "error",
@@ -195,6 +211,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
           message: `Anchor link "${trimmed}" points to an element that does not exist`,
           href: trimmed,
           text: $(el).text().trim().slice(0, 80) || "(no text)",
+          ...(anchorLoc ? { loc: anchorLoc } : {}),
         });
       }
     }
@@ -222,6 +239,6 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
  * empty/placeholder hrefs, javascript: protocol, insecure HTTP,
  * generic link text, accessibility issues, and more.
  */
-export function validateLinks(html: string): LinkReport {
-  return fromHtml(html, EMPTY_LINKS, validateLinksFromDom);
+export function validateLinks(html: string, options?: ParseOptions): LinkReport {
+  return fromHtml(html, EMPTY_LINKS, validateLinksFromDom, options);
 }

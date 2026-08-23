@@ -4,6 +4,7 @@ import { getClient } from "./clients";
 import { parseColor, relativeLuminance } from "./color-utils";
 import { LIGHT_THRESHOLD, PREFERS_COLOR_SCHEME_CLIENTS } from "./dark-mode";
 import { parseInlineStyle } from "./style-utils";
+import { locOfAttr, locOfFirst } from "./source-location";
 import type { CSSWarning } from "./types";
 
 /** Matches `@media (prefers-color-scheme: dark)`, whitespace/case tolerant. */
@@ -155,6 +156,7 @@ export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
   });
 
   if (!hasOptIn) {
+    const headLoc = locOfFirst($, "head");
     for (const clientId of PREFERS_COLOR_SCHEME_CLIENTS) {
       warnings.push({
         severity: "warning",
@@ -167,6 +169,7 @@ export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
           'Add both opt-in tags to <head>: <meta name="color-scheme" content="light dark"> and ' +
           '<meta name="supported-color-schemes" content="light dark">.',
         fixType: "structural",
+        ...(headLoc ? { loc: headLoc, locs: [headLoc] } : {}),
       });
     }
   }
@@ -192,6 +195,7 @@ export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
 
     uncovered++;
     const selector = describeSelector($, el);
+    const loc = locOfAttr(el, inline ? "style" : "bgcolor");
     for (const clientId of PREFERS_COLOR_SCHEME_CLIENTS) {
       warnings.push({
         severity: "warning",
@@ -205,6 +209,7 @@ export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
           : `Override it inside @media (prefers-color-scheme: dark) with a dark background-color, or give the element a class the dark block already targets.`,
         fixType: "css",
         selector,
+        ...(loc ? { loc, locs: [loc] } : {}),
       });
     }
   });

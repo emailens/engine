@@ -5,6 +5,14 @@
 /** Maximum HTML input size: 2MB. Inputs exceeding this are rejected early. */
 export const MAX_HTML_SIZE = 2 * 1024 * 1024;
 
+/**
+ * Most occurrences recorded on a single warning's `locs`.
+ *
+ * A generated email can repeat one broken pattern hundreds of times; past a
+ * point the extra positions stop informing anyone and just inflate the report.
+ */
+export const MAX_WARNING_LOCATIONS = 100;
+
 export const GENERIC_LINK_TEXT = new Set([
   "click here", "here", "read more", "learn more", "more",
   "link", "this link", "click", "tap here", "this",

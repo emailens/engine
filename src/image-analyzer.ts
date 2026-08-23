@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { EMPTY_IMAGES } from "./constants";
-import { fromHtml } from "./parse-html";
+import { fromHtml, type ParseOptions } from "./parse-html";
+import { locOfAttr, locOfElement } from "./source-location";
 import type { ImageIssue, ImageInfo, ImageReport } from "./types";
 
 const DATA_URI_WARN_BYTES = 100 * 1024;
@@ -70,6 +71,8 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
     const height = img.attr("height") ?? null;
     const style = (img.attr("style") || "").toLowerCase();
     const imgIssues: string[] = [];
+    const elLoc = locOfElement(el);
+    const srcLoc = src ? locOfAttr(el, "src") : elLoc;
 
     const tracking = isTrackingPixel(img);
 
@@ -102,6 +105,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
           severity: "warning",
           message: "Image missing width/height attributes — causes layout shifts and Outlook rendering issues.",
           src: truncateSrc(src),
+          ...(elLoc ? { loc: elLoc } : {}),
         });
       }
     }
@@ -115,6 +119,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         severity: "warning",
         message: `Data URI is ${kb}KB — consider hosting the image externally to reduce email size.`,
         src: truncateSrc(src),
+        ...(srcLoc ? { loc: srcLoc } : {}),
       });
     }
 
@@ -126,6 +131,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         severity: "warning",
         message: "Image missing alt attribute — hurts deliverability and accessibility.",
         src: truncateSrc(src),
+        ...(elLoc ? { loc: elLoc } : {}),
       });
     }
 
@@ -137,6 +143,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         severity: "info",
         message: "WebP format detected — not supported by all email clients. Consider PNG or JPEG.",
         src: truncateSrc(src),
+        ...(srcLoc ? { loc: srcLoc } : {}),
       });
     }
 
@@ -148,6 +155,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         severity: "info",
         message: "SVG format detected — not supported by most email clients. Use PNG instead.",
         src: truncateSrc(src),
+        ...(srcLoc ? { loc: srcLoc } : {}),
       });
     }
 
@@ -159,6 +167,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         severity: "info",
         message: "Image without display:block — may cause unwanted gaps in Outlook.",
         src: truncateSrc(src),
+        ...(elLoc ? { loc: elLoc } : {}),
       });
     }
 
@@ -210,6 +219,6 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
  * attributes, unsupported formats (WebP, SVG), tracking pixels,
  * missing display:block, and overall image heaviness.
  */
-export function analyzeImages(html: string): ImageReport {
-  return fromHtml(html, EMPTY_IMAGES, analyzeImagesFromDom);
+export function analyzeImages(html: string, options?: ParseOptions): ImageReport {
+  return fromHtml(html, EMPTY_IMAGES, analyzeImagesFromDom, options);
 }
