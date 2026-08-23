@@ -48,7 +48,11 @@ export const EMAIL_CLIENTS: EmailClient[] = [
     engine: "Microsoft Word",
     darkModeSupport: true,
     icon: "monitor",
-    deprecated: "2026-10",
+    // End of support ~Q2 2029 (Microsoft: "supported until at least 2029").
+    // The April 2026 date some sources cite is the opt-out phase, when classic
+    // stops being the Windows default, not end of support. October 2026 was
+    // wrong: the nearest real Oct date is Oct 2025, for legacy Outlook for Mac.
+    deprecated: "2029-06",
   },
   {
     id: "outlook-ios",
