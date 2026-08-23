@@ -9,7 +9,7 @@
 
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-719%20passing-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-900%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
 [![GitHub stars](https://img.shields.io/github/stars/emailens/engine?style=flat)](https://github.com/emailens/engine/stargazers)
@@ -20,9 +20,11 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your HTML against 250+ CSS properties across 21 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
+`@emailens/engine` analyzes your email against 255 CSS and HTML features across 21 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
 
-Our data says you need this: across the 255 CSS and HTML features we track, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
+Write it however you like. **HTML, MJML, Maizzle and React Email** all go in the front: the engine compiles the template with your own compiler and lints the HTML that actually gets sent, which is the only version your reader sees.
+
+Our data says you need this: of those 255 features, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
 
 ![emailens lint output showing errors and warnings across email clients](./docs/lint-demo.png)
 
@@ -105,7 +107,7 @@ const { code } = await generateAiFix({
 
 10 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility** — 250+ properties tested across 21 email clients, with fix snippets and AI-powered auto-fix
+- **CSS compatibility** — 255 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
 - **Content overflow** — fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
 - **Visual bugs** — gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix
 - **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR

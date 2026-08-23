@@ -34,7 +34,7 @@ src/
 ├── index.ts                  # Public re-exports for main entry point
 ├── audit.ts                  # auditEmail() — shared DOM parse, runs all 10 analyzers
 ├── session.ts                # createSession() — pre-parsed DOM, exposes all methods
-├── analyze.ts                # CSS compatibility analysis (250+ properties × 21 clients)
+├── analyze.ts                # CSS compatibility analysis (255 features × 21 clients)
 ├── spam-scorer.ts            # Heuristic spam scoring (45+ signals)
 ├── link-validator.ts         # Static link analysis (no network requests)
 ├── accessibility-checker.ts  # WCAG accessibility audit
