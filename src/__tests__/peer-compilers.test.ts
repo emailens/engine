@@ -94,6 +94,20 @@ describe("optional peer compilers", () => {
     expect(Bun.semver.satisfies("6.1.0", range)).toBe(false);
   });
 
+  it("keeps the type packages on the same major as what they describe", () => {
+    // mjml ships no types of its own, so `@types/mjml` is the only thing
+    // telling TypeScript what `await import("mjml")` returns. Left on 4 while
+    // mjml moved to 5, it describes an API that is not the one installed —
+    // the same drift as the versions above, and quieter, because a wrong type
+    // fails nothing until it lets a real mistake through.
+    const pairs: Array<[string, string]> = [["@types/mjml", "mjml"]];
+    for (const [types, runtime] of pairs) {
+      const typesMajor = installed(types)?.split(".")[0];
+      const runtimeMajor = installed(runtime)?.split(".")[0];
+      expect([types, typesMajor]).toEqual([types, runtimeMajor]);
+    }
+  });
+
   it("keeps the other three open above their tested major", () => {
     // These are open-ended on purpose: mjml 4 and 5 both work, and so do both
     // React Email majors. An upper bound would break consumers for no reason.

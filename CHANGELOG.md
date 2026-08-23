@@ -22,7 +22,7 @@
 
 - **The `@maizzle/framework` peer range admitted a major that does not work.** Maizzle 6 moved to Vue single-file components: `render()` now takes an SFC source or a file path, where `compileMaizzle()` passes template text. A consumer on `>=5.0.0` could install 6.x, satisfy the peer, and get `Failed to load url` at runtime — including on the two tests that assert `{{ process.env.SECRET }}` cannot leak, which fail because nothing compiles rather than because anything leaked. The range is now `>=5.0.0 <6.0.0`; supporting 6 is its own change.
 
-- **The compilers were only ever tested one major behind.** `mjml` was pinned to 4.x in devDependencies while 5.4 is current, `@react-email/render` to 1.x against 2.1, and `@react-email/components` to 0.0.x against 1.0. All three work on the current major — verified by running the compile suites against them — but nothing was checking. They are now the versions CI exercises.
+- **The compilers were only ever tested one major behind.** `mjml` was pinned to 4.x in devDependencies while 5.4 is current, `@react-email/render` to 1.x against 2.1, and `@react-email/components` to 0.0.x against 1.0. All three work on the current major — verified by running the compile suites against them — but nothing was checking. They are now the versions CI exercises, and `@types/mjml` moves to 5 with them: mjml ships no types of its own, so it was the only thing describing `await import("mjml")`, and it was describing the wrong major.
 
 ## 0.10.1 — 2026-07-30
 
