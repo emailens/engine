@@ -70,6 +70,94 @@ export function locOfAttr(el: any, attr: string): SourceLocation | undefined {
   return attrLoc ? toLoc(attrLoc) : locOfElement(el);
 }
 
+/**
+ * Where a single declaration sits inside a `style="…"` attribute.
+ *
+ * `locOfAttr` gives the whole attribute, which is a fair place to act but a
+ * poor place to look: `style="margin:0;padding:0;font-size:1rem;color:#333"`
+ * underlined end to end says "something in here", when the engine knows
+ * exactly which declaration it means.
+ *
+ * Needs the raw source, because the DOM keeps the decoded attribute value and
+ * an index into that is not an index into the file. Returns undefined rather
+ * than a guess whenever the declaration cannot be found exactly — an entity in
+ * the attribute, a property that only exists after decoding — and the caller
+ * falls back to the whole attribute.
+ *
+ * `occurrence` picks among repeats: `style="display:block;display:flex"` is
+ * two declarations of one property, and they are different places.
+ */
+export function locInAttr(
+  attrLoc: SourceLocation | undefined,
+  source: string | undefined,
+  property: string,
+  occurrence = 0,
+): SourceLocation | undefined {
+  if (!attrLoc || !source) return undefined;
+  const raw = source.slice(attrLoc.offset, attrLoc.offset + attrLoc.length);
+  // Everything from the first quote to the last: the value, without the
+  // attribute name or the quotes themselves.
+  const open = raw.search(/["']/);
+  const close = raw.lastIndexOf(raw[open]);
+  if (open === -1 || close <= open) return undefined;
+
+  const found = declarationsIn(raw.slice(open + 1, close), property);
+  const hit = found[occurrence];
+  if (!hit) return undefined;
+
+  const start = attrLoc.offset + open + 1 + hit.start;
+  const end = attrLoc.offset + open + 1 + hit.end;
+  const from = positionOf(source, start);
+  const to = positionOf(source, end);
+  return {
+    line: from.line,
+    column: from.column,
+    endLine: to.line,
+    endColumn: to.column,
+    offset: start,
+    length: end - start,
+  };
+}
+
+/**
+ * Every `property: value` in a style attribute's value, by index.
+ *
+ * Split on semicolons outside parentheses, so `background:url(a;b.png)` stays
+ * one declaration, and match the property at the head of its own declaration —
+ * not inside a value, where `background: url(font-size.png)` would otherwise
+ * look like a `font-size`.
+ */
+function declarationsIn(value: string, property: string): Array<{ start: number; end: number }> {
+  const wanted = property.toLowerCase();
+  const found: Array<{ start: number; end: number }> = [];
+  let depth = 0;
+  let start = 0;
+
+  const consider = (from: number, to: number) => {
+    const text = value.slice(from, to);
+    const colon = text.indexOf(":");
+    if (colon === -1) return;
+    if (text.slice(0, colon).trim().toLowerCase() !== wanted) return;
+    // Trim the surrounding whitespace off the range, so the underline covers
+    // the declaration and not the space before it.
+    const lead = text.length - text.trimStart().length;
+    const trail = text.length - text.trimEnd().length;
+    if (from + lead < to - trail) found.push({ start: from + lead, end: to - trail });
+  };
+
+  for (let i = 0; i < value.length; i++) {
+    const c = value[i];
+    if (c === "(") depth++;
+    else if (c === ")") depth = Math.max(0, depth - 1);
+    else if (c === ";" && depth === 0) {
+      consider(start, i);
+      start = i + 1;
+    }
+  }
+  consider(start, value.length);
+  return found;
+}
+
 /** Location of the first element matching `selector`, if any. */
 export function locOfFirst($: CheerioAPI, selector: string): SourceLocation | undefined {
   const el = $(selector).first()[0];

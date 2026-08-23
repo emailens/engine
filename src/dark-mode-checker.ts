@@ -4,7 +4,7 @@ import { getClient } from "./clients";
 import { parseColor, relativeLuminance } from "./color-utils";
 import { LIGHT_THRESHOLD, PREFERS_COLOR_SCHEME_CLIENTS } from "./dark-mode";
 import { parseInlineStyle } from "./style-utils";
-import { locOfAttr, locOfFirst } from "./source-location";
+import { locInAttr, locOfAttr, locOfFirst } from "./source-location";
 import type { CSSWarning } from "./types";
 
 /** Matches `@media (prefers-color-scheme: dark)`, whitespace/case tolerant. */
@@ -143,7 +143,7 @@ function describeSelector($: CheerioAPI, el: any): string {
  *
  * @internal
  */
-export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
+export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning[] {
   const darkBlock = collectDarkBlocks($);
   if (!darkBlock) return []; // No dark styling — nothing to say.
 
@@ -195,7 +195,14 @@ export function checkDarkModeFromDom($: CheerioAPI): CSSWarning[] {
 
     uncovered++;
     const selector = describeSelector($, el);
-    const loc = locOfAttr(el, inline ? "style" : "bgcolor");
+    // The declaration that set the colour, where the raw source lets us find
+    // it — this warning is about one background, and the attribute around it
+    // may hold five other declarations that are perfectly fine.
+    const attrLoc = locOfAttr(el, inline ? "style" : "bgcolor");
+    const loc = inline
+      ? (locInAttr(attrLoc, source, style.get("background-color") !== undefined
+          ? "background-color" : "background") ?? attrLoc)
+      : attrLoc;
     for (const clientId of PREFERS_COLOR_SCHEME_CLIENTS) {
       warnings.push({
         severity: "warning",
