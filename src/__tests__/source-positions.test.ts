@@ -738,6 +738,18 @@ describe("source positions — layout and visual findings", () => {
     expect(issue.loc!.line).toBe(2);
   });
 
+  test("a run split across inline elements is one string, anchored where it starts", () => {
+    // `<b>aaa</b>bbb` renders as one unbroken run — scanning node by node would
+    // report two shorter strings and understate the overflow.
+    const html = `<body><p>see <b>https://example.com/${"a".repeat(40)}</b>${"b".repeat(40)}</p></body>`;
+    const issues = checkOverflow(html, { positions: true }).issues.filter(
+      (i) => i.rule === "unbreakable-string",
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain("100-character");
+    expect(html.slice(issues[0].loc!.offset)).toStartWith("https://example.com/");
+  });
+
   test("repeated offenders are collected onto one issue", () => {
     const repeated = ["<body>", ...Array.from({ length: 4 }, () => '  <div style="width:800px">x</div>'), "</body>"].join("\n");
     const issue = checkOverflow(repeated, { positions: true }).issues[0];

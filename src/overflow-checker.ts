@@ -53,6 +53,41 @@ function addWidthIssue(
   issues.push(issue);
 }
 
+/**
+ * Resolve a position in the concatenated text back to the node it starts in.
+ *
+ * A run that spans nodes (`<b>aaa</b>bbb`) is anchored where it begins, with
+ * the length clipped to that node — one range cannot cover both halves, and
+ * the start is what a reader needs.
+ */
+function locateInNodes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nodes: any[],
+  starts: number[],
+  index: number,
+  length: number,
+  source?: string,
+): SourceLocation | undefined {
+  let lo = 0;
+  let hi = starts.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (starts[mid] <= index) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (found === -1) return undefined;
+
+  const node = nodes[found];
+  const within = index - starts[found];
+  const available = ((node.data as string) ?? "").length - within;
+  return locInTextNode(node, within, Math.min(length, available), source);
+}
+
 /** Append another place this issue occurs, respecting the cap. */
 function addOccurrence(issue: { locs?: SourceLocation[]; locsTruncated?: boolean }, loc?: SourceLocation) {
   if (!loc || !issue.locs) return;
@@ -141,27 +176,34 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
   //    opts into wrapping anywhere (author is handling it).
   const usesWrapGuard = /overflow-wrap|word-break|word-wrap/i.test($.html());
   if (!usesWrapGuard) {
-    // Node by node rather than one concatenated string, so each long token can
-    // be pointed at in the text it came from.
-    for (const node of visibleTextNodes($)) {
-      const data: string = node.data ?? "";
-      let at = 0;
-      for (const token of data.split(/(\s+)/)) {
-        const start = at;
-        at += token.length;
-        if (/^\s*$/.test(token)) continue;
-        if (token.length <= UNBREAKABLE_STRING_LENGTH || tokensSeen.has(token)) continue;
-        tokensSeen.add(token);
-        const preview = token.length > 50 ? `${token.slice(0, 50)}…` : token;
-        const loc = locInTextNode(node, start, token.length, source);
-        issues.push({
-          rule: "unbreakable-string",
-          severity: "warning",
-          message: `A ${token.length}-character unbroken string ("${preview}") can't wrap and will force horizontal scrolling on narrow screens.`,
-          detail: `Add overflow-wrap: anywhere (or word-break: break-word) to its container.`,
-          ...(loc ? { loc, locs: [loc] } : {}),
-        });
-      }
+    // Scan the concatenated text, not each node: `<b>aaa</b>bbb` renders as one
+    // unbroken run, and it is that run's length that decides whether it
+    // overflows. Node boundaries are tracked alongside so the run can still be
+    // pointed at — it is anchored where it starts.
+    const nodes = visibleTextNodes($);
+    const starts: number[] = [];
+    let text = "";
+    for (const node of nodes) {
+      starts.push(text.length);
+      text += (node.data as string) ?? "";
+    }
+
+    let at = 0;
+    for (const token of text.split(/(\s+)/)) {
+      const start = at;
+      at += token.length;
+      if (/^\s*$/.test(token)) continue;
+      if (token.length <= UNBREAKABLE_STRING_LENGTH || tokensSeen.has(token)) continue;
+      tokensSeen.add(token);
+      const preview = token.length > 50 ? `${token.slice(0, 50)}…` : token;
+      const loc = locateInNodes(nodes, starts, start, token.length, source);
+      issues.push({
+        rule: "unbreakable-string",
+        severity: "warning",
+        message: `A ${token.length}-character unbroken string ("${preview}") can't wrap and will force horizontal scrolling on narrow screens.`,
+        detail: `Add overflow-wrap: anywhere (or word-break: break-word) to its container.`,
+        ...(loc ? { loc, locs: [loc] } : {}),
+      });
     }
   }
 
