@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.11.0 - 2026-08-26
+
+### Added
+
+- **`checkDesignConsistency(html)`: the small incoherences nothing else looks at.** A scorer answers "does this render", never "does this look like one person made it". Two rules, both countable rather than a matter of taste.
+
+  `colour-drift` reports colours that are different values but the same colour to a reader. Distance is measured in OKLab, which is built so that Euclidean distance tracks perception, at a threshold of 0.02: under the point where a side-by-side pair becomes tellable apart. On real templates it finds the warm off-white pasted next to a slightly different warm off-white, and the near-black that picked up a hue cast on the way in. `#fff`, `#FFFFFF` and `white` are one colour and are never reported.
+
+  `too-many-values` reports runaway cardinality in font sizes, typefaces and corner radii. Both normalisations matter more than the caps: a `border-radius` shorthand is a shape, so `12px 12px 0 0` and `0 0 12px 12px` are one 12px system, and fully round values (`50%`, pill buttons) are a deliberate shape rather than a fourth corner size; a font stack counts as its first family, so `'Inter', sans-serif` and `"Inter"` are one typeface. Without those, a consistent design reports as drift.
+
+- **`checkDarkModeContrast(html)` and `checkMobileContrast(html)`: contrast in the two renders nobody looks at.** The desktop light palette is the one render a designer has already checked.
+
+  There are two ways an email goes wrong in dark mode, and they need separate passes. `checkDarkModeContrast` grades the clients that force an inversion (Gmail Android's partial, Gmail iOS's full) and runs both, because they disagree: a `#f0ece4` heading sits just under Android's lightness threshold and is left alone while the surface behind it is repainted, landing at 1.3:1. `checkDarkStylesContrastFromDom` grades the email's *own* `@media (prefers-color-scheme: dark)` block as Apple Mail, Superhuman and Thunderbird would apply it; on a receipt fixture that block repaints the card to `#141519 !important` while ten text nodes carrying no class keep `#1a1714`, landing at 1.0:1. Invisible, and no light-mode check can see either one.
+
+  `auditEmail` merges both into `darkContrast`, deduplicated per element.
+
+  Mobile grades what a `max-width` block restyles, which the desktop palette never shows.
+
+### Changed
+
+- **Contrast is graded against the resolved cascade rather than inline styles.** The check previously read colours from inline styles and two ad-hoc lookups, so a stylesheet `color`, an `!important`, and a more specific selector were all invisible to it, and a `@media screen` background counted as absent.
+
+  Declarations are now resolved the way a client resolves them: importance, then presentational-attribute rank, then inline, then specificity, then source order, with `@media` preludes evaluated against a render context so a `prefers-color-scheme` or `max-width` block applies only where it would. Selector lists split on top-level commas, so `:is(#hero, .card)` is one selector rather than two invalid ones that silently dropped the rule.
+
+  **Warning counts move.** False positives disappear where a background was previously unreadable, and real findings appear where a stylesheet rule was previously unread, so regenerate anything cached or snapshotted.
+
+- **Every diagnostic message is reworded.** 828 em dashes across messages, comments and docs are replaced by role: a colon where the tail names or elaborates, a semicolon where both sides are independent clauses, a comma where the tail is a participle or an elided subject, parentheses where the aside already held a comma. `auditEmail` gains `darkContrast`, `mobileContrast` and `design`.
+
+  **Message strings move.** Warning counts and scores are unchanged by this part, but anything matching on message text needs regenerating.
+
 ## 0.10.4 - 2026-08-23
 
 ### Added

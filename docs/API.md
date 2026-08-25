@@ -27,6 +27,10 @@
   - [`checkTemplateVariables`](#checktemplatevariableshtml-string-templatereport)
   - [`checkOverflow`](#checkoverflowhtml-string-overflowreport)
   - [`checkVisual`](#checkvisualhtml-string-visualreport)
+  - [`checkDesignConsistency`](#checkdesignconsistencyhtml-string-designreport)
+  - [`checkDarkModeContrast`](#checkdarkmodecontrasthtml-string-accessibilityissue)
+  - [`checkDarkStylesContrastFromDom`](#checkdarkstylescontrastfromdom-cheerioapi-accessibilityissue)
+  - [`checkMobileContrast`](#checkmobilecontrasthtml-string-accessibilityissue)
 - [Transforms & Dark Mode](#transforms--dark-mode)
   - [`transformForClient`](#transformforclienthtml-clientid-framework-transformresult)
   - [`transformForAllClients`](#transformforallclientshtml-framework-transformresult)
@@ -465,6 +469,60 @@ const report = checkVisual(html);
 ```
 
 **Detects:** background images/gradients with no solid `background-color`; blank area (and hidden text) in Outlook (`missing-background-fallback`, gradient fallback computed from the first color stop); `font-family` stacks with no web-safe fallback; Times New Roman in Gmail/Outlook (`missing-font-fallback`, web-safe family appended).
+
+### `checkDesignConsistency(html: string): DesignReport`
+
+Reports design incoherence rather than rendering failure: values that differ but read as one choice, and sets of values too large to be a system.
+
+```typescript
+import { checkDesignConsistency } from "@emailens/engine";
+
+const report = checkDesignConsistency(html);
+// issues: [{
+//   rule: "colour-drift",
+//   severity: "info",
+//   message: "2 near-identical colours are used where one was probably meant: rgb(234, 230, 222), rgb(240, 236, 228).",
+//   detail: "These render as the same colour to a reader, so the difference is drift rather than a choice. …",
+//   values: ["rgb(234, 230, 222)", "rgb(240, 236, 228)"],
+// }]
+```
+
+Colours are reported in `rgb()` form, whatever notation the source used, so `#fff`, `#FFFFFF` and `white` compare as one value.
+
+**Detects:** near-identical colours (`colour-drift`, OKLab distance under 0.02, below the point a reader can tell them apart); more than 8 font sizes, 2 typefaces or 3 corner radii (`too-many-values`). A radius shorthand normalises as a shape, so `12px 12px 0 0` and `0 0 12px 12px` are one radius, and `50%`/pill values are excluded; a font stack counts as its first family.
+
+---
+
+### `checkDarkModeContrast(html: string): AccessibilityIssue[]`
+
+Grades text contrast in the simulated dark-mode renders, where a hardcoded light background meets text the email's dark block never re-colours.
+
+```typescript
+import { checkDarkModeContrast } from "@emailens/engine";
+
+const issues = checkDarkModeContrast(html);
+// [{ rule: "low-contrast-dark", severity: "error",
+//    message: "Dark mode: Low contrast ratio 1.3:1, fails WCAG minimum",
+//    element: "<h1>Thanks for your order</h1>", details: "…" }]
+```
+
+Covers the clients that force an inversion. Runs both Gmail Android (partial) and Gmail iOS (full), because they disagree: a colour just under Android's lightness threshold is left alone there and repainted on iOS.
+
+---
+
+### `checkDarkStylesContrastFromDom($: CheerioAPI): AccessibilityIssue[]`
+
+Grades the email's own `@media (prefers-color-scheme: dark)` block as the clients that honour it apply it (Apple Mail, Superhuman, Thunderbird). This is the other dark-mode failure: a dark block that repaints a surface but does not re-colour every text layer sitting on it.
+
+`auditEmail` merges this with `checkDarkModeContrast` into `report.darkContrast`, deduplicated per element.
+
+---
+
+### `checkMobileContrast(html: string): AccessibilityIssue[]`
+
+Grades text contrast at 375px, so a colour pairing that only exists inside a `max-width` block is checked rather than assumed to match the desktop palette.
+
+---
 
 ---
 
