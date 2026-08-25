@@ -29,7 +29,7 @@ export const GMAIL_CLIP_WARNING_THRESHOLD = 90 * 1024;
 // ─── Per-client display limits ──────────────────────────────────────────────
 // Display limits last verified: 2026-03-04
 // Sources: emailtooltester.com, Campaign Monitor, Litmus preview text guide
-// Note: These are approximations — actual limits vary by device, screen size,
+// Note: These are approximations; actual limits vary by device, screen size,
 // font rendering, and sender name length.
 
 export interface ClientDisplayLimit {
@@ -65,6 +65,7 @@ export const TEMPLATE_VARIABLE_PATTERNS: Array<[RegExp, string]> = [
 ];
 
 /** Shared empty report defaults for skipped checks and empty-input fast paths. */
+import type { DesignReport } from "./types";
 import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport, OverflowReport, VisualReport } from "./types";
 
 export const EMPTY_SPAM: SpamReport = { score: 100, level: "low", issues: [] };
@@ -88,13 +89,13 @@ export const EMAIL_MAX_WIDTH = 600;
 export const UNBREAKABLE_STRING_LENGTH = 30;
 
 // ─── Visual fallback data ───────────────────────────────────────────────────
-/** Fonts pre-installed across email clients — a stack with one of these degrades safely. */
+/** Fonts pre-installed across email clients: a stack with one of these degrades safely. */
 export const WEB_SAFE_FONTS = new Set([
   "arial", "helvetica", "helvetica neue", "verdana", "tahoma", "trebuchet ms",
   "times new roman", "times", "georgia", "garamond", "palatino", "book antiqua",
   "courier new", "courier", "lucida sans", "lucida", "arial black", "impact",
 ]);
-/** Generic CSS font families — an ultimate fallback the client always resolves. */
+/** Generic CSS font families: an ultimate fallback the client always resolves. */
 export const GENERIC_FONT_FAMILIES = new Set([
   "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
   "ui-serif", "ui-sans-serif", "ui-monospace",
@@ -102,3 +103,9 @@ export const GENERIC_FONT_FAMILIES = new Set([
 
 import type { DeliverabilityReport } from "./types";
 export const EMPTY_DELIVERABILITY: DeliverabilityReport = { domain: "", checks: [], score: 0, issues: [] };
+
+/** Shared empty design report, for blank input and skipped checks. */
+export const EMPTY_DESIGN: DesignReport = {
+  issues: [],
+  palette: { colors: [], backgrounds: [], fontSizes: [], fontFamilies: [], radii: [] },
+};

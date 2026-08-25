@@ -19,8 +19,8 @@ export type Severity = "error" | "warning" | "info";
  * Where an issue lives in the analyzed HTML.
  *
  * Lines and columns are 1-based; `offset` is a 0-based character index into
- * the HTML string. Populated only when the analysis ran with `positions: true`
- * — and only for findings that belong to a specific node, so document-level
+ * the HTML string. Populated only when the analysis ran with `positions: true`,
+ *and only for findings that belong to a specific node, so document-level
  * findings (email size, aggregate spam signals) leave it undefined.
  */
 export interface SourceLocation {
@@ -43,7 +43,7 @@ export interface BaseIssue {
   /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
   loc?: SourceLocation;
   /**
-   * Every occurrence, in document order — `loc` is the first of them.
+   * Every occurrence, in document order; `loc` is the first of them.
    *
    * Present on analyzers that report one issue per *kind* of problem rather
    * than one per element (overflow, visual). Analyzers that already emit an
@@ -82,11 +82,11 @@ export interface CSSWarning {
   /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
   loc?: SourceLocation;
   /**
-   * Every occurrence, in document order — `loc` is the first of them.
+   * Every occurrence, in document order; `loc` is the first of them.
    *
    * Warnings are deduplicated per client, property, severity and `selector`,
    * so twelve elements the analyzer describes the same way collapse into one
-   * warning — this is how a consumer reaches the other eleven. Elements
+   * warning; this is how a consumer reaches the other eleven. Elements
    * described differently (`div.card` vs `span`) still produce separate
    * warnings for the same property, so a consumer that wants every place a
    * property breaks should union `locs` across the warnings for that property.
@@ -162,7 +162,7 @@ export interface SpamAnalysisOptions {
   listUnsubscribeHeader?: string;
   /** Value of the List-Unsubscribe-Post header (RFC 8058 one-click unsubscribe) */
   listUnsubscribePostHeader?: string;
-  /** Type of email — transactional emails are exempt from unsubscribe requirements */
+  /** Type of email: transactional emails are exempt from unsubscribe requirements */
   emailType?: "marketing" | "transactional";
 }
 
@@ -314,4 +314,24 @@ export interface DeliverabilityReport {
 
 export interface DeliverabilityIssue extends BaseIssue {
   detail?: string;
+}
+
+// ─── Design consistency ──────────────────────────────────────────────────────
+
+export interface DesignIssue extends BaseIssue {
+  detail?: string;
+  /** The values the issue is about, for a UI that wants to show them. */
+  values?: string[];
+}
+
+export interface DesignReport {
+  issues: DesignIssue[];
+  /** Everything the email actually uses: a readout of its de facto system. */
+  palette: {
+    colors: string[];
+    backgrounds: string[];
+    fontSizes: string[];
+    fontFamilies: string[];
+    radii: string[];
+  };
 }

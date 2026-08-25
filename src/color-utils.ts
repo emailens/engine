@@ -1,3 +1,4 @@
+import { splitTopLevel } from "./style-utils";
 /**
  * WCAG 2.1 color parsing, luminance, and contrast utilities.
  *
@@ -228,7 +229,7 @@ export function parseColor(value: string): RGBA | null {
     return null;
   }
 
-  // rgb() / rgba() — comma syntax
+  // rgb() / rgba(): comma syntax
   const rgbComma = v.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+%?))?\s*\)$/);
   if (rgbComma) {
     return {
@@ -239,7 +240,7 @@ export function parseColor(value: string): RGBA | null {
     };
   }
 
-  // rgb() / rgba() — space syntax: rgb(255 0 0) or rgb(255 0 0 / 0.5) or rgb(255 0 0 / 50%)
+  // rgb() / rgba(): space syntax: rgb(255 0 0) or rgb(255 0 0 / 0.5) or rgb(255 0 0 / 50%)
   const rgbSpace = v.match(/^rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
   if (rgbSpace) {
     return {
@@ -250,7 +251,7 @@ export function parseColor(value: string): RGBA | null {
     };
   }
 
-  // hsl() / hsla() — comma syntax: hsl(120, 100%, 50%) or hsla(120, 100%, 50%, 0.5)
+  // hsl() / hsla(): comma syntax: hsl(120, 100%, 50%) or hsla(120, 100%, 50%, 0.5)
   const hslComma = v.match(/^hsla?\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+%?))?\s*\)$/);
   if (hslComma) {
     const h = ((parseFloat(hslComma[1]) % 360) + 360) % 360;
@@ -260,7 +261,7 @@ export function parseColor(value: string): RGBA | null {
     return { r, g, b, a: hslComma[4] !== undefined ? parseAlpha(hslComma[4]) : 1 };
   }
 
-  // hsl() / hsla() — space syntax: hsl(120 100% 50%) or hsl(120 100% 50% / 0.5)
+  // hsl() / hsla(): space syntax: hsl(120 100% 50%) or hsl(120 100% 50% / 0.5)
   const hslSpace = v.match(/^hsla?\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%(?:\s*\/\s*([\d.]+%?))?\s*\)$/);
   if (hslSpace) {
     const h = ((parseFloat(hslSpace[1]) % 360) + 360) % 360;
@@ -349,4 +350,110 @@ export function alphaBlend(fg: RGBA, bgR: number, bgG: number, bgB: number): [nu
     Math.round(fg.g * a + bgG * (1 - a)),
     Math.round(fg.b * a + bgB * (1 - a)),
   ];
+}
+
+/**
+ * The solid colour a `background` shorthand paints, if it declares one.
+ *
+ * `background: #111 url(hero.png) no-repeat` paints #111 behind the image, so
+ * the colour is there; it just is not the whole value. Function arguments are
+ * skipped so a gradient's own stops are not mistaken for the layer beneath it.
+ */
+export function backgroundShorthandColor(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (parseColor(trimmed)) return trimmed; // background: #fff / rgb(255 255 255)
+  for (const token of trimmed.split(/\s+/)) {
+    if (token.includes("(")) continue; // url(), gradients, not a solid colour
+    if (parseColor(token)) return token;
+  }
+  return null;
+}
+
+/** Balanced contents of every `(...)` group whose name matches `nameRe`. */
+function functionArgs(value: string, nameRe: RegExp): string[] {
+  const out: string[] = [];
+  const re = new RegExp(nameRe.source + "\\(", nameRe.flags.includes("i") ? "gi" : "g");
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(value)) !== null) {
+    let depth = 1;
+    let i = match.index + match[0].length;
+    const start = i;
+    while (i < value.length && depth > 0) {
+      if (value[i] === "(") depth++;
+      else if (value[i] === ")") depth--;
+      i++;
+    }
+    if (depth === 0) out.push(value.slice(start, i - 1));
+    re.lastIndex = i;
+  }
+  return out;
+}
+
+/**
+ * Every colour stop declared by the gradients in a background value.
+ *
+ * A gradient is not opaque to analysis the way a photo is; its colours are
+ * right there in the CSS, so text over one can be graded against the worst
+ * stop rather than skipped. Direction and position tokens (`45deg`,
+ * `to right`, `0%`) are discarded; a fully transparent stop is dropped, since
+ * it shows whatever is painted beneath instead of contributing a colour.
+ */
+export function gradientStops(value: string | undefined): RGBA[] {
+  if (!value) return [];
+  const stops: RGBA[] = [];
+  for (const args of functionArgs(value, /(?:repeating-)?(?:linear|radial|conic)-gradient/i)) {
+    for (const part of splitTopLevel(args)) {
+      const trimmed = part.trim();
+      if (!trimmed || /^(?:to\b|at\b|from\b|in\b|[\d.]+(?:deg|turn|rad|grad)\b)/i.test(trimmed)) continue;
+      // A stop is `<color> [position]`; the colour is the leading token,
+      // except for functional colours, which carry their own parentheses.
+      const fnMatch = trimmed.match(/^(?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)/i);
+      const token = fnMatch ? fnMatch[0] : trimmed.split(/\s+/)[0];
+      const parsed = parseColor(token);
+      if (parsed && parsed.a > 0) stops.push(parsed);
+    }
+  }
+  return stops;
+}
+
+/** sRGB gamma to linear-sRGB: the inverse of {@link linearToGamma}. */
+function gammaToLinear(c: number): number {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+
+/**
+ * Convert sRGB to OKLab.
+ *
+ * OKLab is built so that straight-line distance between two points matches how
+ * different the colours look, which sRGB emphatically does not: `#333` and
+ * `#343434` are far apart in RGB terms and identical to a reader.
+ */
+export function rgbToOklab(rgba: RGBA): [number, number, number] {
+  const r = gammaToLinear(rgba.r);
+  const g = gammaToLinear(rgba.g);
+  const b = gammaToLinear(rgba.b);
+
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
+
+/**
+ * Perceptual distance between two colours, as OKLab delta-E.
+ *
+ * Roughly: under ~0.02 the two are the same colour to a reader, and around
+ * ~0.1 they are clearly different.
+ */
+export function colorDistance(a: RGBA, b: RGBA): number {
+  const [l1, a1, b1] = rgbToOklab(a);
+  const [l2, a2, b2] = rgbToOklab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 }

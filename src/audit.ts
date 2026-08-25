@@ -2,19 +2,21 @@ import type { CheerioAPI } from "cheerio";
 import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
-import { checkAccessibilityFromDom } from "./accessibility-checker";
+import { checkAccessibilityFromDom, checkDarkModeContrast, checkMobileContrastFromDom, checkDarkStylesContrastFromDom } from "./accessibility-checker";
 import { analyzeImagesFromDom } from "./image-analyzer";
 import { extractInboxPreviewFromDom } from "./inbox-preview";
 import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
+import { checkDesignConsistencyFromDom } from "./design-consistency";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
-  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL, EMPTY_DESIGN,
 } from "./constants";
 import type {
+  AccessibilityIssue,
   CSSWarning,
   Framework,
   SpamAnalysisOptions,
@@ -27,6 +29,7 @@ import type {
   TemplateReport,
   OverflowReport,
   VisualReport,
+  DesignReport,
 } from "./types";
 
 export interface AuditOptions extends ParseOptions {
@@ -34,7 +37,7 @@ export interface AuditOptions extends ParseOptions {
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design">;
 }
 
 export interface AuditReport {
@@ -51,9 +54,15 @@ export interface AuditReport {
   templateVariables: TemplateReport;
   overflow: OverflowReport;
   visual: VisualReport;
+  /** Contrast failures present only once a client inverts colours. */
+  darkContrast: AccessibilityIssue[];
+  /** Contrast failures present only below the email's mobile breakpoint. */
+  mobileContrast: AccessibilityIssue[];
+  /** Design drift: near-identical colours, and properties with no system left. */
+  design: DesignReport;
 }
 
-/** Unified empty report for blank input — hands out the same singletons every checker uses. */
+/** Unified empty report for blank input: hands out the same singletons every checker uses. */
 export const EMPTY_AUDIT: AuditReport = {
   compatibility: { warnings: [], scores: {} },
   spam: EMPTY_SPAM,
@@ -65,7 +74,20 @@ export const EMPTY_AUDIT: AuditReport = {
   templateVariables: EMPTY_TEMPLATE,
   overflow: EMPTY_OVERFLOW,
   visual: EMPTY_VISUAL,
+  darkContrast: [],
+  mobileContrast: [],
+  design: EMPTY_DESIGN,
 };
+
+/** Keep the first issue reported for each element. */
+function dedupeByElement(issues: AccessibilityIssue[]): AccessibilityIssue[] {
+  const seen = new Set<string | undefined>();
+  return issues.filter((issue) => {
+    if (seen.has(issue.element)) return false;
+    seen.add(issue.element);
+    return true;
+  });
+}
 
 /**
  * Run every analyzer over an already-parsed DOM and assemble the report.
@@ -94,8 +116,25 @@ export function runAudit(
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);
+  // Reuses the light-mode issues as the baseline, so only the dark render is
+  // re-analysed. Skipping accessibility skips this too; without the baseline
+  // it would report every contrast failure, not the dark-only ones.
+  // Dark mode breaks two different ways: a client inverting colours the author
+  // never chose, and the author's own dark block re-painting only half a
+  // component. Both land here, deduped by element so one fault is one report.
+  const darkContrast = skip.has("darkContrast") || skip.has("accessibility")
+    ? []:
+    dedupeByElement([
+        ...checkDarkModeContrast(html, accessibility.issues),
+        ...checkDarkStylesContrastFromDom($, accessibility.issues),
+      ]);
+  // Same DOM, resolved against the mobile breakpoint, no re-parse needed.
+  const design = skip.has("design") ? EMPTY_DESIGN : checkDesignConsistencyFromDom($);
+  const mobileContrast = skip.has("mobileContrast") || skip.has("accessibility")
+    ? []:
+    checkMobileContrastFromDom($, accessibility.issues);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual };
+  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual, darkContrast, mobileContrast, design };
 }
 
 /**

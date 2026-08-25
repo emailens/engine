@@ -1,7 +1,7 @@
 import type { CheerioAPI } from "cheerio";
 import * as csstree from "css-tree";
 import { getClient } from "./clients";
-import { parseColor, relativeLuminance } from "./color-utils";
+import { parseColor, relativeLuminance, backgroundShorthandColor } from "./color-utils";
 import { LIGHT_THRESHOLD, PREFERS_COLOR_SCHEME_CLIENTS } from "./dark-mode";
 import { parseInlineStyle } from "./style-utils";
 import { locInAttr, locOfAttr, locOfFirst } from "./source-location";
@@ -15,24 +15,12 @@ const MAX_UNCOVERED_ELEMENTS = 3;
 
 /** Selectors from a dark block that repaint the background, split by `!important`. */
 interface DarkBlock {
-  /** Every dark-block selector setting a background — beats a `bgcolor` attribute. */
+  /** Every dark-block selector setting a background: beats a `bgcolor` attribute. */
   any: string[];
-  /** Only the `!important` ones — the only thing that beats an inline style. */
+  /** Only the `!important` ones: the only thing that beats an inline style. */
   important: string[];
-  /** Rules read out of the dark block(s) — zero means nothing inverts, so nothing half-inverts. */
+  /** Rules read out of the dark block(s): zero means nothing inverts, so nothing half-inverts. */
   rules: number;
-}
-
-/** Colour of a `background` shorthand, if it declares a solid one. */
-function backgroundShorthandColor(value: string | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (parseColor(trimmed)) return trimmed; // background: #fff / rgb(255 255 255)
-  for (const token of trimmed.split(/\s+/)) {
-    if (token.includes("(")) continue; // url(), gradients — not a solid colour
-    if (parseColor(token)) return token;
-  }
-  return null;
 }
 
 /** A solid, opaque-enough colour above the light-luminance threshold. */
@@ -54,7 +42,7 @@ function collectDarkBlocks($: CheerioAPI): DarkBlock | null {
     try {
       ast = csstree.parse(cssText);
     } catch {
-      // Unparseable CSS still proves a dark block exists, so rule 1 stands — but
+      // Unparseable CSS still proves a dark block exists, so rule 1 stands, but
       // we can't read its selectors, so it contributes nothing to coverage.
       found = true;
       return;
@@ -103,7 +91,7 @@ function matchedElements($: CheerioAPI, selectors: string[]): Set<unknown> {
         matched.add(el);
       });
     } catch {
-      // Selector cheerio can't evaluate (e.g. a pseudo-class) — treat as no match.
+      // Selector cheerio can't evaluate (e.g. a pseudo-class); treat as no match.
     }
   }
   return matched;
@@ -124,32 +112,32 @@ function describeSelector($: CheerioAPI, el: any): string {
 /**
  * Dark-mode correctness checks for emails that ship dark styling. Both rules
  * are gated on the email actually having a `@media (prefers-color-scheme: dark)`
- * block — an email with no dark styling comes back completely clean.
+ * block; an email with no dark styling comes back completely clean.
  *
  *  1. Dark CSS with no `<meta name="color-scheme">` /
  *     `<meta name="supported-color-schemes">` opt-in: Apple Mail and friends
  *     may never enter dark mode, so the media query silently never fires.
  *  2. Partial coverage: an element carries a hardcoded light background that
  *     the dark block never overrides, so it stays white while the rest of the
- *     email inverts — a half-inverted render (dark text on a still-white card).
+ *     email inverts; a half-inverted render (dark text on a still-white card).
  *
  * ponytail: coverage analysis only looks at *inline* light backgrounds
  * (`bgcolor` attribute or inline `background`/`background-color`), because
  * cascade order there is unambiguous: an inline style needs an `!important`
  * dark rule to lose, a `bgcolor` attribute loses to any dark rule. Light
  * backgrounds set in `<style>` rules, and dark inline *text* colours stranded
- * on an inverted background, are not analysed — that needs real cascade
+ * on an inverted background, are not analysed; that needs real cascade
  * resolution, and a false positive here is worse than a miss.
  *
  * @internal
  */
 export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning[] {
   const darkBlock = collectDarkBlocks($);
-  if (!darkBlock) return []; // No dark styling — nothing to say.
+  if (!darkBlock) return []; // No dark styling, nothing to say.
 
   const warnings: CSSWarning[] = [];
 
-  // Rule 1 — dark styles with no opt-in meta may never activate.
+  // Rule 1: dark styles with no opt-in meta may never activate.
   const hasOptIn = $("meta").toArray().some((el) => {
     const name = ($(el).attr("name") || "").trim().toLowerCase();
     return name === "color-scheme" || name === "supported-color-schemes";
@@ -174,7 +162,7 @@ export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning
     }
   }
 
-  // Rule 2 — light backgrounds the dark block leaves untouched. A dark block we
+  // Rule 2: light backgrounds the dark block leaves untouched. A dark block we
   // read no rules out of (empty, truncated, unparseable) repaints nothing, so
   // there is nothing for a light background to be half-inverted against.
   if (darkBlock.rules === 0) return warnings;
@@ -187,7 +175,7 @@ export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning
     const $el = $(el);
     const style = parseInlineStyle($el.attr("style") || "");
     // An inline background wins over the bgcolor attribute, so only one of the
-    // two is ever the colour on screen — and they need different overrides.
+    // two is ever the colour on screen, and they need different overrides.
     const inline = style.get("background-color") ?? backgroundShorthandColor(style.get("background"));
     const color = inline ?? $el.attr("bgcolor");
     if (!color || !isLight(color)) return;
@@ -196,7 +184,7 @@ export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning
     uncovered++;
     const selector = describeSelector($, el);
     // The declaration that set the colour, where the raw source lets us find
-    // it — this warning is about one background, and the attribute around it
+    // it; this warning is about one background, and the attribute around it
     // may hold five other declarations that are perfectly fine.
     const attrLoc = locOfAttr(el, inline ? "style" : "bgcolor");
     const loc = inline
@@ -209,7 +197,7 @@ export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning
         client: clientId,
         property: "dark-mode-coverage",
         message:
-          `<${selector}> keeps its hardcoded light background (${color}) in dark mode — the dark block never overrides it. ` +
+          `<${selector}> keeps its hardcoded light background (${color}) in dark mode; the dark block never overrides it. ` +
           `The rest of the email inverts around it, producing a half-inverted render (e.g. light text left on a still-white background).`,
         suggestion: inline
           ? `Override it inside @media (prefers-color-scheme: dark) with a dark background-color and !important (an inline style beats a plain rule), or move the colour onto a class the dark block already targets.`

@@ -19,13 +19,15 @@ export { analyzeSpam } from "./spam-scorer";
 // checkDeliverability and checkSpamAssassin use Node.js builtins (dns, child_process)
 // and are exported from "@emailens/engine/server" to avoid breaking client-side bundles.
 export { validateLinks } from "./link-validator";
-export { checkAccessibility } from "./accessibility-checker";
+export { checkAccessibility, checkDarkModeContrast, checkMobileContrast, checkDarkStylesContrastFromDom } from "./accessibility-checker";
+export type { RenderContext } from "./accessibility-checker";
 export { analyzeImages } from "./image-analyzer";
 export { extractInboxPreview } from "./inbox-preview";
 export { checkSize } from "./size-checker";
 export { checkTemplateVariables } from "./template-checker";
 export { checkOverflow } from "./overflow-checker";
 export { checkVisual } from "./visual-checker";
+export { checkDesignConsistency } from "./design-consistency";
 export { auditEmail } from "./audit";
 export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
@@ -35,7 +37,7 @@ export { EMPTY_DELIVERABILITY } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
 export type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";
 // SpamAssassinResult, SpamAssassinOptions are re-exported from "@emailens/engine/server"
-export { parseColor, formatRgb, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "./color-utils";
+export { parseColor, formatRgb, relativeLuminance, contrastRatio, wcagGrade, alphaBlend, rgbToOklab, colorDistance } from "./color-utils";
 export { downlevelCSS } from "./downlevel";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
@@ -81,4 +83,6 @@ export type {
   OverflowReport,
   VisualIssue,
   VisualReport,
+  DesignIssue,
+  DesignReport,
 } from "./types";
