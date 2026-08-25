@@ -10,7 +10,7 @@ import type { CSSWarning } from "../types";
 //
 // A "partial" verdict in caniemail is nearly always value-level: `font-size` is
 // partial in Outlook because `rem` is dropped, not because `14px` is. Reporting
-// every use of such a property buries the ones that break — 982 of the 1,583
+// every use of such a property buries the ones that break: 982 of the 1,583
 // findings across this repo's fixtures were partial-support info, and almost
 // none of them described a value that actually renders differently.
 //
@@ -36,7 +36,7 @@ const OUTLOOK_WORD = ["outlook-windows", "outlook-windows-legacy"];
 const YAHOO_AOL = ["aol", "yahoo-mail", "yahoo-mail-android", "yahoo-mail-ios"];
 const sorted = (...groups: string[][]) => groups.flat().sort();
 
-describe("value-aware partial support — ordinary values are silent", () => {
+describe("value-aware partial support: ordinary values are silent", () => {
   // Each of these is a declaration an email developer writes constantly, and
   // every one of them produced partial-support findings before the gate.
   const ORDINARY = [
@@ -67,7 +67,7 @@ describe("value-aware partial support — ordinary values are silent", () => {
   }
 });
 
-describe("value-aware partial support — the value the note is about", () => {
+describe("value-aware partial support: the value the note is about", () => {
   // Every expectation below is the set of clients whose caniemail note names
   // this value. They are written out rather than derived, so that a resync
   // which changes a note's meaning fails here instead of silently widening or
@@ -76,7 +76,7 @@ describe("value-aware partial support — the value the note is about", () => {
   it("font-size: `rem` is dropped by Outlook 2019+, Yahoo and AOL; `%` is not", () => {
     // "`rem` values are not supported" (Outlook 2019+, Yahoo, AOL) and
     // "`relative` and `percentage` size values not supported" (Outlook 2007-16,
-    // Samsung) — only the second note covers percentages and `em`.
+    // Samsung), only the second note covers percentages and `em`.
     const relativeOnly = ["outlook-windows-legacy", "samsung-mail"];
     expect(partialClients("font-size: 1rem")).toEqual(
       sorted(relativeOnly, YAHOO_AOL, ["outlook-windows"]),
@@ -158,14 +158,14 @@ describe("value-aware partial support — the value the note is about", () => {
     expect(yahoo("transition: 0.2s ease allow-discrete")).toEqual(YAHOO_AOL.sort());
     // …but a value that animates nothing cannot hit the `all` bug.
     expect(yahoo("transition: none")).toEqual([]);
-    // Notes that are not about the value — Samsung's "not supported with
-    // Outlook accounts", Hey's forced `transition-duration: 0` — still apply.
+    // Notes that are not about the value (Samsung's "not supported with
+    // Outlook accounts", Hey's forced `transition-duration: 0`) still apply.
     expect(partialClients("transition: opacity 0.3s ease")).toContain("samsung-mail");
     expect(partialClients("transition: opacity 0.3s ease")).toContain("hey-mail");
   });
 });
 
-describe("value-aware partial support — parsing the declaration", () => {
+describe("value-aware partial support: parsing the declaration", () => {
   it("ignores case and `!important`", () => {
     expect(partialClients("FONT-SIZE: 1REM !important")).not.toEqual([]);
     expect(partialClients("FONT-SIZE: 14PX !important")).toEqual([]);
@@ -173,7 +173,7 @@ describe("value-aware partial support — parsing the declaration", () => {
 
   it("judges each declaration in a stylesheet separately", () => {
     // Yahoo supports `relative` and nothing else. A sheet using both must still
-    // report it — joining the values into one string hid this, because the
+    // report it: joining the values into one string hid this, because the
     // first keyword found was the supported one.
     const css = "<style>.a { position: relative } .b { position: absolute }</style>";
     const warnings = analyzeEmail(`<html><body>${css}<div class="a b">x</div></body></html>`);
@@ -251,7 +251,7 @@ describe("value-aware partial support — parsing the declaration", () => {
   });
 });
 
-describe("value-aware partial support — the gate cannot silence a client", () => {
+describe("value-aware partial support: the gate cannot silence a client", () => {
   // For every property/client pair the matrix calls "partial", at least one
   // value must still trigger it. A predicate that always returned false would
   // drop that client's caveat entirely and no other test would notice.
@@ -304,7 +304,7 @@ describe("value-aware partial support — the gate cannot silence a client", () 
 
   it("still parses the two notes it reads as prose", () => {
     // `position` reads "Supports `x` but not `y`", and `display` reads
-    // "Only supports `display:none`". Both are wordings, not data — a resync
+    // "Only supports `display:none`". Both are wordings, not data; a resync
     // that rephrases them would silently stop gating, so assert the shape.
     for (const [client, level] of Object.entries(CSS_SUPPORT["position"])) {
       if (level !== "partial" || client === "superhuman") continue;
@@ -319,7 +319,7 @@ describe("value-aware partial support — the gate cannot silence a client", () 
   });
 });
 
-describe("value-aware partial support — nothing else moves", () => {
+describe("value-aware partial support: nothing else moves", () => {
   it("does not touch a property a client does not support at all", () => {
     // border-radius is unsupported in Outlook's Word engine whatever the value,
     // and that is a warning, not partial support.
@@ -386,7 +386,7 @@ const sheetClients = (decl: string): string[] => {
     .sort();
 };
 
-describe("value-aware partial support — the three inherited properties", () => {
+describe("value-aware partial support: the three inherited properties", () => {
   // margin, position and overflow were gated in 0.10.0 and had no per-client
   // assertion here, which is why five mutations of their branches survived.
   const CANNOT_SCROLL = ["gmail-android", "outlook-android", "yahoo-mail-android"];
@@ -415,7 +415,7 @@ describe("value-aware partial support — the three inherited properties", () =>
   it("position: a client with no note at all is reported, not guessed at", () => {
     // Superhuman is a manual override with no caniemail note. Which keyword it
     // drops is not knowable, and a broken position ruins a layout, so it is
-    // reported for every positioning keyword — but not for `static`.
+    // reported for every positioning keyword, but not for `static`.
     expect(CSS_SUPPORT["position"]["superhuman"]).toBe("partial");
     expect((CSS_SUPPORT_NOTES["position"]?.["superhuman"] ?? []).join(" ")).toBe("");
     for (const v of ["relative", "absolute", "fixed", "sticky"]) {
@@ -451,7 +451,7 @@ describe("value-aware partial support — the three inherited properties", () =>
   });
 });
 
-describe("value-aware partial support — an unreadable note reports", () => {
+describe("value-aware partial support: an unreadable note reports", () => {
   // The module's stated contract. Every branch's fallthrough is dead under
   // today's caniemail data, so nothing exercised it and three `return true`
   // clauses could be flipped without failing a test.
@@ -483,7 +483,7 @@ describe("value-aware partial support — an unreadable note reports", () => {
     // The one exception, and it has to be the same in both places it applies.
     // `position: static` positions nothing and `overflow: hidden` scrolls
     // nothing, so no reading of any note reaches them. Reporting these on a
-    // reworded note would be exactly the noise the gate exists to remove —
+    // reworded note would be exactly the noise the gate exists to remove:
     // `overflow: hidden` appears in almost every email built on tables.
     expect(caveatApplies("position", ["static"], NONSENSE)).toBe(false);
     expect(caveatApplies("overflow", ["hidden"], NONSENSE)).toBe(false);
@@ -508,7 +508,7 @@ describe("value-aware partial support — an unreadable note reports", () => {
   });
 });
 
-describe("value-aware partial support — reading the declaration", () => {
+describe("value-aware partial support: reading the declaration", () => {
   it("strips `!important` before judging the value", () => {
     // `getStyleValue` does not strip it, so without this the gate compares
     // "none !important" against "none" and reports a false positive.
@@ -540,7 +540,7 @@ describe("value-aware partial support — reading the declaration", () => {
 
   it("a custom property is neither a unit nor a negative", () => {
     // What stops these reporting is `hasUnit`'s digit anchor and
-    // `hasNegative`'s boundary — drop either and all three fire.
+    // `hasNegative`'s boundary, drop either and all three fire.
     expect(partialClients("font-size: var(--rem-base)")).toEqual([]);
     expect(partialClients("margin: var(--gap-negative)")).toEqual([]);
     expect(partialClients("letter-spacing: var(--tracking-em)")).toEqual([]);
@@ -580,7 +580,7 @@ describe("value-aware partial support — reading the declaration", () => {
   });
 });
 
-describe("value-aware partial support — both paths, and the public one", () => {
+describe("value-aware partial support: both paths, and the public one", () => {
   it("gates a <style> block the same way it gates an inline style", () => {
     // The stylesheet path reaches the gate through csstree and the inline path
     // through the raw attribute; only `position` covered this, in one test.

@@ -7,7 +7,7 @@ export interface ParseOptions {
   /**
    * Record source positions so issues carry a `loc`. Costs a little parse time
    * (parse5 tracks a location record per node and per attribute), so it is
-   * opt-in for callers that need to point at the source — editors, CI
+   * opt-in for callers that need to point at the source: editors, CI
    * annotations, agents.
    */
   positions?: boolean;

@@ -5,7 +5,7 @@ const rules = (html: string) => checkVisual(html).issues.map((i) => i.rule);
 const first = (html: string, rule: string) =>
   checkVisual(html).issues.find((i) => i.rule === rule);
 
-describe("checkVisual — background fallback", () => {
+describe("checkVisual: background fallback", () => {
   test("flags a gradient with no background-color, fix uses the first stop", () => {
     const html = `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">x</div>`;
     expect(rules(html)).toContain("missing-background-fallback");
@@ -36,7 +36,7 @@ describe("checkVisual — background fallback", () => {
   });
 });
 
-describe("checkVisual — font fallback", () => {
+describe("checkVisual: font fallback", () => {
   test("flags a custom font with no web-safe fallback and appends one", () => {
     const html = `<p style="font-family: Poppins">x</p>`;
     expect(rules(html)).toContain("missing-font-fallback");
@@ -58,7 +58,7 @@ describe("checkVisual — font fallback", () => {
   });
 });
 
-describe("checkVisual — <style> blocks", () => {
+describe("checkVisual: <style> blocks", () => {
   test("flags a gradient / font declared in a <style> rule", () => {
     expect(rules(`<style>.h{background:linear-gradient(90deg,#f00,#00f)}</style><div class="h">x</div>`)).toContain("missing-background-fallback");
     expect(rules(`<style>.t{font-family:Poppins}</style><p class="t">x</p>`)).toContain("missing-font-fallback");
@@ -74,7 +74,7 @@ describe("checkVisual — <style> blocks", () => {
   });
 });
 
-describe("checkVisual — integration", () => {
+describe("checkVisual: integration", () => {
   test("blank input is clean", () => {
     expect(checkVisual("").issues).toEqual([]);
   });

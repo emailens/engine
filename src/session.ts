@@ -126,7 +126,7 @@ export interface EmailSession {
    * Simulate dark mode for a specific client.
    *
    * Creates an isolated DOM copy per call (simulation mutates the DOM).
-   * Operates on the **original** HTML — if you need dark mode on
+   * Operates on the **original** HTML, if you need dark mode on
    * already-transformed HTML, use the standalone `simulateDarkMode()` instead.
    */
   simulateDarkMode(clientId: string): { html: string; warnings: CSSWarning[] };
@@ -138,7 +138,7 @@ export interface EmailSession {
  * DOM across all read-only analysis operations.
  *
  * Use this when you need to call multiple analysis functions on the
- * same HTML — it eliminates redundant `cheerio.load()` calls.
+ * same HTML: it eliminates redundant `cheerio.load()` calls.
  *
  * @example
  * ```typescript
@@ -193,7 +193,7 @@ export function createSession(
     throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
-  // Parse once — shared across all read-only analysis operations
+  // Parse once: shared across all read-only analysis operations
   const $ = loadHtml(html, options);
   const framework = options?.framework;
   const source = options?.positions ? html : undefined;

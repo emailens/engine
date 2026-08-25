@@ -1,5 +1,5 @@
 /**
- * HTML/generic suggestion strings — entries that do NOT have a
+ * HTML/generic suggestion strings: entries that do NOT have a
  * ::jsx, ::mjml, or ::maizzle suffix in their key.
  */
 export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
@@ -90,7 +90,7 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
   "word-break":
     "Wrap long text in a <table><td> to force wrapping in clients that don't support word-break.",
   "word-break::outlook":
-    "Outlook's Word engine ignores word-break. Place text inside a <td> with a constrained width — tables always wrap.",
+    "Outlook's Word engine ignores word-break. Place text inside a <td> with a constrained width; tables always wrap.",
 
   // ── overflow-wrap ─────────────────────────────────────────────────────
   "overflow-wrap":

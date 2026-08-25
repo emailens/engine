@@ -54,7 +54,7 @@
 
 ### `auditEmail(html: string, options?: AuditOptions): AuditReport`
 
-**Unified API** — runs all 8 email analysis checks in a single call. Returns compatibility warnings + scores, spam analysis, link validation, accessibility audit, image analysis, inbox preview extraction, size checking, and template variable detection.
+**Unified API**: runs all 8 email analysis checks in a single call. Returns compatibility warnings + scores, spam analysis, link validation, accessibility audit, image analysis, inbox preview extraction, size checking, and template variable detection.
 
 Internally parses the HTML once and shares the DOM across all analyzers.
 
@@ -81,16 +81,16 @@ const report = auditEmail(html, {
 ```
 
 **`AuditOptions`:**
-- `framework?: "jsx" | "mjml" | "maizzle"` — attach framework-specific fix snippets
-- `spam?: SpamAnalysisOptions` — options for spam analysis
-- `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">` — skip specific checks
-- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
+- `framework?: "jsx" | "mjml" | "maizzle"`: attach framework-specific fix snippets
+- `spam?: SpamAnalysisOptions`: options for spam analysis
+- `skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables">`, skip specific checks
+- `positions?: boolean`: record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 ---
 
 ### `createSession(html: string, options?: CreateSessionOptions): EmailSession`
 
-**Session API** — pre-parses the HTML once and exposes all analysis methods on the shared DOM. Use this when you need to call multiple analysis functions on the same HTML to avoid redundant parsing.
+**Session API**: pre-parses the HTML once and exposes all analysis methods on the shared DOM. Use this when you need to call multiple analysis functions on the same HTML to avoid redundant parsing.
 
 ```typescript
 import { createSession } from "@emailens/engine";
@@ -119,8 +119,8 @@ const darkMode = session.simulateDarkMode("gmail-web");
 ```
 
 **`CreateSessionOptions`:**
-- `framework?: "jsx" | "mjml" | "maizzle"` — framework for fix snippets (applies to all session methods)
-- `positions?: boolean` — record source positions, so issues carry a `loc` ([Source positions](#source-positions))
+- `framework?: "jsx" | "mjml" | "maizzle"`: framework for fix snippets (applies to all session methods)
+- `positions?: boolean`: record source positions, so issues carry a `loc` ([Source positions](#source-positions))
 
 **`EmailSession` methods:**
 
@@ -128,7 +128,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 |---|---|---|
 | `audit(options?)` | Yes | Run all checks (equivalent to `auditEmail`) |
 | `analyze()` | Yes | CSS compatibility warnings |
-| `score(warnings)` | — | Generate per-client scores |
+| `score(warnings)` |; | Generate per-client scores |
 | `analyzeSpam(options?)` | Yes | Spam indicator analysis |
 | `validateLinks()` | Yes | Link validation |
 | `checkAccessibility()` | Yes | Accessibility audit |
@@ -138,7 +138,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `checkTemplateVariables()` | Yes | Unresolved template variable detection |
 | `checkOverflow()` | Yes | Content overflow (fixed widths, unbreakable strings) |
 | `checkVisual()` | Yes | Visual bugs in stylized emails (background/font fallbacks) |
-| `checkDeliverability(domain)` | — | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
+| `checkDeliverability(domain)` |: | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
 | `transformForClient(clientId)` | No | Transform for one client |
 | `transformForAllClients()` | No | Transform for all 21 clients |
 | `simulateDarkMode(clientId)` | No | Dark mode simulation |
@@ -154,7 +154,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 ### Source positions
 
 Pass `positions: true` and every issue that belongs to a specific node carries a
-`loc` — enough to underline it in an editor, annotate it on a pull request, or
+`loc`: enough to underline it in an editor, annotate it on a pull request, or
 hand an agent the exact edit site.
 
 ```typescript
@@ -205,7 +205,7 @@ const everywhere = report.compatibility.warnings
 
 Available on every `BaseIssue` (spam, links, accessibility, images, inbox
 preview, size, template variables, overflow, visual) and on `CSSWarning`. It is
-also accepted by the standalone analyzers — `analyzeEmail(html, framework,
+also accepted by the standalone analyzers: `analyzeEmail(html, framework,
 { positions: true })`, `validateLinks(html, { positions: true })`, and the same
 for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 
@@ -213,12 +213,12 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 
 | Finding | Anchor |
 |---|---|
-| CSS property in a `<style>` block | the declaration — `border-radius: 8px` |
-| CSS property in an inline style | the declaration — `font-size: 1rem`, not the whole `style="…"` |
+| CSS property in a `<style>` block | the declaration, `border-radius: 8px` |
+| CSS property in an inline style | the declaration, `font-size: 1rem`, not the whole `style="…"` |
 | Unsupported HTML feature (`<style>`, `<svg>`, `<form>`) | the first element that triggered it |
-| Link, image, accessibility finding about one attribute | that attribute — `href="http://…"` |
-| Link, image, accessibility finding about an element | the opening tag — `<img src="…">` |
-| Template variable in text | the variable itself — `{{first_name}}` |
+| Link, image, accessibility finding about one attribute | that attribute: `href="http://…"` |
+| Link, image, accessibility finding about an element | the opening tag: `<img src="…">` |
+| Template variable in text | the variable itself: `{{first_name}}` |
 | Template variable in an attribute | the attribute holding it |
 | At-rule (`@media`, `@font-face`) | the rule that triggered it |
 | Fixed-width overflow | the `width` attribute or `style` that set it |
@@ -229,11 +229,11 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 **What has no position**
 
 - Document-level findings: Gmail clipping, aggregate image counts, heading
-  hierarchy summaries, most spam signals. `loc` is `undefined` — handle that.
+  hierarchy summaries, most spam signals. `loc` is `undefined`, handle that.
 - Elements the parser synthesized rather than read from the source (an implicit
-  `<head>` in a fragment) — there is no source to point at.
-- Findings that describe a *kind* of problem rather than one element — CSS
-  warnings, overflow, visual — carry every occurrence in `locs` (first in
+  `<head>` in a fragment); there is no source to point at.
+- Findings that describe a *kind* of problem rather than one element (CSS
+  warnings, overflow, visual) carry every occurrence in `locs` (first in
   `loc`), capped at 100 with `locsTruncated: true` when the list is partial.
   Analyzers that already emit one issue per element carry `loc` alone.
 
@@ -251,7 +251,7 @@ for `checkAccessibility`, `analyzeImages`, and `checkTemplateVariables`.
 
 **Cost.** It grows with the document: about +6–14% on a full `auditEmail()` at
 typical email size (~10KB), +30% at Gmail's ~102KB clipping limit, and +79% on a
-450KB document — locating a finding means walking text and CSS the analyzers
+450KB document; locating a finding means walking text and CSS the analyzers
 would otherwise skim. Measure on your own fixtures with `bun run bench:positions`.
 
 ---
@@ -278,7 +278,7 @@ properties** rather than occurrences so one mistake repeated in twelve elements
 costs what it costs once.
 
 Partial support (`info`) is not scored. It is counted and returned in
-`ClientScore.info`, but it does not move the number — a property that mostly
+`ClientScore.info`, but it does not move the number; a property that mostly
 works is not a defect.
 
 ### `warningsForClient(warnings, clientId): CSSWarning[]`
@@ -301,7 +301,7 @@ Get only warnings that require HTML restructuring (`fixType: "structural"`).
 
 Analyzes an HTML email for spam scoring issues. Returns a 0–100 score (100 = clean) and an array of issues. Uses heuristic rules modeled after SpamAssassin, CAN-SPAM, and GDPR.
 
-> **Note:** Spam scoring heuristics — not a real spam filter. This checks for common anti-patterns that trigger spam filters but cannot predict actual inbox placement. For real spam testing, use the `checkSpamAssassin()` integration or a dedicated service.
+> **Note:** Spam scoring heuristics, not a real spam filter. This checks for common anti-patterns that trigger spam filters but cannot predict actual inbox placement. For real spam testing, use the `checkSpamAssassin()` integration or a dedicated service.
 
 ```typescript
 import { analyzeSpam } from "@emailens/engine";
@@ -317,7 +317,7 @@ const report = analyzeSpam(html, {
 
 ### `checkDeliverability(domain, options?): Promise<DeliverabilityReport>`
 
-Validates email deliverability for a domain by checking MX, SPF, DKIM, DMARC, and BIMI DNS records. All DNS queries have a 5-second timeout. No external dependencies — uses `node:dns/promises`.
+Validates email deliverability for a domain by checking MX, SPF, DKIM, DMARC, and BIMI DNS records. All DNS queries have a 5-second timeout. No external dependencies, uses `node:dns/promises`.
 
 ```typescript
 import { checkDeliverability } from "@emailens/engine";
@@ -329,15 +329,15 @@ console.log(report.issues);  // actionable issues
 ```
 
 **Checks:**
-- **MX** — domain can receive email
-- **SPF** — authorized senders (`v=spf1`), flags dangerous `+all`
-- **DKIM** — probes 15 common selectors (`google`, `selector1`, `default`, `dkim`, etc.)
-- **DMARC** — policy enforcement (`v=DMARC1`), warns on `p=none`
-- **BIMI** — brand indicator (optional, nice-to-have)
+- **MX**: domain can receive email
+- **SPF**: authorized senders (`v=spf1`), flags dangerous `+all`
+- **DKIM**: probes 15 common selectors (`google`, `selector1`, `default`, `dkim`, etc.)
+- **DMARC**: policy enforcement (`v=DMARC1`), warns on `p=none`
+- **BIMI**: brand indicator (optional, nice-to-have)
 
 Also available as a session method: `session.checkDeliverability("example.com")`.
 
-> **Note:** This is standalone async — not wired into the synchronous `auditEmail()` pipeline.
+> **Note:** This is standalone async, not wired into the synchronous `auditEmail()` pipeline.
 
 ### `checkSpamAssassin(input, options?): Promise<SpamAssassinResult | null>`
 
@@ -442,7 +442,7 @@ const report = checkTemplateVariables(html);
 
 ### `checkOverflow(html: string): OverflowReport`
 
-Detects content likely to overflow the email frame or mobile viewport — a client-agnostic layout check. Scans inline styles and `<style>` rules (incl. inside `@media`).
+Detects content likely to overflow the email frame or mobile viewport: a client-agnostic layout check. Scans inline styles and `<style>` rules (incl. inside `@media`).
 
 ```typescript
 import { checkOverflow } from "@emailens/engine";
@@ -451,11 +451,11 @@ const report = checkOverflow(html);
 // { hasOverflow: true, issues: [{ rule: "fixed-width-overflow", severity: "warning", message: "…", detail: "…" }] }
 ```
 
-**Detects:** fixed pixel widths wider than the email frame with no `width:100%`/`max-width:100%` escape (`fixed-width-overflow`); long unbreakable strings — raw URLs, tokens — that can't wrap (`unbreakable-string`, skipped when the email already uses `overflow-wrap`/`word-break`).
+**Detects:** fixed pixel widths wider than the email frame with no `width:100%`/`max-width:100%` escape (`fixed-width-overflow`); long unbreakable strings (raw URLs, tokens) that can't wrap (`unbreakable-string`, skipped when the email already uses `overflow-wrap`/`word-break`).
 
 ### `checkVisual(html: string): VisualReport`
 
-Detects probable visual bugs in stylized emails — graceful-degradation failures that render visibly wrong. Each issue carries a concrete `fix`. Scans inline styles and `<style>` rules.
+Detects probable visual bugs in stylized emails; graceful-degradation failures that render visibly wrong. Each issue carries a concrete `fix`. Scans inline styles and `<style>` rules.
 
 ```typescript
 import { checkVisual } from "@emailens/engine";
@@ -464,7 +464,7 @@ const report = checkVisual(html);
 // issues: [{ rule: "missing-background-fallback", severity: "warning", message: "…", fix: "background-color: #2d1b4e;" }]
 ```
 
-**Detects:** background images/gradients with no solid `background-color` — blank area (and hidden text) in Outlook (`missing-background-fallback`, gradient fallback computed from the first color stop); `font-family` stacks with no web-safe fallback — Times New Roman in Gmail/Outlook (`missing-font-fallback`, web-safe family appended).
+**Detects:** background images/gradients with no solid `background-color`; blank area (and hidden text) in Outlook (`missing-background-fallback`, gradient fallback computed from the first color stop); `font-family` stacks with no web-safe fallback; Times New Roman in Gmail/Outlook (`missing-font-fallback`, web-safe family appended).
 
 ---
 
@@ -472,7 +472,7 @@ const report = checkVisual(html);
 
 ### `transformForClient(html, clientId, framework?): TransformResult`
 
-Transforms HTML for a specific email client — strips unsupported CSS, inlines `<style>` blocks (for Gmail), removes unsupported elements.
+Transforms HTML for a specific email client: strips unsupported CSS, inlines `<style>` blocks (for Gmail), removes unsupported elements.
 
 ### `transformForAllClients(html, framework?): TransformResult[]`
 
@@ -484,7 +484,7 @@ Simulates how an email client applies dark mode using luminance-based color dete
 
 - **Full inversion** (Gmail iOS, Outlook Classic, Thunderbird¹): inverts all light backgrounds and dark text
 - **Partial inversion** (Gmail Android, Outlook.com, Outlook (New), Outlook iOS, Outlook Android, Samsung Mail², HEY, Superhuman): only inverts very light/dark colors
-- **Respects prefers-color-scheme** (Apple Mail macOS/iOS): no forced inversion — honors `@media (prefers-color-scheme: dark)` if present
+- **Respects prefers-color-scheme** (Apple Mail macOS/iOS): no forced inversion; honors `@media (prefers-color-scheme: dark)` if present
 - **No content inversion** (Gmail Web, Yahoo Mail): only the email client UI is darkened
 
 ¹ Thunderbird skips inversion when `prefers-color-scheme` is present in the email.
@@ -510,7 +510,7 @@ Compares two sets of analysis results to show what improved, regressed, or staye
 Compile email templates from JSX, MJML, or Maizzle to HTML.
 
 Each compiler is an **optional peer dependency**, installed by you rather than
-by us — email projects rarely use more than one, and MJML alone pulls in 56MB.
+by us; email projects rarely use more than one, and MJML alone pulls in 56MB.
 The versions these are tested against:
 
 | Format | Package | Supported |
@@ -552,9 +552,9 @@ const html = await compileReactEmail(jsxSource, {
 ```
 
 **Sandbox strategies:**
-- `"isolated-vm"` (default) — Separate V8 isolate. True heap isolation. Requires `isolated-vm` native addon.
-- `"vm"` — `node:vm` with hardened globals. Fast, zero-dependency, but NOT a true security boundary. Suitable for CLI/local use.
-- `"quickjs"` — Validates code in WASM sandbox, then executes in `node:vm`. Security is equivalent to `"vm"`. No native addons needed.
+- `"isolated-vm"` (default): Separate V8 isolate. True heap isolation. Requires `isolated-vm` native addon.
+- `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency, but NOT a true security boundary. Suitable for CLI/local use.
+- `"quickjs"`: Validates code in WASM sandbox, then executes in `node:vm`. Security is equivalent to `"vm"`. No native addons needed.
 
 **Peer dependencies:** `sucrase`, `react`, `@react-email/components`, `@react-email/render`. Plus `isolated-vm` or `quickjs-emscripten` depending on sandbox strategy.
 
@@ -597,7 +597,7 @@ The engine classifies every warning as either `css` (CSS-only swap) or `structur
 
 ### `generateAiFix(options): Promise<AiFixResult>`
 
-Also accepts optional `overflow` and `visual` arrays (from `checkOverflow()` / `checkVisual()`) — when passed, their findings and concrete fixes are folded into the prompt so the fixer repairs layout/visual bugs too, not just per-property compatibility warnings. Same options apply to `generateFixPrompt()`.
+Also accepts optional `overflow` and `visual` arrays (from `checkOverflow()` / `checkVisual()`), when passed, their findings and concrete fixes are folded into the prompt so the fixer repairs layout/visual bugs too, not just per-property compatibility warnings. Same options apply to `generateFixPrompt()`.
 
 ```typescript
 import { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "@emailens/engine";
@@ -636,7 +636,7 @@ Instant synchronous token estimate (~3.5 chars/token).
 
 The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For a typical 50–100KB email, each `cheerio.load()` call takes 5–15ms. Without optimization, calling multiple analysis functions on the same HTML would parse it repeatedly.
 
-**`auditEmail()`** parses the HTML once and shares the DOM across all 8 analyzers (compatibility, spam, links, accessibility, images, inbox preview, size, template variables). Previously each analyzer parsed independently — this eliminates ~80% of parsing overhead in the audit path.
+**`auditEmail()`** parses the HTML once and shares the DOM across all 8 analyzers (compatibility, spam, links, accessibility, images, inbox preview, size, template variables). Previously each analyzer parsed independently: this eliminates ~80% of parsing overhead in the audit path.
 
 **`createSession()`** extends this optimization to any combination of calls. When you need to call `analyzeEmail()` + `analyzeSpam()` + `validateLinks()` + other checks on the same HTML, a session shares a single parse across all of them.
 
@@ -689,7 +689,7 @@ if (html.length > MAX_HTML_SIZE) {
 
 ### Compile Module Security
 
-- **React Email JSX**: User code runs in a sandboxed environment. The `"isolated-vm"` strategy provides true heap isolation. The `"vm"` and `"quickjs"` strategies use `node:vm` which is NOT a security boundary — suitable for CLI use where users run their own code. For server deployments accepting untrusted input, use `"isolated-vm"`.
+- **React Email JSX**: User code runs in a sandboxed environment. The `"isolated-vm"` strategy provides true heap isolation. The `"vm"` and `"quickjs"` strategies use `node:vm` which is NOT a security boundary; suitable for CLI use where users run their own code. For server deployments accepting untrusted input, use `"isolated-vm"`.
 - **Maizzle**: PostHTML directives that access the filesystem (`<extends>`, `<fetch>`, `<include>`, `<raw>`, `<block>`, `<yield>`, etc.) are rejected at validation time.
 - **MJML**: Compiled through the `mjml` package with default settings.
 

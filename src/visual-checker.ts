@@ -17,7 +17,7 @@ function isSolidColor(value: string | undefined): boolean {
   return c !== null && c.a !== 0;
 }
 
-/** First real colour stop in a gradient/background value — the natural solid fallback. */
+/** First real colour stop in a gradient/background value: the natural solid fallback. */
 function firstColor(value: string): string | null {
   const tokens = value.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|\b[a-zA-Z]{3,}\b/g) || [];
   for (const t of tokens) {
@@ -33,7 +33,7 @@ function firstColor(value: string): string | null {
 /**
  * Remove the contents of every parenthesised function (gradients, url(), and
  * the rgb()/hsl() colours *inside* them), keeping top-level tokens. A balanced
- * scan — a plain `\([^)]*\)` regex breaks on nested parens like
+ * scan; a plain `\([^)]*\)` regex breaks on nested parens like
  * `linear-gradient(…, rgb(255,0,0), …)` and mistakes the gradient's own colour
  * for a solid fallback.
  */
@@ -84,8 +84,8 @@ function addOccurrence(issue: VisualIssue, loc?: SourceLocation) {
 /**
  * Run the visual checks over one declaration block (inline style or a rule).
  *
- * `locs` resolves the position of the declaration that triggered each check —
- * the background or the font stack — so the two checks on one block can point
+ * `locs` resolves the position of the declaration that triggered each check,
+ * the background or the font stack, so the two checks on one block can point
  * at different lines.
  */
 function inspectDeclarations(
@@ -113,7 +113,7 @@ function inspectDeclarations(
       const issue: VisualIssue = {
         rule: "missing-background-fallback",
         severity: "warning",
-        message: `${isGradient ? "Gradient" : "Background image"} has no background-color fallback — it renders as a blank area (and can hide overlaid text) in Outlook and other clients that drop image backgrounds.`,
+        message: `${isGradient ? "Gradient" : "Background image"} has no background-color fallback; it renders as a blank area (and can hide overlaid text) in Outlook and other clients that drop image backgrounds.`,
         detail: isGradient
           ? `Add a solid fallback beneath the gradient using its first colour stop.`
           : `Add a solid background-color so the area still has colour when the image is dropped.`,
@@ -138,7 +138,7 @@ function inspectDeclarations(
       const issue: VisualIssue = {
         rule: "missing-font-fallback",
         severity: "warning",
-        message: `font-family "${font.trim()}" has no web-safe fallback — clients that strip web fonts (Gmail, Outlook) fall back to Times New Roman.`,
+        message: `font-family "${font.trim()}" has no web-safe fallback; clients that strip web fonts (Gmail, Outlook) fall back to Times New Roman.`,
         detail: `End the stack with a web-safe font and a generic family.`,
         fix,
         ...(loc ? { loc, locs: [loc] } : {}),
@@ -161,15 +161,15 @@ function ruleToMap(node: csstree.Rule): Map<string, string> {
 }
 
 /**
- * Detect probable visual bugs in a stylized email — styled features that break
+ * Detect probable visual bugs in a stylized email; styled features that break
  * with no fallback, producing a visibly wrong render (not just a stripped
  * property). Each issue carries a concrete `fix`. Two checks:
  *
- *  1. Background image / gradient with no solid `background-color` — renders as
+ *  1. Background image / gradient with no solid `background-color`, renders as
  *     a blank area (and often hides text) in Outlook and other clients that
  *     drop image backgrounds. For gradients the fix is computed from the first
  *     colour stop.
- *  2. `font-family` with no web-safe or generic fallback — clients that strip
+ *  2. `font-family` with no web-safe or generic fallback, clients that strip
  *     web fonts fall back to Times New Roman.
  *
  * Scans both inline styles and `<style>` block rules (incl. inside @media).
@@ -179,7 +179,7 @@ export function checkVisualFromDom($: CheerioAPI, source?: string): VisualReport
   const seen = new Map<string, VisualIssue>();
 
   $("[style]").each((_, el) => {
-    // Both checks on an inline style point at the attribute — it is the only
+    // Both checks on an inline style point at the attribute, it is the only
     // range the DOM keeps for it.
     const attrLoc = locOfAttr(el, "style");
     const style = parseInlineStyle($(el).attr("style") || "");

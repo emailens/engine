@@ -1,5 +1,5 @@
 /**
- * Property/fuzz tests — feed a broad, deterministic spread of generated and
+ * Property/fuzz tests: feed a broad, deterministic spread of generated and
  * adversarial HTML through every analyzer and assert invariants that must hold
  * for ANY input: nothing throws, the report is complete, and every issue is
  * well-formed. Deterministic (seeded PRNG) so a failure is always reproducible.

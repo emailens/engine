@@ -129,7 +129,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       issues.push({
         severity: "warning",
         rule: "protocol-relative",
-        message: "Protocol-relative URL may break in email clients — use https:// explicitly",
+        message: "Protocol-relative URL may break in email clients; use https:// explicitly",
         href: href.slice(0, 120),
         text: text.slice(0, 80) || "(no text)",
         ...(hrefLoc ? { loc: hrefLoc } : {}),
@@ -141,7 +141,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       issues.push({
         severity: "warning",
         rule: "generic-link-text",
-        message: `Link text "${text}" is vague — use descriptive text for accessibility and engagement`,
+        message: `Link text "${text}" is vague; use descriptive text for accessibility and engagement`,
         href: href.slice(0, 120),
         text,
         ...(elLoc ? { loc: elLoc } : {}),
@@ -188,7 +188,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       issues.push({
         severity: "info",
         rule: "long-url",
-        message: "URL exceeds 2000 characters — may be truncated by some email clients",
+        message: "URL exceeds 2000 characters, may be truncated by some email clients",
         href: href.slice(0, 120) + "...",
         text: text.slice(0, 80) || "(no text)",
         ...(hrefLoc ? { loc: hrefLoc } : {}),
@@ -196,7 +196,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     }
   });
 
-  // Broken anchor detection — #id links where no matching id exists
+  // Broken anchor detection: #id links where no matching id exists
   links.each((_, el) => {
     const href = $(el).attr("href") || "";
     const trimmed = href.trim();
@@ -223,7 +223,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       issues.push({
         severity: "info",
         rule: "duplicate-links",
-        message: `URL appears ${count} times — consider consolidating`,
+        message: `URL appears ${count} times; consider consolidating`,
         href: href.slice(0, 120),
       });
     }

@@ -9,7 +9,7 @@ import { createSession } from "../session";
 // Gap 5: CAN-SPAM physical address
 // ============================================================================
 
-describe("spam scorer — physical address (gap 5)", () => {
+describe("spam scorer: physical address (gap 5)", () => {
   test("email without physical address gets warning", () => {
     const html = `<html><body>
       <p>Check out our latest products and deals.</p>
@@ -77,7 +77,7 @@ describe("spam scorer — physical address (gap 5)", () => {
 // Gap 10: One-click unsubscribe (RFC 8058)
 // ============================================================================
 
-describe("spam scorer — one-click unsubscribe (gap 10)", () => {
+describe("spam scorer: one-click unsubscribe (gap 10)", () => {
   test("List-Unsubscribe without List-Unsubscribe-Post gets warning", () => {
     const html = `<html><body><p>Newsletter content here</p>
       <a href="https://example.com/unsubscribe">Unsubscribe</a>
@@ -90,7 +90,7 @@ describe("spam scorer — one-click unsubscribe (gap 10)", () => {
     expect(rule!.severity).toBe("warning");
   });
 
-  test("both headers present — no issue", () => {
+  test("both headers present: no issue", () => {
     const html = `<html><body><p>Newsletter content here</p>
       <a href="https://example.com/unsubscribe">Unsubscribe</a>
     </body></html>`;
@@ -102,7 +102,7 @@ describe("spam scorer — one-click unsubscribe (gap 10)", () => {
     expect(rule).toBeUndefined();
   });
 
-  test("no List-Unsubscribe header — skip one-click check", () => {
+  test("no List-Unsubscribe header: skip one-click check", () => {
     const html = `<html><body><p>Newsletter content here</p>
       <a href="https://example.com/unsubscribe">Unsubscribe</a>
     </body></html>`;
@@ -116,7 +116,7 @@ describe("spam scorer — one-click unsubscribe (gap 10)", () => {
 // Gap 6: Broken anchor links
 // ============================================================================
 
-describe("link validator — broken anchors (gap 6)", () => {
+describe("link validator: broken anchors (gap 6)", () => {
   test("broken anchor #missing returns error", () => {
     const html = `<html><body>
       <a href="#missing">Go to section</a>
@@ -163,7 +163,7 @@ describe("link validator — broken anchors (gap 6)", () => {
 // Gap 8: Charset encoding validation
 // ============================================================================
 
-describe("accessibility — charset check (gap 8)", () => {
+describe("accessibility: charset check (gap 8)", () => {
   test("missing charset returns warning", () => {
     const html = `<html lang="en"><head><title>Test</title></head><body><p>Hello</p></body></html>`;
     const report = checkAccessibility(html);
@@ -191,7 +191,7 @@ describe("accessibility — charset check (gap 8)", () => {
 // Gap 1: Audit pipeline includes inbox preview, size, template variables
 // ============================================================================
 
-describe("audit — new fields (gap 1)", () => {
+describe("audit: new fields (gap 1)", () => {
   const FULL_HTML = `<html lang="en">
     <head><meta charset="utf-8"><title>Newsletter</title></head>
     <body>
@@ -259,10 +259,10 @@ describe("audit — new fields (gap 1)", () => {
 });
 
 // ============================================================================
-// Session — new methods
+// Session: new methods
 // ============================================================================
 
-describe("session — new methods", () => {
+describe("session: new methods", () => {
   test("session.checkSize() works", () => {
     const html = `<html><body><p>Hello world</p></body></html>`;
     const session = createSession(html);

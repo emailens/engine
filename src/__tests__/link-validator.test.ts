@@ -5,7 +5,7 @@ import { validateLinks } from "../index";
 // Clean emails
 // ============================================================================
 
-describe("link validator — clean emails", () => {
+describe("link validator: clean emails", () => {
   test("email with valid HTTPS links has no issues", () => {
     const html = `<html><body>
       <a href="https://example.com">Visit us</a>
@@ -34,7 +34,7 @@ describe("link validator — clean emails", () => {
 // Individual rule detection
 // ============================================================================
 
-describe("link validator — individual rules", () => {
+describe("link validator: individual rules", () => {
   test("detects empty href", () => {
     const html = `<html><body><a href="">Click me</a></body></html>`;
     const report = validateLinks(html);
@@ -134,7 +134,7 @@ describe("link validator — individual rules", () => {
 // Protocol breakdown
 // ============================================================================
 
-describe("link validator — breakdown", () => {
+describe("link validator: breakdown", () => {
   test("correctly counts protocol types", () => {
     const html = `<html><body>
       <a href="https://a.com">HTTPS</a>
@@ -158,7 +158,7 @@ describe("link validator — breakdown", () => {
 // Complex scenarios
 // ============================================================================
 
-describe("link validator — complex scenarios", () => {
+describe("link validator: complex scenarios", () => {
   test("mixed valid and invalid links", () => {
     const html = `<html><body>
       <a href="https://example.com">Good link</a>
@@ -196,7 +196,7 @@ describe("link validator — complex scenarios", () => {
 // Resilience
 // ============================================================================
 
-describe("link validator — resilience", () => {
+describe("link validator: resilience", () => {
   test("handles malformed HTML", () => {
     const html = `<body><a href="broken<div>mess</a>`;
     expect(() => validateLinks(html)).not.toThrow();
@@ -227,7 +227,7 @@ describe("link validator — resilience", () => {
 // Protocol-relative URLs
 // ============================================================================
 
-describe("link validator — protocol-relative URLs", () => {
+describe("link validator: protocol-relative URLs", () => {
   test("protocol-relative URL flagged as warning", () => {
     const html = `<html><body><a href="//cdn.example.com/page">Link</a></body></html>`;
     const report = validateLinks(html);
@@ -247,7 +247,7 @@ describe("link validator — protocol-relative URLs", () => {
 // javascript: breakdown
 // ============================================================================
 
-describe("link validator — javascript breakdown", () => {
+describe("link validator: javascript breakdown", () => {
   test("javascript: counted in breakdown.javascript", () => {
     const html = `<html><body><a href="javascript:alert(1)">X</a></body></html>`;
     const report = validateLinks(html);
@@ -259,7 +259,7 @@ describe("link validator — javascript breakdown", () => {
 // Empty tel:
 // ============================================================================
 
-describe("link validator — empty tel", () => {
+describe("link validator: empty tel", () => {
   test("empty tel: flagged as error", () => {
     const html = `<html><body><a href="tel:">Call us</a></body></html>`;
     const report = validateLinks(html);
@@ -280,7 +280,7 @@ describe("link validator — empty tel", () => {
 // Duplicate links
 // ============================================================================
 
-describe("link validator — duplicate links", () => {
+describe("link validator: duplicate links", () => {
   test("6x same URL triggers duplicate-links info issue", () => {
     const links = Array.from({ length: 6 }, () =>
       `<a href="https://example.com/same">Link</a>`

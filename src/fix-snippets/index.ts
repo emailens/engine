@@ -11,7 +11,7 @@ import { MJML_SUGGESTION_DATABASE } from "./mjml-suggestions";
 import { MAIZZLE_SUGGESTION_DATABASE } from "./maizzle-suggestions";
 
 /**
- * Inline code fix snippets — real, paste-ready code that turns
+ * Inline code fix snippets: real, paste-ready code that turns
  * "here's your problem" into "here's your solution."
  *
  * Keyed by property, with optional client-specific overrides.
@@ -100,8 +100,8 @@ export function isCodeFixGenericFallback(
 }
 
 function getClientPrefix(clientId: string): string | null {
-  if (clientId === "outlook-windows-legacy") return "outlook"; // Word engine — VML fixes
-  if (clientId === "outlook-windows") return null; // New Outlook — web engine, no special fixes
+  if (clientId === "outlook-windows-legacy") return "outlook"; // Word engine; VML fixes
+  if (clientId === "outlook-windows") return null; // New Outlook; web engine, no special fixes
   if (clientId.startsWith("outlook")) return null; // Outlook web is more standards-compliant
   if (clientId.startsWith("gmail")) return "gmail";
   if (clientId.startsWith("apple-mail")) return "apple";
@@ -151,7 +151,7 @@ export function getSuggestion(
   const tier4 = SUGGESTION_DATABASE[property];
   if (tier4) return { text: tier4, isGenericFallback: !!framework };
 
-  // No entry — return a default
+  // No entry; return a default
   return {
     text: `"${property}" is not supported in this email client.`,
     isGenericFallback: !!framework,

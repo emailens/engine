@@ -10,7 +10,7 @@
 
 /**
  * CSS properties that Gmail strips from inline styles.
- * Updated per caniemail.com data — Gmail keeps float and display (basic values).
+ * Updated per caniemail.com data; Gmail keeps float and display (basic values).
  */
 export const GMAIL_STRIPPED_PROPERTIES = [
   "position",

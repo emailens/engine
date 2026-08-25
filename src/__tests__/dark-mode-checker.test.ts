@@ -14,11 +14,11 @@ const has = (html: string, prop: string) => darkProps(html).includes(prop);
 const DARK_BLOCK = `<style>@media (prefers-color-scheme: dark){.bg-body{background-color:#0E1013 !important}}</style>`;
 const OPT_IN = `<meta name="color-scheme" content="light dark">`;
 
-/** A `<td>` outside a `<table>` is dropped by the HTML parser — always wrap. */
+/** A `<td>` outside a `<table>` is dropped by the HTML parser: always wrap. */
 const email = (head: string, cells: string) =>
   `<html><head>${head}</head><body><table><tr>${cells}</tr></table></body></html>`;
 
-describe("dark mode — opt-in meta", () => {
+describe("dark mode: opt-in meta", () => {
   test("fires when dark CSS is present but the opt-in meta is not", () => {
     expect(has(email(DARK_BLOCK, `<td>x</td>`), "dark-mode-opt-in")).toBe(true);
   });
@@ -47,7 +47,7 @@ describe("dark mode — opt-in meta", () => {
   });
 });
 
-describe("dark mode — partial coverage", () => {
+describe("dark mode: partial coverage", () => {
   test("flags an inline light background the dark block does not override", () => {
     expect(has(email(OPT_IN + DARK_BLOCK, `<td bgcolor="#ffffff">card</td>`), "dark-mode-coverage")).toBe(true);
   });
@@ -94,7 +94,7 @@ describe("dark mode — partial coverage", () => {
   });
 });
 
-describe("dark mode — real-world CSS shapes", () => {
+describe("dark mode: real-world CSS shapes", () => {
   test("recognises a combined media query (@media screen and (prefers-color-scheme: dark))", () => {
     const head = `${OPT_IN}<style>@media screen and (prefers-color-scheme: dark){.c{background-color:#000 !important}}</style>`;
     const cells = `<td class="c" style="background:#fff">covered</td><td style="background:#fff">bare</td>`;
@@ -150,7 +150,7 @@ describe("dark mode — real-world CSS shapes", () => {
   });
 });
 
-describe("dark mode — integration", () => {
+describe("dark mode: integration", () => {
   test("surfaces through auditEmail() and createSession()", () => {
     const html = email(DARK_BLOCK, `<td bgcolor="#ffffff">x</td>`);
     const audited = auditEmail(html).compatibility.warnings.map((w) => w.property);
@@ -169,7 +169,7 @@ describe("dark mode — integration", () => {
   });
 });
 
-describe("dark mode — no false positives without dark styling", () => {
+describe("dark mode: no false positives without dark styling", () => {
   test("an email with no prefers-color-scheme at all is completely clean", () => {
     const html = `<html><head><style>.a{color:#111}</style></head><body bgcolor="#ffffff">
       <table bgcolor="#ffffff"><tr><td style="background:#ffffff;color:#111">hi</td></tr></table>
@@ -187,7 +187,7 @@ describe("dark mode — no false positives without dark styling", () => {
   });
 });
 
-describe("dark mode — warning shape", () => {
+describe("dark mode: warning shape", () => {
   test("warnings carry a suggestion and a fixType", () => {
     const warnings = analyzeEmail(email(DARK_BLOCK, `<td bgcolor="#ffffff">x</td>`))
       .filter((w) => w.property.startsWith("dark-mode"));

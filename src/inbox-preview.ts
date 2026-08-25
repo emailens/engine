@@ -8,7 +8,7 @@ const MAX_SUBJECT_LENGTH = 60;
 const MAX_PREHEADER_LENGTH = 100;
 const MIN_PREHEADER_LENGTH = 30;
 
-/** Emoji regex — covers most common emoji ranges */
+/** Emoji regex: covers most common emoji ranges */
 const EMOJI_PATTERN = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B50}-\u{2B55}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/u;
 
 /**
@@ -59,7 +59,7 @@ export function extractInboxPreviewFromDom($: CheerioAPI): InboxPreview {
     issues.push({
       rule: "subject-too-long",
       severity: "warning",
-      message: `Subject is ${subjectLength} characters — may be truncated in inboxes (recommended: ${MAX_SUBJECT_LENGTH} or fewer).`,
+      message: `Subject is ${subjectLength} characters, and may be truncated in inboxes (recommended: ${MAX_SUBJECT_LENGTH} or fewer).`,
     });
   }
 
@@ -80,13 +80,13 @@ export function extractInboxPreviewFromDom($: CheerioAPI): InboxPreview {
     issues.push({
       rule: "preheader-too-short",
       severity: "warning",
-      message: `Preheader is only ${preheaderLength} characters — email clients may backfill with body text (recommended: ${MIN_PREHEADER_LENGTH}+).`,
+      message: `Preheader is only ${preheaderLength} characters, so email clients may backfill with body text (recommended: ${MIN_PREHEADER_LENGTH}+).`,
     });
   } else if (preheaderLength > MAX_PREHEADER_LENGTH) {
     issues.push({
       rule: "preheader-too-long",
       severity: "info",
-      message: `Preheader is ${preheaderLength} characters — most clients show 40–100 characters. Text beyond that is hidden.`,
+      message: `Preheader is ${preheaderLength} characters; most clients show 40–100 characters. Text beyond that is hidden.`,
     });
   }
 
@@ -95,7 +95,7 @@ export function extractInboxPreviewFromDom($: CheerioAPI): InboxPreview {
     issues.push({
       rule: "zwnj-padding",
       severity: "info",
-      message: "Preheader uses &zwnj;&nbsp; padding hack — works in most clients but may show garbled text in some.",
+      message: "Preheader uses &zwnj;&nbsp; padding hack, works in most clients but may show garbled text in some.",
     });
   }
 
@@ -104,7 +104,7 @@ export function extractInboxPreviewFromDom($: CheerioAPI): InboxPreview {
     issues.push({
       rule: "emoji-in-subject",
       severity: "info",
-      message: "Subject line contains emoji — renders inconsistently across email clients and may trigger spam filters.",
+      message: "Subject line contains emoji, renders inconsistently across email clients and may trigger spam filters.",
     });
   }
 
@@ -181,7 +181,7 @@ function extractPreheaderText($: CheerioAPI): string | null {
   const body = $("body");
   if (!body.length) return null;
 
-  // Check for hidden preheader hacks — these are typically the first child
+  // Check for hidden preheader hacks; these are typically the first child
   // elements with display:none, visibility:hidden, max-height:0, or mso-hide:all
   const hiddenSelectors = [
     'div[style*="display:none"]',

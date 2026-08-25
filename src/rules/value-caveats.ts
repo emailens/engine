@@ -86,7 +86,7 @@ function hasUnit(value: string, units: string[]): boolean {
   return new RegExp(`\\d(?:${units.join("|")})\\b`).test(value);
 }
 
-/** Bare `<number>` tokens — `700`, not `700px`. */
+/** Bare `<number>` tokens: `700`, not `700px`. */
 function bareNumbers(value: string): number[] {
   return tokens(value)
     .filter((t) => /^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/.test(t))
@@ -108,8 +108,8 @@ function dashed(v: string): string {
 
 /**
  * `-webkit-sticky` is `sticky`. A note that does not name the prefixed form
- * still describes it — the client is not going to resolve a keyword it does
- * not implement — so caveats are matched against the unprefixed value too.
+ * still describes it (the client is not going to resolve a keyword it does
+ * not implement), so caveats are matched against the unprefixed value too.
  * The exception is a note that explicitly says the prefixed form works, which
  * `quotedValues()` separates out.
  */
@@ -174,7 +174,7 @@ const NOT_A_PROPERTY_NAME = new Set([
 
 /**
  * Does one `transition` layer name the property it animates? Decided
- * positively — a bare identifier that is not one of the above — so that a
+ * positively, a bare identifier that is not one of the above, so that a
  * duration, a `var()`, a `steps()` or anything else unrecognised leaves the
  * layer meaning `all`, which is what CSS says it means.
  */
@@ -209,8 +209,8 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
 
     case "position": {
       const used = POSITION_KEYWORDS.find((k) => tokens(value).some((t) => unprefixed(t) === k));
-      if (!used) return false; // e.g. position: static — nothing breaks
-      // Note form: "Supports `x` [and `y`] but not `z`[, `w`]." — read the "not" list.
+      if (!used) return false; // e.g. position: static; nothing breaks
+      // Note form: "Supports `x` [and `y`] but not `z`[, `w`]."; read the "not" list.
       const m = note.match(/supports\s+.+?\s+but not\s+([^.]+)/i);
       if (m) return m[1].toLowerCase().includes(used);
       // No note (the Superhuman override) or one we cannot parse: report. Which
@@ -227,7 +227,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       // The value decides first, as it does for `position: static`: a value
       // that does not scroll cannot hit either caveat, whatever the note turns
       // out to say. `overflow: hidden` is too common to report on a reworded
-      // note — that would be the noise this gate exists to remove.
+      // note; that would be the noise this gate exists to remove.
       if (!/\b(?:auto|scroll|overlay)\b/.test(value)) return false;
       if (!noteLc.includes("cannot scroll") && !noteLc.includes("overflow-block")) return true;
       return noteLc.includes("cannot scroll");
@@ -235,7 +235,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
 
     case "font-size": {
       // "`relative` and `percentage` size values not supported" (Outlook 2007-16,
-      // Samsung) is the wider of the two notes — check it first.
+      // Samsung) is the wider of the two notes, check it first.
       if (noteLc.includes("percentage") || noteLc.includes("relative")) {
         return (
           hasUnit(value, RELATIVE_FONT_UNITS) ||
@@ -249,7 +249,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
     }
 
     case "display": {
-      // Outlook: "Only supports `display:none`" — anything else is the caveat.
+      // Outlook: "Only supports `display:none`"; anything else is the caveat.
       const only = note.match(/only supports\s+([^.]*)/i);
       if (only) {
         const allowed = quotedValues(only[1])
@@ -272,7 +272,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
     case "font-weight": {
       const nums = bareNumbers(value);
       if (!nums.length) return false; // `bold`, `normal`, `lighter` render fine
-      // Outlook: 0-599 snap to normal, 600-1000 to bold — so 400 and 700 land
+      // Outlook: 0-599 snap to normal, 600-1000 to bold, so 400 and 700 land
       // where they were asked to, and every other number moves.
       if (noteLc.includes("font weight")) return nums.some((n) => n !== 400 && n !== 700);
       // Yahoo, AOL: only the 100…900 steps are honoured.
@@ -314,7 +314,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
     }
 
     case "transition": {
-      // "The `all` keyword is not supported" — and an omitted property name
+      // "The `all` keyword is not supported", and an omitted property name
       // means `all`, so `transition: 0.3s ease` hits it too.
       if (noteLc.includes("`all`")) {
         // `transition: none` (and the CSS-wide keywords) animate nothing.
@@ -338,7 +338,7 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
  * applies if either does.
  *
  * Returns true (report it) for a property that isn't value-gated, and for one
- * where we never saw a value — an at-rule, a pseudo-class, a detected CSS
+ * where we never saw a value: an at-rule, a pseudo-class, a detected CSS
  * function.
  */
 export function caveatApplies(

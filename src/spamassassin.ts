@@ -2,7 +2,7 @@
  * Optional SpamAssassin integration.
  *
  * Shells out to `spamc` (daemon mode) or `spamassassin` (standalone mode)
- * using execFile (safe — no shell interpolation).
+ * using execFile (safe, no shell interpolation).
  * Returns null if neither is installed.
  *
  * Requires a full RFC 2822 message (headers + body), not just HTML.
@@ -30,7 +30,7 @@ export interface SpamAssassinOptions {
  * `spamassassin -t` (standalone mode). Returns `null` if neither
  * binary is available.
  *
- * Uses execFile (not exec) — no shell interpolation, safe from injection.
+ * Uses execFile (not exec): no shell interpolation, safe from injection.
  *
  * @example
  * ```ts
@@ -50,7 +50,7 @@ export async function checkSpamAssassin(
 ): Promise<SpamAssassinResult | null> {
   const timeout = options?.timeoutMs ?? 30_000;
 
-  // Try spamc first (daemon mode — faster)
+  // Try spamc first (daemon mode, faster)
   const spamcResult = await tryExecFile("spamc", ["-R"], rawMessage, timeout);
   if (spamcResult !== null) return parseOutput(spamcResult);
 
@@ -63,7 +63,7 @@ export async function checkSpamAssassin(
 }
 
 /**
- * Safe wrapper around execFile — no shell, no interpolation.
+ * Safe wrapper around execFile: no shell, no interpolation.
  * Returns stdout on success, null if binary not found.
  */
 function tryExecFile(
@@ -83,7 +83,7 @@ function tryExecFile(
           if ((error as NodeJS.ErrnoException).code === "ENOENT") {
             resolve(null);
           } else {
-            // SpamAssassin returns non-zero for spam — stdout is still valid
+            // SpamAssassin returns non-zero for spam, stdout is still valid
             resolve(stdout || stderr || null);
           }
         } else {

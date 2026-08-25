@@ -15,9 +15,9 @@ export interface ExportPromptOptions {
   format?: "html" | "jsx" | "mjml" | "maizzle";
   /** Optional user goal for the fix (e.g. "keep the gradient header"). */
   intent?: string;
-  /** Content-overflow findings (from checkOverflow) — folded into the fix prompt. */
+  /** Content-overflow findings (from checkOverflow): folded into the fix prompt. */
   overflow?: OverflowIssue[];
-  /** Visual-bug findings with fixes (from checkVisual) — folded into the fix prompt. */
+  /** Visual-bug findings with fixes (from checkVisual): folded into the fix prompt. */
   visual?: VisualIssue[];
 }
 
@@ -122,14 +122,14 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
         const fixTypeLabel = w.fixType === "structural" ? " [STRUCTURAL]" : "";
         issueSection += `\n- **${w.property}** (${clientName})${fixTypeLabel}: ${w.message}`;
         if (w.fixType === "structural") {
-          issueSection += `\n  - **Fix type: structural** — CSS-only changes will NOT work. HTML restructuring required.`;
+          issueSection += `\n  - **Fix type: structural**. CSS-only changes will NOT work. HTML restructuring required.`;
         }
         if (w.suggestion) {
           issueSection += `\n  - Suggestion: ${w.suggestion}`;
         }
         if (w.fix) {
           const fixLabel = w.fixIsGenericFallback && format !== "html"
-            ? `Fix (generic HTML — adapt to ${format.toUpperCase()} syntax)`
+            ? `Fix (generic HTML, adapt to ${format.toUpperCase()} syntax)`
             : "Fix";
           issueSection += `\n  - ${fixLabel}:`;
           issueSection += `\n  - Before: \`${w.fix.before}\``;
@@ -165,7 +165,7 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
       `@react-email/components wherever the fix suggests them. ` +
       `Keep all style values as camelCase JavaScript object properties (e.g. { backgroundColor: "#fff" }). ` +
       `Ensure the result is compatible with ${clientLabel}. ` +
-      `Do not remove any content — only modify the JSX structure and style props needed to fix the issues.`,
+      `Do not remove any content; only modify the JSX structure and style props needed to fix the issues.`,
     mjml:
       `Apply all the fixes listed above to the original email code. ` +
       `Return complete fixed MJML markup. ` +
@@ -173,19 +173,19 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
       `as indicated in the fixes. ` +
       `Ensure the result is valid MJML that compiles without errors. ` +
       `Ensure the result is compatible with ${clientLabel}. ` +
-      `Do not remove any content — only modify the MJML structure and attributes needed to fix the issues.`,
+      `Do not remove any content; only modify the MJML structure and attributes needed to fix the issues.`,
     maizzle:
       `Apply all the fixes listed above to the original email code. ` +
       `Return the complete fixed Maizzle template. ` +
       `Use Tailwind CSS utility classes and Maizzle config settings as indicated in the fixes. ` +
       `Add MSO conditional comment table wrappers where needed for Outlook compatibility. ` +
       `Ensure the result is compatible with ${clientLabel}. ` +
-      `Do not remove any content — only modify the Tailwind classes and HTML structure needed to fix the issues.`,
+      `Do not remove any content; only modify the Tailwind classes and HTML structure needed to fix the issues.`,
     html:
       `Apply all the fixes listed above to the original email code. ` +
       `Return the complete fixed HTML code. ` +
       `Ensure the result is compatible with ${clientLabel}. ` +
-      `Do not remove any content — only modify the CSS and HTML attributes needed to fix the issues.`,
+      `Do not remove any content; only modify the CSS and HTML attributes needed to fix the issues.`,
   };
 
   sections.push(

@@ -121,7 +121,7 @@ function expectPlausibleAnchor(html: string, loc: SourceLocation) {
 
 /**
  * Template variables live in text, which has no shape to match on. The anchor
- * must instead sit at or just before the variable it reported — exactly on it
+ * must instead sit at or just before the variable it reported, exactly on it
  * in the common case, at the start of the containing text node when the node's
  * text was decoded (character references, or markup the parser dropped).
  */
@@ -166,7 +166,7 @@ function expectIssueAnchor(
   }
 }
 
-describe("source positions — CSS compatibility", () => {
+describe("source positions: CSS compatibility", () => {
   const warnings = analyzeEmail(HTML, undefined, { positions: true });
 
   test("a declaration in a <style> block resolves to its document position", () => {
@@ -210,7 +210,7 @@ describe("source positions — CSS compatibility", () => {
   });
 });
 
-describe("source positions — links", () => {
+describe("source positions: links", () => {
   const report = validateLinks(HTML, { positions: true });
 
   test("an insecure link points at the href attribute", () => {
@@ -226,7 +226,7 @@ describe("source positions — links", () => {
   });
 });
 
-describe("source positions — images", () => {
+describe("source positions: images", () => {
   const report = analyzeImages(HTML, { positions: true });
 
   test("a format finding points at the src attribute", () => {
@@ -248,7 +248,7 @@ describe("source positions — images", () => {
   });
 });
 
-describe("source positions — accessibility", () => {
+describe("source positions: accessibility", () => {
   const report = checkAccessibility(HTML, { positions: true });
 
   test("missing lang points at the <html> element", () => {
@@ -278,7 +278,7 @@ describe("source positions — accessibility", () => {
   });
 });
 
-describe("source positions — template variables", () => {
+describe("source positions: template variables", () => {
   const report = checkTemplateVariables(HTML, { positions: true });
 
   test("a variable in text points at the variable itself, not the element", () => {
@@ -531,7 +531,7 @@ function generateEmail(rng: () => number): string {
   return rows.join(eol);
 }
 
-describe("fuzz — positions never drift", () => {
+describe("fuzz: positions never drift", () => {
   test("300 generated emails produce only well-formed, plausible locations", () => {
     const rng = makeRng(20260822);
     for (let i = 0; i < 300; i++) {
@@ -693,14 +693,14 @@ describe("an inline style anchors on the declaration", () => {
   test("falls back to the whole attribute rather than guessing", () => {
     // parse5 hands us the decoded attribute, so the DOM sees `font-size` where
     // the source says `font&#45;size`. There is no exact place to point, so it
-    // points at the attribute — still reported, still actionable, just less
+    // points at the attribute, still reported, still actionable, just less
     // precise. Inventing an offset that looked right would be worse.
     const html = `<body><div style="font&#45;size:1rem">x</div></body>`;
     expect(at(html, (w) => w.property === "font-size")).toBe('style="font&#45;size:1rem"');
   });
 
   test("dark-mode coverage points at the background it is about", () => {
-    // It names one colour — "keeps its hardcoded light background (#faf8f5)" —
+    // It names one colour, "keeps its hardcoded light background (#faf8f5)",
     // so it should underline the declaration that set it, not the five others
     // sharing the attribute.
     const html = [
@@ -774,9 +774,9 @@ describe("every occurrence is reported, not just the first", () => {
   });
 });
 
-describe("source positions — layout and visual findings", () => {
+describe("source positions: layout and visual findings", () => {
   // These carry a concrete `fix`, so they are the findings an editor is most
-  // likely to offer to apply — and the ones that had no position at all until
+  // likely to offer to apply, and the ones that had no position at all until
   // they were wired up.
   const LAYOUT = [
     /* 1 */ "<body>",
@@ -827,7 +827,7 @@ describe("source positions — layout and visual findings", () => {
   });
 
   test("a run split across inline elements is one string, anchored where it starts", () => {
-    // `<b>aaa</b>bbb` renders as one unbroken run — scanning node by node would
+    // `<b>aaa</b>bbb` renders as one unbroken run, scanning node by node would
     // report two shorter strings and understate the overflow.
     const html = `<body><p>see <b>https://example.com/${"a".repeat(40)}</b>${"b".repeat(40)}</p></body>`;
     const issues = checkOverflow(html, { positions: true }).issues.filter(
@@ -889,7 +889,7 @@ describe("source positions — layout and visual findings", () => {
 // three independent means: ground truth known by construction, an ordering
 // invariant, and an edit round-trip that fails if any offset is off by one.
 
-describe("accuracy — ground truth by construction", () => {
+describe("accuracy: ground truth by construction", () => {
   /**
    * Build a document with `count` offenders at offsets we know, separated by
    * filler chosen to break naive offset arithmetic: character references, CRLF,
@@ -903,7 +903,7 @@ describe("accuracy — ground truth by construction", () => {
     const html = lines.join(eol);
 
     // Ground truth: every position of the declaration inside the attribute,
-    // found by string search on the source itself — no engine involved.
+    // found by string search on the source itself, no engine involved.
     const expected: number[] = [];
     for (let at = html.indexOf("border-radius:4px"); at !== -1;
          at = html.indexOf("border-radius:4px", at + 1)) {
@@ -937,7 +937,7 @@ describe("accuracy — ground truth by construction", () => {
     }
   }
 
-  test("the count is exact — no occurrence missed, none invented", () => {
+  test("the count is exact: no occurrence missed, none invented", () => {
     for (const count of [1, 2, 5, 37, 99, 100]) {
       const { html, expected } = withOffenders(count, "Tom &amp; Jerry", "\n");
       const w = analyzeEmail(html, undefined, { positions: true }).find(
@@ -959,7 +959,7 @@ describe("accuracy — ground truth by construction", () => {
   });
 });
 
-describe("accuracy — ordering invariant", () => {
+describe("accuracy: ordering invariant", () => {
   test.each(["cerberus-newsletter.html", "leemunroe-responsive.html", "receipt-notification.html"])(
     "%s: every warning's occurrences are in document order, without duplicates",
     (name) => {
@@ -982,11 +982,11 @@ describe("accuracy — ordering invariant", () => {
   );
 });
 
-describe("accuracy — the positions are actionable", () => {
+describe("accuracy: the positions are actionable", () => {
   /**
    * The end-to-end property an editor depends on: use `locs` to edit the
    * source, and the finding goes away. An offset that is off by one corrupts
-   * the document instead, and the warning survives — so this fails loudly for
+   * the document instead, and the warning survives, so this fails loudly for
    * exactly the defect that is hardest to see by eye.
    */
   test("removing every occurrence by its position clears the warning", () => {
@@ -1002,7 +1002,7 @@ describe("accuracy — the positions are actionable", () => {
 
     const before = analyzeEmail(html, undefined, { positions: true });
     // Warnings are grouped per selector description, so `div` and `span` are
-    // separate warnings for the same property — an editor wanting every place
+    // separate warnings for the same property; an editor wanting every place
     // it breaks unions their occurrences, which is what this does.
     const occurrences = before
       .filter((w) => w.property === "border-radius" && w.client === "outlook-windows")
@@ -1034,7 +1034,7 @@ describe("accuracy — the positions are actionable", () => {
     //
     // Except dark-mode coverage, which reports at most three elements so a
     // large email cannot flood the report. Removing those three promotes the
-    // next three, so the round-trip never terminates for it — a property of
+    // next three, so the round-trip never terminates for it: a property of
     // the cap, not of the positions. It became visible here only once cuts got
     // precise: excising a whole `style="…"` attribute used to take its
     // neighbouring declarations with it, and now it does not.
@@ -1048,7 +1048,7 @@ describe("accuracy — the positions are actionable", () => {
 
     let edited = html;
     for (const [offset, length] of cuts) {
-      // Each cut must land exactly on one declaration — `property: value`,
+      // Each cut must land exactly on one declaration: `property: value`,
       // starting at the property name, not a character either side of it.
       expect(edited.slice(offset, offset + length)).toMatch(/^[-a-z]+\s*:\s*\S/i);
       edited = edited.slice(0, offset) + edited.slice(offset + length);

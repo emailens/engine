@@ -5,13 +5,13 @@
 export const MAIZZLE_SUGGESTION_DATABASE: Record<string, string> = {
   // ── <style> ───────────────────────────────────────────────────────────
   "<style>::maizzle":
-    "Prefer Tailwind utility classes — Maizzle inlines CSS via juice during build (inlineCSS: true in config.js).",
+    "Prefer Tailwind utility classes; Maizzle inlines CSS via juice during build (inlineCSS: true in config.js).",
   "<style>:partial::maizzle":
     "Use Tailwind utility classes for critical styles. Maizzle automatically inlines them at build time.",
 
   // ── <link> ────────────────────────────────────────────────────────────
   "<link>::maizzle":
-    "External stylesheets are stripped. Use Tailwind CSS classes — Maizzle inlines them at build time.",
+    "External stylesheets are stripped. Use Tailwind CSS classes; Maizzle inlines them at build time.",
 
   // ── <svg> ─────────────────────────────────────────────────────────────
   "<svg>::maizzle":
@@ -27,7 +27,7 @@ export const MAIZZLE_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── @font-face ────────────────────────────────────────────────────────
   "@font-face::maizzle":
-    "Use the googleFonts key in config.js — Maizzle injects the Google Fonts link tag automatically.",
+    "Use the googleFonts key in config.js; Maizzle injects the Google Fonts link tag automatically.",
 
   // ── @media ────────────────────────────────────────────────────────────
   "@media::maizzle":

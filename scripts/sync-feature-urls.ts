@@ -9,7 +9,7 @@
  * The URL cannot be derived from the key. `border-radius` is
  * `/features/css-border-radius/`, `<abbr>` is `/features/html-abbr/`,
  * `:hover` is `/features/css-pseudo-class-hover/`, and there are enough
- * exceptions that guessing means shipping 404s — which is worse than no link.
+ * exceptions that guessing means shipping 404s, which is worse than no link.
  * So the real URL comes from the same API the matrix does.
  *
  * Separate from `sync:caniemail` on purpose: that regenerates the support data
@@ -27,7 +27,7 @@ const API_URL = "https://www.caniemail.com/api/data.json";
  * The API, or a copy of it.
  *
  * `bun run sync:feature-urls path/to/data.json` reads a local snapshot, for a
- * network that will not let the process out — the same file
+ * network that will not let the process out, the same file
  * `curl https://www.caniemail.com/api/data.json` produces.
  */
 async function load(): Promise<{ data: CanIEmailFeature[] }> {
@@ -53,7 +53,7 @@ async function main() {
   const keys = Object.keys(urls).sort();
   const known = Object.keys(CSS_SUPPORT).length;
   if (keys.length < known * 0.9) {
-    throw new Error(`only ${keys.length} of ${known} features got a URL — the mapping has drifted`);
+    throw new Error(`only ${keys.length} of ${known} features got a URL; the mapping has drifted`);
   }
 
   const lines = [
@@ -61,10 +61,10 @@ async function main() {
     ` * caniemail's page for each feature, for a diagnostic's \`codeDescription\`.`,
     ` *`,
     ` * ${keys.length} of ${known} features. The rest have no caniemail entry of`,
-    ` * their own and get no link, which is the honest outcome — a link to a 404`,
+    ` * their own and get no link, which is the honest outcome; a link to a 404`,
     ` * is worse than none.`,
     ` *`,
-    ` * DO NOT EDIT — regenerate with: bun run sync:feature-urls`,
+    ` * DO NOT EDIT; regenerate with: bun run sync:feature-urls`,
     ` */`,
     `export const FEATURE_URLS: Record<string, string> = {`,
     ...keys.map((key) => `  ${JSON.stringify(key)}: ${JSON.stringify(urls[key])},`),

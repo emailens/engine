@@ -1,7 +1,7 @@
 import type { SupportLevel } from "../types";
 
 /**
- * CSS/HTML feature support matrix — auto-generated from caniemail.com.
+ * CSS/HTML feature support matrix, auto-generated from caniemail.com.
  * Last synced: 2026-07-28
  * caniemail last updated: 2026-07-20 09:56:37 +0000
  *
@@ -18,7 +18,7 @@ import type { SupportLevel } from "../types";
  * - hey-mail: caniemail.com (WebKit-based)
  * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)
  *
- * DO NOT EDIT — regenerate with: bun run sync:caniemail
+ * DO NOT EDIT; regenerate with: bun run sync:caniemail
  */
 export const CSS_SUPPORT: Record<
   string,
@@ -5892,7 +5892,7 @@ export const CSS_SUPPORT: Record<
 };
 
 /**
- * Caveat notes per (feature, client) from caniemail — the "why" behind a
+ * Caveat notes per (feature, client) from caniemail: the "why" behind a
  * partial/buggy/unsupported rating. Sparse: only cells with a note appear.
  */
 export const CSS_SUPPORT_NOTES: Record<
@@ -6819,7 +6819,7 @@ export const CSS_SUPPORT_NOTES: Record<
 
 /**
  * CSS properties that Gmail strips from inline styles.
- * Updated per caniemail.com data — Gmail keeps float and display (basic values).
+ * Updated per caniemail.com data; Gmail keeps float and display (basic values).
  */
 export const GMAIL_STRIPPED_PROPERTIES = new Set([
   "position",

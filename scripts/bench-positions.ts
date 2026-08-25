@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * bench-positions.ts — What does `positions: true` cost?
+ * bench-positions.ts; What does `positions: true` cost?
  *
  * Source positions ask parse5 for a location record per node and per
  * attribute, so the option is opt-in. This measures the overhead of a full
@@ -25,7 +25,7 @@ const ITERATIONS = 200;
 const WARMUP = 20;
 
 /**
- * Cost is not flat in document size — the fixtures are ~10KB, which is typical
+ * Cost is not flat in document size; the fixtures are ~10KB, which is typical
  * for an email (Gmail clips at ~102KB), but an editor will occasionally be
  * pointed at something much larger. These sizes bracket that.
  */
@@ -44,7 +44,7 @@ function delta(off: number, on: number): string {
   return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
 }
 
-console.log(`parse only, then a full auditEmail() — mean of ${ITERATIONS} runs (${SCALED_ITERATIONS} for the scaled sizes)\n`);
+console.log(`parse only, then a full auditEmail(), mean of ${ITERATIONS} runs (${SCALED_ITERATIONS} for the scaled sizes)\n`);
 console.log(
   "fixture                        size   parse off   parse on   audit off   audit on   delta",
 );

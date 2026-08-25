@@ -9,7 +9,7 @@ import { getStyleValue, splitStyleDeclarations, splitTopLevel } from "./style-ut
 import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend, backgroundShorthandColor, gradientStops, formatRgb } from "./color-utils";
 import type { RGBA } from "./color-utils";
 
-// Per-rule penalty caps; only the score penalty is capped, all issues are still reported
+// Per-rule penalty caps: only the score penalty is capped, all issues are still reported
 const RULE_PENALTY_CAPS: Record<string, number> = {
   "img-missing-alt": 3,
   "link-generic-text": 3,
@@ -707,7 +707,7 @@ function checkContrast($: cheerio.CheerioAPI, cascade: Cascade): AccessibilityIs
     const colorValue = declared?.value ?? "the client default";
 
     const background = resolveBackground($, el, cascade);
-    // Text over a raster image; the real contrast is a matter of pixels we
+    // Text over a raster image: the real contrast is a matter of pixels we
     // cannot see, so say nothing rather than guess.
     if (background === "unknown") return;
 

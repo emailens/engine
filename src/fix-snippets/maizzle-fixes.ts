@@ -32,7 +32,7 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
   "@font-face::maizzle": {
     language: "maizzle",
     description:
-      'Add fonts via the googleFonts key in config.js — Maizzle injects the Google Fonts link tag automatically. Set googleFonts: "Inter:ital,wght@0,400;0,700" in your environment config, then reference the font family in your template.',
+      'Add fonts via the googleFonts key in config.js; Maizzle injects the Google Fonts link tag automatically. Set googleFonts: "Inter:ital,wght@0,400;0,700" in your environment config, then reference the font family in your template.',
     before: `<style>
   @font-face {
     font-family: 'Inter';
@@ -47,12 +47,12 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
   "<style>::gmail::maizzle": {
     language: "maizzle",
     description:
-      "Maizzle automatically inlines CSS via juice during build (inlineCSS: true in config.js). Manual <style> blocks bypass juice and will be stripped by Gmail — prefer Tailwind utility classes instead.",
+      "Maizzle automatically inlines CSS via juice during build (inlineCSS: true in config.js). Manual <style> blocks bypass juice and will be stripped by Gmail; prefer Tailwind utility classes instead.",
     before: `<style>
   .custom { color: #6d28d9; }
 </style>
 <div class="custom">Hello</div>`,
-    after: `<!-- Prefer Tailwind classes — Maizzle inlines them automatically during build -->
+    after: `<!-- Prefer Tailwind classes; Maizzle inlines them automatically during build -->
 <div class="text-[#6d28d9]">Hello</div>`,
   },
 

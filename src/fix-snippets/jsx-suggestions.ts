@@ -5,7 +5,7 @@
 export const JSX_SUGGESTION_DATABASE: Record<string, string> = {
   // ── <style> ───────────────────────────────────────────────────────────
   "<style>::jsx":
-    "Move styles to inline style props — React Email components accept style objects directly.",
+    "Move styles to inline style props; React Email components accept style objects directly.",
   "<style>:partial::jsx":
     "Use inline style props on React Email components. Reserve <style> in <Head> for progressive enhancement only.",
 

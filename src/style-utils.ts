@@ -78,8 +78,8 @@ export function getStyleValue(style: string, property: string): string | null {
 
 /**
  * Every value declared for a property in an inline style, in source order.
- * A property may legally be declared twice; `display:block;display:flex` is
- * the standard progressive-enhancement idiom, and which one applies depends
+ * A property may legally be declared twice (`display:block;display:flex` is
+ * the standard progressive-enhancement idiom), and which one applies depends
  * on the client, so a checker that reads support needs to see all of them.
  */
 export function getStyleValues(style: string, property: string): string[] {

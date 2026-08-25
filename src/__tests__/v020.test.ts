@@ -625,7 +625,7 @@ describe("smart truncation", () => {
       warnings,
       scores,
       scope: "all",
-      maxInputTokens: 500, // very low — will definitely truncate
+      maxInputTokens: 500, // very low, will definitely truncate
       systemPromptTokens: 0,
     });
 
@@ -665,7 +665,7 @@ describe("smart truncation", () => {
       warnings,
       scores,
       scope: "all",
-      maxInputTokens: 100000, // very high — won't truncate
+      maxInputTokens: 100000, // very high, won't truncate
     });
 
     expect(estimate.truncated).toBe(false);

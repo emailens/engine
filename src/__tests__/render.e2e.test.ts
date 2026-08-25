@@ -1,5 +1,5 @@
 /**
- * Real-render validation (free ground truth) — renders engine output in an
+ * Real-render validation (free ground truth): renders engine output in an
  * actual browser engine (Chromium/Blink, which is what Gmail web, Outlook.com,
  * the New Outlook and Superhuman actually use) and asserts the *rendered*
  * result, not our heuristics.
@@ -7,7 +7,7 @@
  * OFF by default. Enable it either by:
  *   - Local browser:   bunx playwright install chromium && bun run test:render
  *   - Remote browser:  BROWSERLESS_WS='wss://host?token=…' bun run test:render
- *     (a self-hosted Browserless / any CDP endpoint — no local browser needed)
+ *     (a self-hosted Browserless / any CDP endpoint, no local browser needed)
  *
  * Chromium covers ~most clients' engines for free; WebKit (Apple Mail, HEY,
  * Proton, Outlook for Mac) and Gecko (Thunderbird) are also free in Playwright
@@ -23,7 +23,7 @@ const REMOTE_WS =
   process.env.BROWSERLESS_WS ||
   process.env.PLAYWRIGHT_WS_ENDPOINT;
 // Only on explicit opt-in (the `test:render` script), never merely because a
-// BROWSERLESS_URL sits in an auto-loaded .env — otherwise `bun test` would try
+// BROWSERLESS_URL sits in an auto-loaded .env, otherwise `bun test` would try
 // to reach a browser. The endpoint is just the target once enabled.
 const ENABLED = process.env.RENDER_TESTS === "1";
 const suite = ENABLED ? describe : describe.skip;
@@ -35,7 +35,7 @@ suite("real-render validation (Playwright / Chromium)", () => {
     const { chromium } = await import("playwright");
     if (REMOTE_WS) {
       // Connect to a remote Chromium. Browserless exposes both a CDP endpoint
-      // and a Playwright-protocol endpoint — try CDP first, fall back to the
+      // and a Playwright-protocol endpoint: try CDP first, fall back to the
       // Playwright protocol, so either configured URL works.
       try {
         browser = await chromium.connectOverCDP(REMOTE_WS);
@@ -48,7 +48,7 @@ suite("real-render validation (Playwright / Chromium)", () => {
     // message instead of hanging.
     const launch = chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
     const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Chromium launch timed out — install a local browser (`bunx playwright install chromium`) or set BROWSERLESS_WS to a remote endpoint.")), 20000),
+      setTimeout(() => reject(new Error("Chromium launch timed out, install a local browser (`bunx playwright install chromium`) or set BROWSERLESS_WS to a remote endpoint.")), 20000),
     );
     browser = await Promise.race([launch, timeout]);
   }, 45000); // remote CDP handshake can exceed the default 5s hook timeout

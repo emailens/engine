@@ -191,7 +191,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
 </Row>`,
     after: `import { Row, Column } from "@react-email/components";
 
-{/* Use padding on Column — gap is not supported in email clients */}
+{/* Use padding on Column; gap is not supported in email clients */}
 <Row>
   <Column style={{ paddingRight: "16px" }}>Item 1</Column>
   <Column style={{ paddingRight: "16px" }}>Item 2</Column>
@@ -203,7 +203,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   "<style>::gmail::jsx": {
     language: "jsx",
     description:
-      "React Email inlines styles via style props — manual <style> blocks won't survive Gmail",
+      "React Email inlines styles via style props; manual <style> blocks won't survive Gmail",
     before: `import { Head } from "@react-email/components";
 
 <Head>
@@ -267,7 +267,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── @media (JSX) ────────────────────────────────────────────────────
   "@media::jsx": {
     language: "jsx",
-    description: "Design mobile-first — @media queries are stripped by many clients",
+    description: "Design mobile-first; @media queries are stripped by many clients",
     before: `import { Head } from "@react-email/components";
 
 <Head>
@@ -417,7 +417,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
 </div>`,
     after: `import { Img } from "@react-email/components";
 
-{/* CSS transforms are not supported in email — pre-render as an image */}
+{/* CSS transforms are not supported in email: pre-render as an image */}
 <Img
   src="https://example.com/rotated-content.png"
   width={200}
@@ -434,7 +434,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
     before: `<span style={{ animation: "pulse 2s infinite" }}>New!</span>`,
     after: `import { Img } from "@react-email/components";
 
-{/* CSS animations are not supported — use an animated GIF */}
+{/* CSS animations are not supported: use an animated GIF */}
 <Img
   src="https://example.com/badge-animated.gif"
   width={60}
@@ -447,7 +447,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── transition (JSX) ─────────────────────────────────────────────
   "transition::jsx": {
     language: "jsx",
-    description: "Transitions don't work in email — style the default state well",
+    description: "Transitions don't work in email; style the default state well",
     before: `<a
   href="#"
   style={{
@@ -460,7 +460,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
 </a>`,
     after: `import { Button } from "@react-email/components";
 
-{/* Transitions are not supported — style the default state: */}
+{/* Transitions are not supported: style the default state: */}
 <Button
   href="https://example.com"
   style={{
@@ -478,13 +478,13 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── overflow (JSX) ───────────────────────────────────────────────
   "overflow::jsx": {
     language: "jsx",
-    description: "Content will always be visible — design for full content display",
+    description: "Content will always be visible; design for full content display",
     before: `<div style={{ maxHeight: "200px", overflow: "hidden" }}>
   Long content that gets clipped...
 </div>`,
     after: `import { Link, Text } from "@react-email/components";
 
-{/* overflow:hidden is stripped — show full content or truncate server-side */}
+{/* overflow:hidden is stripped; show full content or truncate server-side */}
 <div>
   <Text>Shortened content that fits...</Text>
   <Link href="https://example.com/full">Read more</Link>
@@ -498,7 +498,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
     before: `<div style={{ visibility: "hidden" }}>
   Hidden preheader text
 </div>`,
-    after: `{/* visibility:hidden is stripped by most clients — use the preheader trick.
+    after: `{/* visibility:hidden is stripped by most clients; use the preheader trick.
     msoHide is non-standard but needed to hide content in Outlook. */}
 <div
   style={{
@@ -538,7 +538,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── background-size (JSX) ────────────────────────────────────────
   "background-size::jsx": {
     language: "jsx",
-    description: "Outlook ignores background-size — use sized images instead",
+    description: "Outlook ignores background-size; use sized images instead",
     before: `<div style={{
   background: "url('bg.jpg') center/cover no-repeat",
 }}>
@@ -565,12 +565,12 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   padding: "20px",
   boxSizing: "border-box",
 }}>
-  Content — total width stays 300px
+  Content (total width stays 300px)
 </div>`,
     after: `{/* Set outer width, use inner element for padding */}
 <div style={{ width: "300px" }}>
   <div style={{ padding: "20px" }}>
-    Content — padding on inner element
+    Content; padding on inner element
   </div>
 </div>`,
   },

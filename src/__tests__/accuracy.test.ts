@@ -92,7 +92,7 @@ class AccuracyTracker {
 
 describe("Gmail Transform Accuracy", () => {
   // Transactional: Attic welcome email (flex, grid, gradient, shadow, etc.)
-  test("Template 1 (Transactional) — Gmail Web", () => {
+  test("Template 1 (Transactional): Gmail Web", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.transactional, "gmail-web");
     const html = result.html;
@@ -206,7 +206,7 @@ describe("Gmail Transform Accuracy", () => {
   });
 
   // Newsletter: Craft Weekly (font-face, gradients, grid, shadows, etc.)
-  test("Template 2 (Newsletter) — Gmail Web", () => {
+  test("Template 2 (Newsletter): Gmail Web", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.newsletter, "gmail-web");
     const html = result.html;
@@ -307,7 +307,7 @@ describe("Gmail Transform Accuracy", () => {
   });
 
   // Receipt: Haven order confirmation (SVG, grid, flex, shadow, etc.)
-  test("Template 3 (Receipt) — Gmail Web", () => {
+  test("Template 3 (Receipt): Gmail Web", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.receipt, "gmail-web");
     const html = result.html;
@@ -410,7 +410,7 @@ describe("Gmail Transform Accuracy", () => {
 // ---------------------------------------------------------------------------
 
 describe("Outlook Classic Transform Accuracy", () => {
-  test("Template 1 (Transactional) — Outlook Classic", () => {
+  test("Template 1 (Transactional): Outlook Classic", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.transactional, "outlook-windows-legacy");
     const html = result.html;
@@ -501,7 +501,7 @@ describe("Outlook Classic Transform Accuracy", () => {
     expect(tracker.score).toBeGreaterThanOrEqual(70);
   });
 
-  test("Template 2 (Newsletter) — Outlook Classic", () => {
+  test("Template 2 (Newsletter): Outlook Classic", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.newsletter, "outlook-windows-legacy");
     const html = result.html;
@@ -623,7 +623,7 @@ describe("Outlook Classic Transform Accuracy", () => {
     expect(tracker.score).toBeGreaterThanOrEqual(70);
   });
 
-  test("Template 3 (Receipt) — Outlook Classic", () => {
+  test("Template 3 (Receipt): Outlook Classic", () => {
     const tracker = new AccuracyTracker();
     const result = transformForClient(templates.receipt, "outlook-windows-legacy");
     const html = result.html;
@@ -1000,7 +1000,7 @@ describe("Compatibility Score Accuracy", () => {
       `Apple: ${appleScore}, Outlook: ${outlookScore}`,
     );
 
-    // Gmail should score below 80 — this template is full of unsupported features
+    // Gmail should score below 80; this template is full of unsupported features
     tracker.check(
       "Gmail scores below 80 for modern CSS template",
       gmailScore < 80,
@@ -1047,7 +1047,7 @@ describe("Compatibility Score Accuracy", () => {
       `Apple: ${appleScore}, Gmail: ${gmailScore}, Outlook: ${outlookScore}`,
     );
 
-    // Gmail strips SVG, grid, shadow, transition — should be penalized
+    // Gmail strips SVG, grid, shadow, transition: should be penalized
     tracker.check(
       "Gmail scores below Apple Mail",
       gmailScore < appleScore,

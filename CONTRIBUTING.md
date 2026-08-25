@@ -23,7 +23,7 @@ The package ships three entry points (configured in `tsup.config.ts`):
 
 | Import | Source | Description |
 |---|---|---|
-| `@emailens/engine` | `src/index.ts` | Core analysis — CSS, spam, a11y, links, images, inbox preview, size, templates, AI fix |
+| `@emailens/engine` | `src/index.ts` | Core analysis: CSS, spam, a11y, links, images, inbox preview, size, templates, AI fix |
 | `@emailens/engine/compile` | `src/compile/index.ts` | JSX / MJML / Maizzle → HTML compilers |
 | `@emailens/engine/server` | `src/server.ts` | Node-only: `checkDeliverability` (DNS), `checkSpamAssassin` (child_process) |
 
@@ -90,8 +90,8 @@ src/
 
 Every analyzer has two variants:
 
-- **Public function** (e.g., `analyzeSpam(html)`) — parses HTML internally, suitable for standalone use
-- **`FromDom` variant** (e.g., `analyzeSpamFromDom($)`) — accepts a pre-parsed Cheerio instance
+- **Public function** (e.g., `analyzeSpam(html)`): parses HTML internally, suitable for standalone use
+- **`FromDom` variant** (e.g., `analyzeSpamFromDom($)`): accepts a pre-parsed Cheerio instance
 
 `auditEmail()` in `src/audit.ts` calls `cheerio.load(html)` once, then passes `$` to all `FromDom` variants. `createSession()` in `src/session.ts` does the same but exposes the shared DOM through method closures.
 
@@ -103,7 +103,7 @@ Every analyzer follows this pattern:
 2. Enforce `MAX_HTML_SIZE` limit (public functions only)
 3. Walk the DOM (elements, attributes, style blocks)
 4. Attach a `loc` to each issue via `src/source-location.ts` (`locOfElement`,
-   `locOfAttr`, `locInTextNode`) — the helpers return `undefined` when the DOM
+   `locOfAttr`, `locInTextNode`); the helpers return `undefined` when the DOM
    was parsed without positions, so call them unconditionally. Anchor on the
    attribute when the finding is about one attribute, the opening tag when it is
    about the element, and leave `loc` off for document-level findings.
@@ -113,10 +113,10 @@ Every analyzer follows this pattern:
 
 `getCodeFix()` in `src/fix-snippets/index.ts` resolves fixes using a 4-tier cascade:
 
-1. **`property::clientPrefix::framework`** — most specific (e.g., `display:flex::outlook::jsx`)
-2. **`property::framework`** — framework-specific (e.g., `display:grid::jsx`)
-3. **`property::clientPrefix`** — client-specific (e.g., `border-radius::outlook`)
-4. **`property`** — generic HTML fallback
+1. **`property::clientPrefix::framework`**: most specific (e.g., `display:flex::outlook::jsx`)
+2. **`property::framework`**: framework-specific (e.g., `display:grid::jsx`)
+3. **`property::clientPrefix`**: client-specific (e.g., `border-radius::outlook`)
+4. **`property`**: generic HTML fallback
 
 ## Data Sources and Freshness
 
@@ -152,8 +152,8 @@ This script scans all data files for their verification dates and reports which 
 
 Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
-1. **Check caniemail.com** — look up the property's support across email clients
-2. **Add the entry to `src/rules/css-support.ts`** — add a new key to `CSS_SUPPORT` with support levels for all 21 clients:
+1. **Check caniemail.com**: look up the property's support across email clients
+2. **Add the entry to `src/rules/css-support.ts`**: add a new key to `CSS_SUPPORT` with support levels for all 21 clients:
    ```typescript
    "aspect-ratio": {
      "gmail-web": "unsupported",
@@ -170,12 +170,12 @@ Adding support data for a new CSS property (e.g., `aspect-ratio`):
      "superhuman": "supported",
    },
    ```
-3. **Add a fix snippet** — if there's a workaround, add it to the relevant file in `src/fix-snippets/`:
-   - `html-fixes.ts` — generic HTML fallback
-   - `jsx-fixes.ts` — React Email specific
-   - `html-suggestions.ts` / `jsx-suggestions.ts` — human-readable suggestion text
-4. **Add a test** — add a test case in `src/__tests__/engine.test.ts` that uses the property in HTML and verifies the warning is generated for the right clients
-5. **Run `bun test`** — verify all 574+ tests still pass
+3. **Add a fix snippet**: if there's a workaround, add it to the relevant file in `src/fix-snippets/`:
+   - `html-fixes.ts`: generic HTML fallback
+   - `jsx-fixes.ts`: React Email specific
+   - `html-suggestions.ts` / `jsx-suggestions.ts`: human-readable suggestion text
+4. **Add a test**: add a test case in `src/__tests__/engine.test.ts` that uses the property in HTML and verifies the warning is generated for the right clients
+5. **Run `bun test`**: verify all 574+ tests still pass
 
 > **Note:** `css-support.ts` is auto-generated from caniemail.com via `bun run sync:caniemail`. For manual additions (properties not in caniemail), add them after the auto-generated block.
 
@@ -183,20 +183,20 @@ Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
 Adding a new email client (e.g., Mail.ru). Support data is auto-generated, so the flow is mostly wiring + a re-sync:
 
-1. **Map it in the sync script** (`scripts/sync-caniemail.ts`) — if the client is on caniemail.com, add its platform to `CLIENT_MAP` and its id to `ALL_ENGINE_CLIENTS`:
+1. **Map it in the sync script** (`scripts/sync-caniemail.ts`), if the client is on caniemail.com, add its platform to `CLIENT_MAP` and its id to `ALL_ENGINE_CLIENTS`:
    ```typescript
    "mail-ru.desktop-webmail": "mailru",   // CLIENT_MAP
    // ...and add "mailru" to ALL_ENGINE_CLIENTS
    ```
-2. **Define the client in `src/clients.ts`** — add an `EMAIL_CLIENTS` entry:
+2. **Define the client in `src/clients.ts`**: add an `EMAIL_CLIENTS` entry:
    ```typescript
    { id: "mailru", name: "Mail.ru", category: "webmail", engine: "Mail.ru", darkModeSupport: true, icon: "mail" },
    ```
-3. **Add a transform config** — add a `"mailru"` entry to `CLIENT_CONFIGS` in `src/transform.ts`. Derive the stripped properties from the client's caniemail data (don't hand-guess). For a client **not** on caniemail, add a manual overrides file like `scripts/superhuman-overrides.ts` instead.
-4. **Regenerate the matrix** — `bun run sync:caniemail` fills in `CSS_SUPPORT` / `CSS_SUPPORT_NOTES` for the new column across all entries automatically.
-5. **Add dark mode / inbox-preview behavior** — update `src/dark-mode.ts` and `src/inbox-preview.ts` if the client has specific behavior.
-6. **Add tests** — the `transformForAllClients` invariant already requires every registered client to have a transform config; pattern-match existing client tests in `src/__tests__/engine.test.ts`.
-7. **Run the full suite** — `bun test` to verify nothing regresses.
+3. **Add a transform config**: add a `"mailru"` entry to `CLIENT_CONFIGS` in `src/transform.ts`. Derive the stripped properties from the client's caniemail data (don't hand-guess). For a client **not** on caniemail, add a manual overrides file like `scripts/superhuman-overrides.ts` instead.
+4. **Regenerate the matrix**: `bun run sync:caniemail` fills in `CSS_SUPPORT` / `CSS_SUPPORT_NOTES` for the new column across all entries automatically.
+5. **Add dark mode / inbox-preview behavior**: update `src/dark-mode.ts` and `src/inbox-preview.ts` if the client has specific behavior.
+6. **Add tests**: the `transformForAllClients` invariant already requires every registered client to have a transform config; pattern-match existing client tests in `src/__tests__/engine.test.ts`.
+7. **Run the full suite**: `bun test` to verify nothing regresses.
 
 ## How to Add a New Analyzer
 
@@ -213,7 +213,7 @@ Adding a new email client (e.g., Mail.ru). Support data is auto-generated, so th
 Looking for a place to start? These are scoped, testable, and don't require understanding the full codebase. Browse the [good first issues](https://github.com/emailens/engine/labels/good%20first%20issue) label for current tickets, or pick from these areas:
 
 ### Fix Snippets
-Add paste-ready code fixes for CSS properties that lack them. Each fix is a self-contained entry in one of the `src/fix-snippets/` files — no need to touch any analyzer code.
+Add paste-ready code fixes for CSS properties that lack them. Each fix is a self-contained entry in one of the `src/fix-snippets/` files; no need to touch any analyzer code.
 
 - Add JSX fix for `background-image` + Outlook (VML fill)
 - Add MJML fix for `border-radius` + Outlook (`<mj-section>` with border-radius attribute)
@@ -235,7 +235,7 @@ Add WCAG checks to `src/accessibility-checker.ts`.
 - Flag animated GIFs without `prefers-reduced-motion` consideration
 
 ### Test Coverage
-Pattern-match against existing tests in `src/__tests__/` — each test file mirrors a source module.
+Pattern-match against existing tests in `src/__tests__/`: each test file mirrors a source module.
 
 - Add edge-case tests for inline styles with vendor prefixes
 - Test `analyzeSpam` with non-English content
@@ -243,18 +243,18 @@ Pattern-match against existing tests in `src/__tests__/` — each test file mirr
 
 ## PR Guidelines
 
-1. **Open an issue first** — discuss the change before writing code
-2. **Branch from `main`** — keep PRs focused on a single change
-3. **Run tests** — `bun test` must pass before submitting
-4. **Add tests** — new features and bug fixes should include tests
-5. **Keep PRs focused** — one concern per PR; avoid mixing refactors with features
+1. **Open an issue first**: discuss the change before writing code
+2. **Branch from `main`**: keep PRs focused on a single change
+3. **Run tests**: `bun test` must pass before submitting
+4. **Add tests**: new features and bug fixes should include tests
+5. **Keep PRs focused**: one concern per PR; avoid mixing refactors with features
 
 ### Commit Convention
 
-- `feat:` — new feature
-- `fix:` — bug fix
-- `docs:` — documentation only
-- `chore:` — tooling, deps, CI
+- `feat:` new feature
+- `fix:` bug fix
+- `docs:` documentation only
+- `chore:` tooling, deps, CI
 
 ## Code of Conduct
 

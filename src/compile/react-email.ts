@@ -9,17 +9,17 @@ const EXECUTION_TIMEOUT_MS = 5_000;
 /**
  * Sandbox strategy for JSX execution.
  *
- * - `"vm"` — `node:vm` with hardened globals. Fast, zero-dependency,
+ * - `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency,
  *   but NOT a true security boundary (prototype-chain escapes are possible).
  *   Suitable for CLI / local use where users run their own code.
  *
- * - `"isolated-vm"` (default) — Separate V8 isolate via the `isolated-vm`
+ * - `"isolated-vm"` (default): Separate V8 isolate via the `isolated-vm`
  *   npm package. True heap isolation; escapes require a V8 engine bug.
  *   Requires `isolated-vm` to be installed (native addon).
  *
- * - `"quickjs"` — Validates code structure in a QuickJS WASM sandbox, then
+ * - `"quickjs"`: Validates code structure in a QuickJS WASM sandbox, then
  *   executes in `node:vm` for React rendering. Security is equivalent to
- *   `node:vm` — the QuickJS phase validates import restrictions only.
+ *   `node:vm`: the QuickJS phase validates import restrictions only.
  *   No native addons needed, but only supports ES2020 and is slower.
  *   For true isolation on servers, use `isolated-vm`.
  */
@@ -181,7 +181,7 @@ export async function compileReactEmail(
 /**
  * Execute transpiled code in a node:vm context with hardened globals.
  *
- * NOT a security boundary — see node:vm documentation. Suitable for CLI
+ * NOT a security boundary, see node:vm documentation. Suitable for CLI
  * use where the user runs their own code. For server use, prefer
  * "isolated-vm" or "quickjs".
  */
@@ -254,16 +254,16 @@ async function executeInVm(
  * Validate code in a separate V8 isolate, then execute in `node:vm`.
  *
  * Two-phase approach:
- *  1. **Validate** — run the transpiled code in a true V8 isolate with stub
+ *  1. **Validate**: run the transpiled code in a true V8 isolate with stub
  *     React/component implementations. This catches disallowed imports and
  *     structural errors inside a genuine security boundary (separate heap,
  *     128 MB memory cap, timeout). Escape requires a V8 engine bug.
- *  2. **Execute** — run the validated code in `node:vm` with real React
+ *  2. **Execute**: run the validated code in `node:vm` with real React
  *     objects for actual rendering.
  *
  * Why two phases: React's internal type system uses Symbols
  * (`Symbol(react.forward_ref)`, `Symbol(react.element)`, etc.) which cannot
- * be transferred across V8 isolate boundaries — the structured clone
+ * be transferred across V8 isolate boundaries, the structured clone
  * algorithm does not support Symbols. Running React code directly inside
  * `isolated-vm` is not possible.
  */
@@ -470,7 +470,7 @@ async function executeInQuickJs(
       }
     }
 
-    // Phase 2: Code validated as safe — execute in node:vm for actual
+    // Phase 2: Code validated as safe; execute in node:vm for actual
     // React rendering (React objects can't cross the WASM boundary)
     return executeInVm(code, React, ReactEmailComponents);
   } finally {

@@ -1,7 +1,7 @@
 import type { CodeFix } from "../types";
 
 /**
- * HTML/generic code fix snippets — entries that do NOT have a
+ * HTML/generic code fix snippets: entries that do NOT have a
  * ::jsx, ::mjml, or ::maizzle suffix in their key.
  */
 export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
@@ -375,12 +375,12 @@ h1 {
     description: "Account for padding in width manually (no box-sizing)",
     before: `<div style="width: 300px; padding: 20px;
             box-sizing: border-box;">
-  Content — total width stays 300px
+  Content; total width stays 300px
 </div>`,
     after: `<!-- Set width to content-width (300 - 40 = 260px) -->
 <div style="width: 300px;">
   <div style="padding: 20px;">
-    Content — padding on inner element
+    Content; padding on inner element
   </div>
 </div>`,
   },
@@ -467,7 +467,7 @@ h1 {
   // ── transition (not supported) ────────────────────────────────────────
   "transition": {
     language: "css",
-    description: "Transitions don't work in email — style the default state well",
+    description: "Transitions don't work in email; style the default state well",
     before: `.button {
   background-color: #6d28d9;
   transition: background-color 0.2s;
@@ -488,7 +488,7 @@ h1 {
   // ── background-size (Outlook) → VML ───────────────────────────────────
   "background-size": {
     language: "html",
-    description: "Outlook ignores background-size — use VML or sized images",
+    description: "Outlook ignores background-size; use VML or sized images",
     before: `<td style="background: url('bg.jpg') center/cover no-repeat;">
   Content
 </td>`,
@@ -511,7 +511,7 @@ h1 {
   // ── overflow (Gmail strips it) ────────────────────────────────────────
   "overflow": {
     language: "html",
-    description: "Content will always be visible — design for full content display",
+    description: "Content will always be visible; design for full content display",
     before: `<div style="max-height: 200px; overflow: hidden;">
   Long content that gets clipped...
 </div>`,
@@ -621,7 +621,7 @@ h1 {
   // ── max-height → fixed height ────────────────────────────────────────
   "max-height": {
     language: "html",
-    description: "Outlook ignores max-height — truncate content server-side",
+    description: "Outlook ignores max-height; truncate content server-side",
     before: `<div style="max-height: 200px; overflow: hidden;">
   Long content...
 </div>`,

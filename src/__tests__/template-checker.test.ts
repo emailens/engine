@@ -72,7 +72,7 @@ describe("template-checker", () => {
   });
 
   test("does not flag short single-brace tokens (< 3 chars)", () => {
-    // {a} and {ab} should not match — too short, likely false positive
+    // {a} and {ab} should not match, too short, likely false positive
     const html = `<html><body><p>Test {a} and {ab} end</p></body></html>`;
     const report = checkTemplateVariables(html);
     const singleBraceIssues = report.issues.filter(i => i.variable === "{a}" || i.variable === "{ab}");

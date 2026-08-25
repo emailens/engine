@@ -9,7 +9,7 @@ import type { OverflowIssue, OverflowReport, SourceLocation } from "./types";
 /**
  * Read an element's fixed pixel width, from either an inline `width: Npx`
  * style or a numeric `width` HTML attribute (which is px). Returns null for
- * percentage / auto / missing widths — those are responsive, not fixed.
+ * percentage / auto / missing widths; those are responsive, not fixed.
  */
 function fixedPxWidth($el: ReturnType<CheerioAPI>): number | null {
   const style = $el.attr("style") || "";
@@ -45,7 +45,7 @@ function addWidthIssue(
   const issue: OverflowIssue = {
     rule: "fixed-width-overflow",
     severity: "warning",
-    message: `${label} has a fixed width of ${width}px, wider than the ${EMAIL_MAX_WIDTH}px email frame — it will force horizontal scrolling, especially on mobile.`,
+    message: `${label} has a fixed width of ${width}px, wider than the ${EMAIL_MAX_WIDTH}px email frame; it will force horizontal scrolling, especially on mobile.`,
     detail: `Use width:100% with max-width:${EMAIL_MAX_WIDTH}px instead of a fixed width beyond the frame.`,
     ...(loc ? { loc, locs: [loc] } : {}),
   };
@@ -57,7 +57,7 @@ function addWidthIssue(
  * Resolve a position in the concatenated text back to the node it starts in.
  *
  * A run that spans nodes (`<b>aaa</b>bbb`) is anchored where it begins, with
- * the length clipped to that node — one range cannot cover both halves, and
+ * the length clipped to that node: one range cannot cover both halves, and
  * the start is what a reader needs.
  */
 function locateInNodes(
@@ -100,7 +100,7 @@ function addOccurrence(issue: { locs?: SourceLocation[]; locsTruncated?: boolean
 }
 
 /**
- * Detect content that will overflow the email frame / mobile viewport — a
+ * Detect content that will overflow the email frame / mobile viewport, a
  * client-agnostic layout check (not per-client CSS support). Two heuristics:
  *
  *  1. Fixed pixel widths wider than the standard email frame with no fluid
@@ -111,7 +111,7 @@ function addOccurrence(issue: { locs?: SourceLocation[]; locsTruncated?: boolean
  * widths or media-query responsiveness, so a fixed-width element made fluid via
  * a media query may still be flagged (warning, not error). The unbreakable
  * check is skipped entirely when the email already uses overflow-wrap/word-break
- * somewhere — assume the author is handling wrapping — trading recall for far
+ * somewhere, assume the author is handling wrapping, trading recall for far
  * fewer false positives.
  */
 export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowReport {
@@ -172,14 +172,14 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
     });
   });
 
-  // 2. Long unbreakable strings in visible text — skip if the email already
+  // 2. Long unbreakable strings in visible text: skip if the email already
   //    opts into wrapping anywhere (author is handling it).
   const usesWrapGuard = /overflow-wrap|word-break|word-wrap/i.test($.html());
   if (!usesWrapGuard) {
     // Scan the concatenated text, not each node: `<b>aaa</b>bbb` renders as one
     // unbroken run, and it is that run's length that decides whether it
     // overflows. Node boundaries are tracked alongside so the run can still be
-    // pointed at — it is anchored where it starts.
+    // pointed at; it is anchored where it starts.
     const nodes = visibleTextNodes($);
     const starts: number[] = [];
     let text = "";

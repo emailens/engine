@@ -7,9 +7,9 @@ import pkg from "../../package.json";
  * anything failing, and both did.
  *
  * A peer range can grow past what the code supports. `@maizzle/framework` was
- * declared `>=5.0.0` when Maizzle 6 moved to Vue single-file components —
+ * declared `>=5.0.0` when Maizzle 6 moved to Vue single-file components,
  * `render()` takes an SFC source or a file path where `compileMaizzle()`
- * passes template text — so a consumer could install 6, satisfy the range, and
+ * passes template text, so a consumer could install 6, satisfy the range, and
  * get `Failed to load url <their whole template>` at runtime.
  *
  * And the version CI exercises can fall behind the version consumers install.
@@ -67,7 +67,7 @@ describe("optional peer compilers", () => {
   });
 
   it("tests the current major of each compiler it supports", () => {
-    // Not "the latest version" — that would fail on every upstream release.
+    // Not "the latest version", that would fail on every upstream release.
     // The devDependency range and the installed version have to agree, so a
     // bump is a deliberate act with the suite run against it.
     for (const name of COMPILERS) {
@@ -80,7 +80,7 @@ describe("optional peer compilers", () => {
     // The specific thing this file exists for. Maizzle 6's render() takes a
     // Vue SFC source or a path; compileMaizzle() passes template text. Six of
     // the compile-maizzle tests fail against it, two of them the ones
-    // asserting `{{ process.env.SECRET }}` cannot leak — they fail because
+    // asserting `{{ process.env.SECRET }}` cannot leak; they fail because
     // nothing compiles rather than because anything leaked, but the guarantee
     // is unverified there either way.
     //
@@ -97,7 +97,7 @@ describe("optional peer compilers", () => {
   it("keeps the type packages on the same major as what they describe", () => {
     // mjml ships no types of its own, so `@types/mjml` is the only thing
     // telling TypeScript what `await import("mjml")` returns. Left on 4 while
-    // mjml moved to 5, it describes an API that is not the one installed —
+    // mjml moved to 5, it describes an API that is not the one installed:
     // the same drift as the versions above, and quieter, because a wrong type
     // fails nothing until it lets a real mistake through.
     const pairs: Array<[string, string]> = [["@types/mjml", "mjml"]];

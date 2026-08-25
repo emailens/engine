@@ -6,7 +6,7 @@ import { checkAccessibility, checkDarkModeContrast, checkMobileContrast, checkDa
 const cheerioOf = (html: string) => cheerio.load(html);
 
 // ============================================================================
-// Accessible emails; should score high
+// Accessible emails: should score high
 // ============================================================================
 
 describe("accessibility checker: accessible emails", () => {

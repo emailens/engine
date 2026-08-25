@@ -33,14 +33,14 @@ export function checkSizeFromDom(_$: CheerioAPI, html: string): SizeReport {
     issues.push({
       rule: "gmail-clipped",
       severity: "error",
-      message: `Email is ${humanSize} — Gmail will clip it at ~102 KB. Recipients see a "View entire message" link instead of your content.`,
+      message: `Email is ${humanSize}; Gmail will clip it at ~102 KB. Recipients see a "View entire message" link instead of your content.`,
       detail: `${htmlBytes} bytes exceeds the ${GMAIL_CLIP_THRESHOLD} byte threshold.`,
     });
   } else if (htmlBytes > GMAIL_CLIP_WARNING_THRESHOLD) {
     issues.push({
       rule: "gmail-clip-warning",
       severity: "warning",
-      message: `Email is ${humanSize} — approaching Gmail's ~102 KB clip threshold. Consider trimming.`,
+      message: `Email is ${humanSize}, approaching Gmail's ~102 KB clip threshold. Consider trimming.`,
       detail: `${htmlBytes} bytes is within ${GMAIL_CLIP_THRESHOLD - htmlBytes} bytes of the clip threshold.`,
     });
   }

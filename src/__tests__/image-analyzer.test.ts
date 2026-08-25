@@ -2,10 +2,10 @@ import { describe, test, expect } from "bun:test";
 import { analyzeImages } from "../index";
 
 // ============================================================================
-// Clean images — should have no issues
+// Clean images: should have no issues
 // ============================================================================
 
-describe("image analyzer — clean images", () => {
+describe("image analyzer: clean images", () => {
   test("image with all attributes is clean", () => {
     const html = `<html><body>
       <img src="https://cdn.example.com/hero.png" alt="Hero banner" width="600" height="300" style="display:block;">
@@ -36,7 +36,7 @@ describe("image analyzer — clean images", () => {
 // Individual rule detection
 // ============================================================================
 
-describe("image analyzer — individual rules", () => {
+describe("image analyzer: individual rules", () => {
   test("detects missing width/height", () => {
     const html = `<html><body>
       <img src="https://cdn.example.com/photo.jpg" alt="Photo">
@@ -127,7 +127,7 @@ describe("image analyzer — individual rules", () => {
 // Tracking pixel detection
 // ============================================================================
 
-describe("image analyzer — tracking pixels", () => {
+describe("image analyzer: tracking pixels", () => {
   test("detects 1x1 tracking pixel", () => {
     const html = `<html><body>
       <img src="https://track.example.com/pixel.gif" width="1" height="1" alt="">
@@ -178,7 +178,7 @@ describe("image analyzer — tracking pixels", () => {
 // Data URI analysis
 // ============================================================================
 
-describe("image analyzer — data URIs", () => {
+describe("image analyzer: data URIs", () => {
   test("calculates data URI size correctly", () => {
     const payload = "AAAA".repeat(10); // 40 chars = 30 bytes
     const html = `<html><body>
@@ -217,7 +217,7 @@ describe("image analyzer — data URIs", () => {
 // Aggregate checks
 // ============================================================================
 
-describe("image analyzer — aggregate checks", () => {
+describe("image analyzer: aggregate checks", () => {
   test("flags high image count (>10)", () => {
     const imgs = Array.from(
       { length: 12 },
@@ -246,7 +246,7 @@ describe("image analyzer — aggregate checks", () => {
 // ImageInfo output
 // ============================================================================
 
-describe("image analyzer — image info", () => {
+describe("image analyzer: image info", () => {
   test("returns correct ImageInfo for each image", () => {
     const html = `<html><body>
       <img src="https://cdn.example.com/hero.jpg" alt="Hero" width="600" height="300" style="display:block;">
@@ -280,7 +280,7 @@ describe("image analyzer — image info", () => {
 // Resilience
 // ============================================================================
 
-describe("image analyzer — resilience", () => {
+describe("image analyzer: resilience", () => {
   test("handles malformed HTML", () => {
     const html = `<body><img src="broken" <div>mess`;
     expect(() => analyzeImages(html)).not.toThrow();

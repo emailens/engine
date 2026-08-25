@@ -97,7 +97,7 @@ function checkCapsRatio(text: string): SpamIssue | null {
     return {
       rule: "caps-ratio",
       severity: "warning",
-      message: `${Math.round(ratio * 100)}% of words are ALL CAPS — spam filters flag excessive capitalization.`,
+      message: `${Math.round(ratio * 100)}% of words are ALL CAPS; spam filters flag excessive capitalization.`,
       detail: `Found ${capsWords.length} of ${words.length} words in all caps.`,
     };
   }
@@ -117,7 +117,7 @@ function checkExcessivePunctuation(text: string): SpamIssue | null {
     return {
       rule: "excessive-punctuation",
       severity: "warning",
-      message: `Excessive special characters detected (${exclamations} "!", ${dollars} "$") — common spam trigger.`,
+      message: `Excessive special characters detected (${exclamations} "!", ${dollars} "$"), a common spam trigger.`,
     };
   }
   return null;
@@ -179,12 +179,12 @@ function checkUnsubscribe(
     const signalCount = signalMatches.length + (hasOtp ? 1 : 0);
 
     if (signalCount >= 2) {
-      // Looks transactional — downgrade to info instead of error
+      // Looks transactional: downgrade to info instead of error
       return {
         rule: "missing-unsubscribe",
         severity: "info",
         message:
-          "No unsubscribe link found, but email appears transactional — may not be required.",
+          "No unsubscribe link found, but email appears transactional, so it may not be required.",
         detail: `Detected transactional signals: ${signalMatches.join(", ")}${hasOtp ? ", OTP code" : ""}`,
       };
     }
@@ -193,7 +193,7 @@ function checkUnsubscribe(
       rule: "missing-unsubscribe",
       severity: "error",
       message:
-        "No unsubscribe link found — required by CAN-SPAM and GDPR. Most spam filters penalize this.",
+        "No unsubscribe link found; required by CAN-SPAM and GDPR. Most spam filters penalize this.",
       detail: 'Add an <a> link with "unsubscribe" text or href.',
     };
   }
@@ -222,7 +222,7 @@ function isLikelyPreheader(
   text: string,
 ): boolean {
   // Measure VISIBLE length. The padding above is not text a human or a spam
-  // filter ever sees, but counting it blew past this ceiling — which meant the
+  // filter ever sees, but counting it blew past this ceiling, which meant the
   // standard preheader of every React Email was reported as "major spam filter
   // red flag". The ceiling itself still matters: it stops someone hiding a wall
   // of keywords behind preheader-shaped CSS, so strip the padding, don't raise
@@ -242,7 +242,7 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
     const text = $(el).text().trim();
     if (!text) return;
 
-    // visibility:hidden is always flagged — no legitimate preheader use
+    // visibility:hidden is always flagged; no legitimate preheader use
     if (/visibility\s*:\s*hidden/.test(style)) {
       found = true;
       detail = "visibility:hidden on element with text content";
@@ -270,7 +270,7 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
     return {
       rule: "hidden-text",
       severity: "error",
-      message: "Hidden text detected — major spam filter red flag.",
+      message: "Hidden text detected: a major spam filter red flag.",
       detail,
     };
   }
@@ -300,7 +300,7 @@ function checkUrlShorteners($: cheerio.CheerioAPI): SpamIssue[] {
         issues.push({
           rule: "url-shortener",
           severity: "warning",
-          message: `URL shortener detected (${shortener}) — spam filters distrust shortened links.`,
+          message: `URL shortener detected (${shortener}); spam filters distrust shortened links.`,
           detail: href,
         });
       }
@@ -321,7 +321,7 @@ function checkImageToTextRatio(
     return {
       rule: "image-only",
       severity: "error",
-      message: `Image-heavy email with almost no text (${text.length} chars, ${images} images) — likely to be flagged as spam or clipped.`,
+      message: `Image-heavy email with almost no text (${text.length} chars, ${images} images), likely to be flagged as spam or clipped.`,
     };
   }
 
@@ -330,7 +330,7 @@ function checkImageToTextRatio(
     return {
       rule: "high-image-ratio",
       severity: "warning",
-      message: `High image-to-text ratio (${images} images for ${text.length} chars of text) — consider adding more text content.`,
+      message: `High image-to-text ratio (${images} images for ${text.length} chars of text); consider adding more text content.`,
     };
   }
   return null;
@@ -373,7 +373,7 @@ function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
           issues.push({
             rule: "deceptive-link",
             severity: "error",
-            message: `Link text shows "${textDomain}" but links to "${hrefDomain}" — phishing red flag.`,
+            message: `Link text shows "${textDomain}" but links to "${hrefDomain}": a phishing red flag.`,
             detail: `Text: ${text}\nHref: ${href}`,
           });
         }
@@ -389,7 +389,7 @@ function checkDeceptiveLinks($: cheerio.CheerioAPI): SpamIssue[] {
 //
 // Anglo addresses put the street TYPE last ("123 Main St"); Romance and
 // Germanic ones put it right after the number ("12 chemin du Beauregard",
-// "Bahnhofstrasse 5"). Both orders are matched — the US-only pattern flagged
+// "Bahnhofstrasse 5"). Both orders are matched: the US-only pattern flagged
 // every European address as missing, which is wrong on a checker used
 // worldwide.
 // Anglo, type last ("123 Main St", "221B Baker Street"). The [A-Za-z]? allows
@@ -415,7 +415,7 @@ function checkPhysicalAddress(
   if (options?.emailType === "transactional") return null;
 
   // Check visible text for street address patterns. A postal code alone is too
-  // weak (any 5-digit number), so require a street signal too — in any of the
+  // weak (any 5-digit number), so require a street signal too: in any of the
   // three word orders.
   const hasStreet =
     STREET_ADDRESS_PATTERN.test(text) ||
@@ -445,7 +445,7 @@ function checkPhysicalAddress(
   return {
     rule: "missing-physical-address",
     severity: "warning",
-    message: "No physical mailing address detected — required by CAN-SPAM for marketing emails.",
+    message: "No physical mailing address detected; required by CAN-SPAM for marketing emails.",
     detail: "Include a street address or P.O. Box in the email footer.",
   };
 }
@@ -474,7 +474,7 @@ function checkAllCapsTitle($: cheerio.CheerioAPI): SpamIssue | null {
     return {
       rule: "all-caps-subject",
       severity: "warning",
-      message: "Email title/subject is ALL CAPS — common spam indicator.",
+      message: "Email title/subject is ALL CAPS: a common spam indicator.",
     };
   }
   return null;

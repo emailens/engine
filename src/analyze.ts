@@ -86,7 +86,7 @@ const COMPOUND_DETECTORS: Array<{
 /** CSS function detection: require opening paren to avoid false positives (e.g., "min" in "Minion"). */
 const CSS_FUNCTION_DETECTORS = CSS_FUNCTION_FEATURES.map((fn) => ({
   key: fn,
-  pattern: `${fn}(`, // require opening paren — matches "min(" but not "Minion"
+  pattern: `${fn}(`, // require opening paren, matches "min(" but not "Minion"
 }));
 
 // ── Analysis ─────────────────────────────────────────────────────────────────
@@ -116,8 +116,8 @@ export function analyzeEmailFromDom(
       warnings.push(w);
       return;
     }
-    // Same finding, another element. One warning still covers the property —
-    // scores count properties, not elements — but the occurrence is worth
+    // Same finding, another element. One warning still covers the property
+    // (scores count properties, not elements), but the occurrence is worth
     // keeping so a consumer can flag all of them, not just the first.
     if (!existing.locs || !w.locs) return;
     for (const loc of w.locs) {
@@ -146,7 +146,7 @@ export function analyzeEmailFromDom(
   // 1. Data-driven HTML element detection
   for (const feature of HTML_ELEMENT_FEATURES) {
     const selector = HTML_ELEMENT_SELECTORS[feature];
-    if (!selector) continue; // Element not in our detection map — skip
+    if (!selector) continue; // Element not in our detection map; skip
     const matches = $(selector);
     if (matches.length === 0) continue;
 
@@ -362,7 +362,7 @@ export function analyzeEmailFromDom(
 
       if (cssPropertiesToCheck.includes(prop)) {
         const declared = getStyleValues(style, prop);
-        // A property declared twice is two places, not one — and the value at
+        // A property declared twice is two places, not one, and the value at
         // each is what decides whether a given client's caveat applies there.
         // Values and locations stay in step, so a client that only breaks on
         // the second is pointed at the second.
@@ -448,7 +448,7 @@ export function analyzeEmailFromDom(
  * for all target email clients.
  *
  * The `framework` parameter controls which fix snippets are attached
- * to warnings — it does NOT change which warnings fire. Analysis always
+ * to warnings; it does NOT change which warnings fire. Analysis always
  * runs on compiled HTML (what email clients actually receive). Fix
  * snippets reference source-level constructs so users know how to
  * modify their framework source code.
@@ -497,7 +497,7 @@ function checkPropertySupport(
 ) {
   const loc = occurrences?.locs[0];
   // With positions on, the legacy `line` reports the document line rather than
-  // the line within the <style> block — a strict improvement for consumers
+  // the line within the <style> block; a strict improvement for consumers
   // still reading it.
   const reportedLine = loc?.line ?? line;
   const supportData = CSS_SUPPORT[prop];
@@ -574,7 +574,7 @@ export function generateCompatibilityScore(
     const info = infoProps.size;
 
     // Score: 100 minus penalties, clamped to 0-100
-    // Partial-support (info) items are not penalised — they mostly work
+    // Partial-support (info) items are not penalised; they mostly work
     const score = Math.max(0, Math.min(100, 100 - errors * 10 - warns * 3));
 
     result[client.id] = { score, errors, warnings: warns, info };
@@ -592,7 +592,7 @@ function occurrenceFields({ locs, truncated }: Occurrences) {
  * Narrow a property's occurrences to the declarations that actually trigger
  * this client's caveat. A sheet setting `font-size: 14px` in one rule and
  * `font-size: 1rem` in another reports once, and it should underline the
- * `1rem` — pointing at the `14px` next to "rem values are not supported" is
+ * `1rem`: pointing at the `14px` next to "rem values are not supported" is
  * worse than no position at all. Falls back to the full list when the
  * declaration behind each location is unknown (inline styles, where the
  * location is the whole `style` attribute) or when nothing narrows.

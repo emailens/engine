@@ -21,7 +21,7 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your email against 255 CSS and HTML features across 21 email clients, scores compatibility, and shows you exactly what to fix — before you hit send.
+`@emailens/engine` analyzes your email against 255 CSS and HTML features across 21 email clients, scores compatibility, and shows you exactly what to fix: before you hit send.
 
 Write it however you like. **HTML, MJML, Maizzle and React Email** all go in the front: the engine compiles the template with your own compiler and lints the HTML that actually gets sent, which is the only version your reader sees.
 
@@ -29,7 +29,7 @@ Our data says you need this: of those 255 features, **only 6 are fully supported
 
 ![emailens lint output showing errors and warnings across email clients](./docs/lint-demo.png)
 
-> **[emailens.dev](https://emailens.dev)** — Try the hosted version. Paste HTML, get a full audit in seconds.
+> **[emailens.dev](https://emailens.dev)**: Try the hosted version. Paste HTML, get a full audit in seconds.
 
 ## Quick Start
 
@@ -108,19 +108,19 @@ const { code } = await generateAiFix({
 
 10 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility** — 255 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
-- **Content overflow** — fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
-- **Visual bugs** — gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix
-- **Spam scoring** — 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
-- **Accessibility** — WCAG contrast ratios, alt text, semantic structure, heading hierarchy
-- **Link validation** — broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
-- **Image analysis** — missing dimensions, oversized data URIs, tracking pixels, WebP/SVG format
-- **Inbox preview** — subject/preheader truncation per client, Gmail clipping detection
-- **Domain authentication** — SPF, DKIM, DMARC, MX, and BIMI DNS record validation
-- **Template variables** — unresolved merge tags across 6 template systems (Handlebars, ERB, Mailchimp, etc.)
+- **CSS compatibility**: 255 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
+- **Content overflow**: fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
+- **Visual bugs**: gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix
+- **Spam scoring**: 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
+- **Accessibility**: WCAG contrast ratios, alt text, semantic structure, heading hierarchy
+- **Link validation**: broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
+- **Image analysis**: missing dimensions, oversized data URIs, tracking pixels, WebP/SVG format
+- **Inbox preview**: subject/preheader truncation per client, Gmail clipping detection
+- **Domain authentication**: SPF, DKIM, DMARC, MX, and BIMI DNS record validation
+- **Template variables**: unresolved merge tags across 6 template systems (Handlebars, ERB, Mailchimp, etc.)
 
-Every finding can carry its **source position** — line, column and offset, plus
-every place it occurs — so a result can be pointed at, annotated on a pull
+Every finding can carry its **source position**: line, column and offset, plus
+every place it occurs, so a result can be pointed at, annotated on a pull
 request, or fixed in place:
 
 ```typescript
@@ -140,17 +140,17 @@ Three entry points:
 
 | Import | Description |
 |---|---|
-| `@emailens/engine` | Core analysis — CSS, spam, a11y, links, images, inbox preview, size, templates, AI fix |
+| `@emailens/engine` | Core analysis: CSS, spam, a11y, links, images, inbox preview, size, templates, AI fix |
 | `@emailens/engine/compile` | JSX / MJML / Maizzle → HTML compilers |
 | `@emailens/engine/server` | Node-only: DNS deliverability checks, SpamAssassin integration |
 
 ## Why Emailens?
 
-- **Offline-first** — runs entirely locally, no network calls required (except DNS deliverability checks)
-- **Unified audit** — one function call returns CSS compatibility, spam, accessibility, links, images, inbox preview, size, and template checks
-- **Framework-aware** — fix snippets tailored to React Email (JSX), MJML, and Maizzle
-- **AI-ready** — structural issues get LLM-powered auto-fix with any provider (Claude, GPT, etc.)
-- **Programmable** — TypeScript API, not a GUI — integrate into CI, editors, or build pipelines
+- **Offline-first**: runs entirely locally, no network calls required (except DNS deliverability checks)
+- **Unified audit**: one function call returns CSS compatibility, spam, accessibility, links, images, inbox preview, size, and template checks
+- **Framework-aware**: fix snippets tailored to React Email (JSX), MJML, and Maizzle
+- **AI-ready**: structural issues get LLM-powered auto-fix with any provider (Claude, GPT, etc.)
+- **Programmable**: a TypeScript API, not a GUI. Drops into CI, editors, or build pipelines
 
 | | @emailens/engine | Litmus | Email on Acid | caniemail.com |
 |---|---|---|---|---|
@@ -162,7 +162,7 @@ Three entry points:
 
 ### vs other email libraries
 
-`@emailens/engine` sits in the **QA / lint / scoring** slot — it analyzes finished HTML. It's complementary to (not a replacement for) composition and inlining libraries.
+`@emailens/engine` sits in the **QA / lint / scoring** slot: it analyzes finished HTML. It's complementary to (not a replacement for) composition and inlining libraries.
 
 | | @emailens/engine | [juice](https://github.com/automattic/juice) | [email-comb](https://github.com/codsen/email-comb) | [mjml](https://mjml.io/) | [maizzle](https://maizzle.com/) |
 |---|---|---|---|---|---|
@@ -206,7 +206,7 @@ A typical pipeline: write in **mjml** or **maizzle** → inline with **juice** �
 Full API reference: **[docs/API.md](./docs/API.md)**
 
 Covers:
-- `auditEmail` and `createSession` — core analysis
+- `auditEmail` and `createSession`: core analysis
 - Standalone analyzers (CSS, spam, links, accessibility, images, inbox preview, size, templates)
 - DNS deliverability and SpamAssassin integration
 - Client transforms and dark mode simulation
@@ -234,7 +234,7 @@ Contributions are welcome! See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for arch
 bun install && bun test   # 719 tests
 ```
 
-Optional real-render validation — renders engine output in a real browser engine (free, no Litmus/Email on Acid needed). Off by default; needs a browser-capable machine:
+Optional real-render validation: renders engine output in a real browser engine (free, no Litmus/Email on Acid needed). Off by default; needs a browser-capable machine:
 
 ```bash
 bunx playwright install chromium
@@ -254,7 +254,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md#data-sources-and-freshness) for full det
 
 ## License
 
-MIT — Copyright 2025 [Emailens](https://emailens.dev)
+MIT, Copyright 2025 [Emailens](https://emailens.dev)
 
 ---
 

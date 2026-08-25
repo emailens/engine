@@ -18,7 +18,7 @@ import { MAX_HTML_SIZE } from "./constants";
 
 /** Check if a selector contains pseudo-classes or pseudo-elements. */
 function hasPseudoSelector(selector: string): boolean {
-  // Match :pseudo or ::pseudo — but not bare : in attribute selectors like [attr:value]
+  // Match :pseudo or ::pseudo, but not bare : in attribute selectors like [attr:value]
   // This catches :hover, :focus, :nth-of-type, :not(), ::before, ::after, etc.
   return /(?<![[\w])::?[a-z][\w-]*(?:\(|(?=[^(]))/i.test(selector);
 }
@@ -203,7 +203,7 @@ function gmailAdditionalChecks(
 ): CSSWarning[] {
   const warnings: CSSWarning[] = [];
 
-  // Check for @font-face (must happen before style removal — called pre-strip)
+  // Check for @font-face (must happen before style removal, called pre-strip)
   let hasAtFontFace = false;
   $("style").each((_, el) => {
     try {
@@ -540,7 +540,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "outlook-macos": {
     id: "outlook-macos",
     // caniemail: the new (WebKit) Outlook for Mac supports position/transform/
-    // animation/box-shadow/opacity — only transition is unsupported. It is NOT
+    // animation/box-shadow/opacity; only transition is unsupported. It is NOT
     // the Word engine, so do not mirror outlook-web's broader strip set.
     strippedProperties: new Set(["transition"]),
     stripMode: "strip",
@@ -632,7 +632,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     additionalChecks: heyAdditionalChecks,
   },
   // ponytail: strip sets below are data-driven from caniemail (the same source
-  // as CSS_SUPPORT), not hand-guessed — no manual re-verification debt.
+  // as CSS_SUPPORT), not hand-guessed; no manual re-verification debt.
   "protonmail": {
     id: "protonmail",
     // caniemail: strips animation + external stylesheets + forms; supports
@@ -646,7 +646,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "aol": {
     id: "aol",
-    // caniemail: restrictive — drops animation, box-shadow, opacity, transform,
+    // caniemail: restrictive; drops animation, box-shadow, opacity, transform,
     // external stylesheets, and SVG. Forms are kept.
     strippedProperties: new Set(["animation", "box-shadow", "opacity", "transform"]),
     stripMode: "strip",

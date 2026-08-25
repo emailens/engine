@@ -8,7 +8,7 @@
 import { promises as defaultDns } from "node:dns";
 import type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";
 
-/** DNS resolver interface — injectable for testing. */
+/** DNS resolver interface: injectable for testing. */
 export interface DnsResolver {
   resolveMx: typeof defaultDns.resolveMx;
   resolveTxt: typeof defaultDns.resolveTxt;
@@ -25,7 +25,7 @@ const DNS_TIMEOUT_MS = 5_000;
 
 /**
  * Race a DNS call against a timeout. Node's DNS API has no signal support,
- * so we use Promise.race — the underlying query may continue in the background
+ * so we use Promise.race; the underlying query may continue in the background
  * but we stop waiting.
  */
 async function withTimeout<T>(
@@ -47,7 +47,7 @@ async function withTimeout<T>(
 }
 
 /**
- * Safe DNS TXT lookup — returns empty array on ENOTFOUND/ENODATA.
+ * Safe DNS TXT lookup: returns empty array on ENOTFOUND/ENODATA.
  */
 async function resolveTxtSafe(domain: string, dns: DnsResolver): Promise<string[]> {
   try {
@@ -72,7 +72,7 @@ async function checkMX(domain: string, dns: DnsResolver): Promise<Deliverability
       return {
         name: "mx",
         status: "fail",
-        message: "No MX records found — domain cannot receive email.",
+        message: "No MX records found; domain cannot receive email.",
       };
     }
     const sorted = records.sort((a, b) => a.priority - b.priority);
@@ -88,7 +88,7 @@ async function checkMX(domain: string, dns: DnsResolver): Promise<Deliverability
       return {
         name: "mx",
         status: "fail",
-        message: "No MX records found — domain cannot receive email.",
+        message: "No MX records found; domain cannot receive email.",
       };
     }
     // Gracefully handle all DNS failures (ESERVFAIL, ECONNREFUSED, timeouts, etc.)
@@ -108,7 +108,7 @@ async function checkSPF(domain: string, dns: DnsResolver): Promise<Deliverabilit
     return {
       name: "spf",
       status: "fail",
-      message: "No SPF record found — receiving servers can't verify authorized senders.",
+      message: "No SPF record found; receiving servers can't verify authorized senders.",
       detail: 'Add a TXT record starting with "v=spf1" to your domain.',
     };
   }
@@ -118,7 +118,7 @@ async function checkSPF(domain: string, dns: DnsResolver): Promise<Deliverabilit
     return {
       name: "spf",
       status: "fail",
-      message: "SPF record uses +all — this allows any server to send as your domain.",
+      message: "SPF record uses +all; this allows any server to send as your domain.",
       record: spfRecord,
       detail: "Replace +all with -all (hard fail) or ~all (soft fail) to restrict authorized senders.",
     };
@@ -139,7 +139,7 @@ async function checkSPF(domain: string, dns: DnsResolver): Promise<Deliverabilit
     return {
       name: "spf",
       status: "warn",
-      message: "SPF record uses ~all (soft fail) — consider upgrading to -all (hard fail) for stronger protection.",
+      message: "SPF record uses ~all (soft fail); consider upgrading to -all (hard fail) for stronger protection.",
       record: spfRecord,
     };
   }
@@ -182,7 +182,7 @@ async function checkDKIM(domain: string, dns: DnsResolver): Promise<Deliverabili
   return {
     name: "dkim",
     status: "warn",
-    message: `No DKIM records found for ${DKIM_SELECTORS.length} common selectors — DKIM may use a custom selector we didn't probe.`,
+    message: `No DKIM records found for ${DKIM_SELECTORS.length} common selectors; DKIM may use a custom selector we didn't probe.`,
     detail: "This doesn't mean DKIM is missing; the actual selector may differ from the common ones we checked.",
   };
 }
@@ -195,7 +195,7 @@ async function checkDMARC(domain: string, dns: DnsResolver): Promise<Deliverabil
     return {
       name: "dmarc",
       status: "fail",
-      message: "No DMARC record found — inbox providers may reject or quarantine your emails.",
+      message: "No DMARC record found; inbox providers may reject or quarantine your emails.",
       detail: 'Add a TXT record at _dmarc.yourdomain.com starting with "v=DMARC1".',
     };
   }
@@ -207,7 +207,7 @@ async function checkDMARC(domain: string, dns: DnsResolver): Promise<Deliverabil
     return {
       name: "dmarc",
       status: "warn",
-      message: 'DMARC record found with p=none (monitoring only) — consider upgrading to p=quarantine or p=reject.',
+      message: 'DMARC record found with p=none (monitoring only); consider upgrading to p=quarantine or p=reject.',
       record: dmarcRecord,
     };
   }
@@ -228,7 +228,7 @@ async function checkBIMI(domain: string, dns: DnsResolver): Promise<Deliverabili
     return {
       name: "bimi",
       status: "skip",
-      message: "No BIMI record found — optional brand indicator (logo in inbox).",
+      message: "No BIMI record found; BIMI is an optional brand indicator (logo in inbox).",
       detail: "BIMI is a nice-to-have. It displays your brand logo next to emails in supported clients.",
     };
   }
@@ -236,7 +236,7 @@ async function checkBIMI(domain: string, dns: DnsResolver): Promise<Deliverabili
   return {
     name: "bimi",
     status: "pass",
-    message: "BIMI record found — your brand logo may appear in supported email clients.",
+    message: "BIMI record found; your brand logo may appear in supported email clients.",
     record: bimiRecord,
   };
 }
@@ -262,7 +262,7 @@ export async function checkDeliverability(
 ): Promise<DeliverabilityReport> {
   const dns: DnsResolver = options?._resolver ?? defaultDns;
 
-  // Normalize domain — strip protocol, path, and port
+  // Normalize domain: strip protocol, path, and port
   const cleanDomain = domain.trim().toLowerCase()
     .replace(/^https?:\/\//, "")
     .replace(/\/.*$/, "")
@@ -281,7 +281,7 @@ export async function checkDeliverability(
     };
   }
 
-  // Run all checks in parallel — use allSettled so one failure can't crash the rest
+  // Run all checks in parallel: use allSettled so one failure can't crash the rest
   const checkNames: DeliverabilityCheck["name"][] = ["mx", "spf", "dkim", "dmarc", "bimi"];
   const settled = await Promise.allSettled([
     checkMX(cleanDomain, dns),
@@ -297,7 +297,7 @@ export async function checkDeliverability(
       : { name: checkNames[i], status: "skip" as const, message: `Check failed: ${result.reason?.message ?? "unknown error"}` },
   );
 
-  // Calculate score — skip checks are excluded from the denominator
+  // Calculate score; skip checks are excluded from the denominator
   const weights: Record<string, number> = {
     mx: 25,
     spf: 25,

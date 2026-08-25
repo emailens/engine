@@ -21,7 +21,7 @@ export interface GenerateAiFixOptions extends ExportPromptOptions {
  * to build a structured prompt, then delegates to an LLM for context-aware
  * structural fixes that static snippets cannot handle.
  *
- * The engine stays provider-agnostic — consumers pass their own `AiProvider`
+ * The engine stays provider-agnostic: consumers pass their own `AiProvider`
  * callback (Anthropic SDK, Vercel AI SDK, OpenRouter, etc.).
  *
  * @example
@@ -82,7 +82,7 @@ export async function generateAiFix(
 
   const response = await provider(prompt);
 
-  // Extract code from the response — the LLM may wrap it in a code fence
+  // Extract code from the response; the LLM may wrap it in a code fence
   const code = extractCode(response);
 
   return {
@@ -103,7 +103,7 @@ export const AI_FIX_SYSTEM_PROMPT = `You are an expert email developer specializ
 Rules:
 - Return ONLY the fixed code inside a single code fence. No explanations before or after.
 - Preserve all existing content, text, links, and visual design.
-- For structural issues (fixType: "structural"), you MUST restructure the HTML — CSS-only changes will not work.
+- For structural issues (fixType: "structural"), you MUST restructure the HTML; CSS-only changes will not work.
 - Common structural patterns:
   - word-break/overflow-wrap unsupported → wrap text in <table><tr><td> with constrained width
   - display:flex/grid → convert to <table> layout (match the original column count and proportions)
@@ -114,7 +114,7 @@ Rules:
   - <svg> → replace with <img> pointing to a hosted PNG
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.
 - For "Layout & Visual Issues", apply the provided Fix directly: add the background-color fallback beneath a gradient/image, append a web-safe font to the stack, and constrain fixed widths wider than the frame to width:100% with max-width.
-- Apply ALL fixes from the issues list — do not skip any.
+- Apply ALL fixes from the issues list: do not skip any.
 - Use the framework syntax specified (JSX/MJML/Maizzle/HTML).
 - For JSX: use camelCase style props, React Email components, and proper TypeScript types.
 - For MJML: use mj-* elements and attributes.

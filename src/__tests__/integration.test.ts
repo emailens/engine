@@ -93,7 +93,7 @@ describe("Full pipeline integration", () => {
     expect(report.compatibility.warnings.length).toBeGreaterThan(0);
     expect(Object.keys(report.compatibility.scores).length).toBeGreaterThanOrEqual(10);
 
-    // Spam — should be clean (has unsubscribe link)
+    // Spam; should be clean (has unsubscribe link)
     expect(report.spam.score).toBeGreaterThanOrEqual(70);
 
     // Links

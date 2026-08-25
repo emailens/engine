@@ -103,7 +103,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
         issues.push({
           rule: "missing-dimensions",
           severity: "warning",
-          message: "Image missing width/height attributes — causes layout shifts and Outlook rendering issues.",
+          message: "Image missing width/height attributes, causes layout shifts and Outlook rendering issues.",
           src: truncateSrc(src),
           ...(elLoc ? { loc: elLoc } : {}),
         });
@@ -117,7 +117,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       issues.push({
         rule: "large-data-uri",
         severity: "warning",
-        message: `Data URI is ${kb}KB — consider hosting the image externally to reduce email size.`,
+        message: `Data URI is ${kb}KB; consider hosting the image externally to reduce email size.`,
         src: truncateSrc(src),
         ...(srcLoc ? { loc: srcLoc } : {}),
       });
@@ -129,7 +129,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       issues.push({
         rule: "missing-alt",
         severity: "warning",
-        message: "Image missing alt attribute — hurts deliverability and accessibility.",
+        message: "Image missing alt attribute, hurts deliverability and accessibility.",
         src: truncateSrc(src),
         ...(elLoc ? { loc: elLoc } : {}),
       });
@@ -141,7 +141,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       issues.push({
         rule: "webp-format",
         severity: "info",
-        message: "WebP format detected — not supported by all email clients. Consider PNG or JPEG.",
+        message: "WebP format detected, not supported by all email clients. Consider PNG or JPEG.",
         src: truncateSrc(src),
         ...(srcLoc ? { loc: srcLoc } : {}),
       });
@@ -153,7 +153,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       issues.push({
         rule: "svg-format",
         severity: "info",
-        message: "SVG format detected — not supported by most email clients. Use PNG instead.",
+        message: "SVG format detected, not supported by most email clients. Use PNG instead.",
         src: truncateSrc(src),
         ...(srcLoc ? { loc: srcLoc } : {}),
       });
@@ -165,7 +165,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       issues.push({
         rule: "missing-display-block",
         severity: "info",
-        message: "Image without display:block — may cause unwanted gaps in Outlook.",
+        message: "Image without display:block, may cause unwanted gaps in Outlook.",
         src: truncateSrc(src),
         ...(elLoc ? { loc: elLoc } : {}),
       });
@@ -187,7 +187,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
     issues.push({
       rule: "high-image-count",
       severity: "info",
-      message: `Email contains ${nonTrackingImages.length} images — heavy emails may be clipped or load slowly.`,
+      message: `Email contains ${nonTrackingImages.length} images; heavy emails may be clipped or load slowly.`,
     });
   }
 
@@ -205,7 +205,7 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
     issues.push({
       rule: "total-data-uri-size",
       severity: "warning",
-      message: `Total data URI size is ${kb}KB — consider hosting images externally to reduce email size.`,
+      message: `Total data URI size is ${kb}KB; consider hosting images externally to reduce email size.`,
     });
   }
 

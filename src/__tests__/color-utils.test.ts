@@ -5,7 +5,7 @@ import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } f
 // parseColor
 // ============================================================================
 
-describe("color-utils — parseColor", () => {
+describe("color-utils: parseColor", () => {
   test("parses 3-digit hex (#fff)", () => {
     const c = parseColor("#fff");
     expect(c).toEqual({ r: 255, g: 255, b: 255, a: 1 });
@@ -63,7 +63,7 @@ describe("color-utils — parseColor", () => {
 // relativeLuminance
 // ============================================================================
 
-describe("color-utils — relativeLuminance", () => {
+describe("color-utils: relativeLuminance", () => {
   test("white has luminance ~1", () => {
     expect(relativeLuminance(255, 255, 255)).toBeCloseTo(1, 2);
   });
@@ -77,7 +77,7 @@ describe("color-utils — relativeLuminance", () => {
 // contrastRatio
 // ============================================================================
 
-describe("color-utils — contrastRatio", () => {
+describe("color-utils: contrastRatio", () => {
   test("black on white ≈ 21:1", () => {
     const lWhite = relativeLuminance(255, 255, 255);
     const lBlack = relativeLuminance(0, 0, 0);
@@ -94,7 +94,7 @@ describe("color-utils — contrastRatio", () => {
 // wcagGrade
 // ============================================================================
 
-describe("color-utils — wcagGrade", () => {
+describe("color-utils: wcagGrade", () => {
   test("21:1 → AAA", () => {
     expect(wcagGrade(21)).toBe("AAA");
   });
@@ -120,7 +120,7 @@ describe("color-utils — wcagGrade", () => {
 // alphaBlend
 // ============================================================================
 
-describe("color-utils — alphaBlend", () => {
+describe("color-utils: alphaBlend", () => {
   test("opaque foreground ignores background", () => {
     const result = alphaBlend({ r: 255, g: 0, b: 0, a: 1 }, 0, 0, 255);
     expect(result).toEqual([255, 0, 0]);

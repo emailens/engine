@@ -65,7 +65,7 @@ export function toPlainText(html: string): string {
       return;
     }
 
-    // Links — inline, append URL if different from text
+    // Links: inline, append URL if different from text
     if (tag === "a") {
       const href = $(el).attr("href") || "";
       const text = $(el).text().trim();
@@ -76,7 +76,7 @@ export function toPlainText(html: string): string {
       } else {
         currentLine += `${text} (${href})`;
       }
-      return; // don't recurse into children — already extracted text
+      return; // don't recurse into children, already extracted text
     }
 
     // Block elements: flush before and after

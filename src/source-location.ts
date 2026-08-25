@@ -47,7 +47,7 @@ function toLoc(p: Parse5Location): SourceLocation {
 }
 
 /**
- * Location of an element's opening tag — `<a href="…">`, not the element plus
+ * Location of an element's opening tag: `<a href="…">`, not the element plus
  * all of its children. That keeps editor ranges tight enough to squiggle.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,7 +58,7 @@ export function locOfElement(el: any): SourceLocation | undefined {
 }
 
 /**
- * Location of one attribute — `href="https://…"` including the name, the `=`
+ * Location of one attribute: `href="https://…"` including the name, the `=`
  * and the quotes. Falls back to the element when the attribute has no recorded
  * position (it was added after parsing, or locations are off).
  */
@@ -80,8 +80,8 @@ export function locOfAttr(el: any, attr: string): SourceLocation | undefined {
  *
  * Needs the raw source, because the DOM keeps the decoded attribute value and
  * an index into that is not an index into the file. Returns undefined rather
- * than a guess whenever the declaration cannot be found exactly — an entity in
- * the attribute, a property that only exists after decoding — and the caller
+ * than a guess whenever the declaration cannot be found exactly, an entity in
+ * the attribute, a property that only exists after decoding, and the caller
  * falls back to the whole attribute.
  *
  * `occurrence` picks among repeats: `style="display:block;display:flex"` is
@@ -123,7 +123,7 @@ export function locInAttr(
  * Every `property: value` in a style attribute's value, by index.
  *
  * Split on semicolons outside parentheses, so `background:url(a;b.png)` stays
- * one declaration, and match the property at the head of its own declaration —
+ * one declaration, and match the property at the head of its own declaration,
  * not inside a value, where `background: url(font-size.png)` would otherwise
  * look like a `font-size`.
  */
@@ -169,7 +169,7 @@ export interface CssBlockAnchor {
   loc: Parse5Location;
   /** Extra source characters before a given index of the decoded text. */
   extraBefore: ((index: number) => number) | null;
-  /** The whole document, when the caller had it — makes positions exact. */
+  /** The whole document, when the caller had it: makes positions exact. */
   source?: string;
 }
 
@@ -205,8 +205,8 @@ export function cssBlockAnchor(
 /**
  * Maps an index in decoded text to the source offset it came from.
  *
- * parse5 hands analyzers decoded text — CRLF collapsed to LF, character
- * references resolved — so an index into that text is not an index into the
+ * parse5 hands analyzers decoded text: CRLF collapsed to LF, character
+ * references resolved, so an index into that text is not an index into the
  * file. Walking the raw and decoded spans in step records exactly where they
  * diverge, which is what makes `&amp;` and mixed line endings resolvable at
  * all. Returns `null` if the two don't line up, so callers fall back rather
@@ -267,7 +267,7 @@ function lookup(points: number[], extras: number[], index: number): number {
  *
  * Walking the two in step doesn't work for text: `&amp;` decodes to `&`, so a
  * left-to-right walk can't tell a literal ampersand from the start of a
- * reference without backtracking. Counting occurrences sidesteps it — the nth
+ * reference without backtracking. Counting occurrences sidesteps it, the nth
  * occurrence of the token in the decoded text is the nth in the source, as
  * long as the token itself wasn't encoded. Returns -1 when it was.
  */
@@ -326,7 +326,7 @@ export function locInCssBlock(
   if (!anchor || !cssLoc) return undefined;
   const { loc: block, extraBefore } = anchor;
 
-  // Newline normalization can't be undone for this block — point at the block
+  // Newline normalization can't be undone for this block: point at the block
   // itself rather than emit an offset that disagrees with its line/column.
   if (!extraBefore) {
     return {
@@ -352,7 +352,7 @@ export function locInCssBlock(
   const end = block.startOffset + cssLoc.end.offset + extraBefore(cssLoc.end.offset);
 
   // With the source, read the line and column off the offset rather than
-  // deriving them — they can't disagree with each other that way.
+  // deriving them: they can't disagree with each other that way.
   if (anchor.source) {
     const from = positionOf(anchor.source, start);
     const to = positionOf(anchor.source, end);
@@ -374,7 +374,7 @@ export function locInCssBlock(
  *
  * Falls back to the start of the node when the node's decoded text is a
  * different length than its source (i.e. it contains character references, so
- * indices no longer map onto the document) — the node is still the right node,
+ * indices no longer map onto the document); the node is still the right node,
  * only the column within it is approximate.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -414,7 +414,7 @@ export function locInTextNode(
 
   const extraBefore = crOffsetter(data, rawLength);
 
-  // Character references shifted every index in this node — point at the node,
+  // Character references shifted every index in this node: point at the node,
   // which is still the right node, with a range that stays inside it.
   if (!extraBefore) {
     const clamped = Math.min(length, rawLength);

@@ -6,14 +6,14 @@ import { parseInlineStyle, serializeStyle } from "./style-utils";
 import type { CSSWarning } from "./types";
 import { getClient } from "./clients";
 
-/** Luminance threshold — colors above this are considered "light" */
+/** Luminance threshold: colors above this are considered "light" */
 export const LIGHT_THRESHOLD = 0.7;
-/** Luminance threshold — colors below this are considered "dark" */
+/** Luminance threshold; colors below this are considered "dark" */
 const DARK_THRESHOLD = 0.15;
 
 /**
  * Clients whose `simulateDarkMode` branch below treats `prefers-color-scheme`
- * as honoured — i.e. the ones that actually run an email's dark-mode CSS.
+ * as honoured, i.e. the ones that actually run an email's dark-mode CSS.
  * Single source of truth, also used by `dark-mode-checker.ts`.
  * Keep in sync with the switch below.
  */
@@ -149,7 +149,7 @@ export function simulateDarkMode(
 
     case "apple-mail-macos":
     case "apple-mail-ios":
-      // Apple Mail respects prefers-color-scheme but does NOT force inversion when absent —
+      // Apple Mail respects prefers-color-scheme but does NOT force inversion when absent;
       // it leaves email content as-is (no color changes) unless the email opts in via
       // <meta name="color-scheme" content="light dark"> or prefers-color-scheme media queries.
       if (!html.includes("prefers-color-scheme")) {
@@ -228,7 +228,7 @@ export function simulateDarkMode(
           message:
             "Superhuman respects @media (prefers-color-scheme: dark). Many Superhuman users run in dark mode.",
           suggestion:
-            "Add @media (prefers-color-scheme: dark) styles — Superhuman's power-user audience often prefers dark mode.",
+            "Add @media (prefers-color-scheme: dark) styles; Superhuman's power-user audience often prefers dark mode.",
         });
       }
       break;
@@ -281,7 +281,7 @@ const COLOR_PROPS = new Set([
   "outline-color",
 ]);
 
-/** Background shorthand — extract color portion */
+/** Background shorthand: extract color portion */
 function extractBackgroundColor(value: string): string | null {
   // Simple heuristic: if background value starts with a color, extract it
   const trimmed = value.trim();

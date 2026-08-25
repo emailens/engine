@@ -35,7 +35,7 @@ export const MJML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── display:flex ──────────────────────────────────────────────────────
   "display:flex::mjml":
-    "Use mj-section and mj-column — MJML compiles these to table-based layouts.",
+    "Use mj-section and mj-column; MJML compiles these to table-based layouts.",
 
   // ── display:grid ──────────────────────────────────────────────────────
   "display:grid::mjml":
@@ -51,7 +51,7 @@ export const MJML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── border-radius ─────────────────────────────────────────────────────
   "border-radius::mjml":
-    'MJML does not generate VML — border-radius will not render in Outlook. Set border-radius="0" or accept flat corners.',
+    'MJML does not generate VML; border-radius will not render in Outlook. Set border-radius="0" or accept flat corners.',
 
   // ── max-width ─────────────────────────────────────────────────────────
   "max-width::mjml":
@@ -67,7 +67,7 @@ export const MJML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── background-image ──────────────────────────────────────────────────
   "background-image::mjml":
-    "Use background-url attribute on mj-section — MJML generates VML automatically.",
+    "Use background-url attribute on mj-section; MJML generates VML automatically.",
 
   // ── position ──────────────────────────────────────────────────────────
   "position::mjml":

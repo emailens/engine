@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { analyzeSpam } from "../index";
 
 // ============================================================================
-// Showcase email — the same HTML used in the landing-page demo + pipeline tests
+// Showcase email: the same HTML used in the landing-page demo + pipeline tests
 // ============================================================================
 
 const SHOWCASE_EMAIL = `<!DOCTYPE html>
@@ -22,10 +22,10 @@ const SHOWCASE_EMAIL = `<!DOCTYPE html>
 </html>`;
 
 // ============================================================================
-// Clean emails — should score high
+// Clean emails: should score high
 // ============================================================================
 
-describe("spam scorer — clean emails", () => {
+describe("spam scorer: clean emails", () => {
   test("showcase email scores well (has unsubscribe)", () => {
     const report = analyzeSpam(SHOWCASE_EMAIL);
     expect(report.score).toBeGreaterThanOrEqual(70);
@@ -56,10 +56,10 @@ describe("spam scorer — clean emails", () => {
 });
 
 // ============================================================================
-// Spammy emails — should score low
+// Spammy emails: should score low
 // ============================================================================
 
-describe("spam scorer — spammy emails", () => {
+describe("spam scorer: spammy emails", () => {
   test("classic spam email scores very low", () => {
     const html = `<html><body>
       <h1>CONGRATULATIONS YOU'VE WON!!!</h1>
@@ -90,7 +90,7 @@ describe("spam scorer — spammy emails", () => {
 // Individual rule detection
 // ============================================================================
 
-describe("spam scorer — individual rules", () => {
+describe("spam scorer: individual rules", () => {
   test("detects missing unsubscribe link", () => {
     const html = `<html><body>
       <p>Hello, this is a newsletter with lots of content for testing.</p>
@@ -253,7 +253,7 @@ describe("spam scorer — individual rules", () => {
 // Score boundaries and edge cases
 // ============================================================================
 
-describe("spam scorer — score calculation", () => {
+describe("spam scorer: score calculation", () => {
   test("score is always between 0 and 100", () => {
     const spammy = `<html><body>
       <h1>FREE!!! ACT NOW!!! BUY NOW!!! WINNER!!!</h1>
@@ -292,7 +292,7 @@ describe("spam scorer — score calculation", () => {
 // Resilience
 // ============================================================================
 
-describe("spam scorer — resilience", () => {
+describe("spam scorer: resilience", () => {
   test("handles HTML with no body", () => {
     const html = `<html><head><title>Test</title></head></html>`;
     expect(() => analyzeSpam(html)).not.toThrow();
@@ -320,10 +320,10 @@ describe("spam scorer — resilience", () => {
 });
 
 // ============================================================================
-// Fix #1: Hidden text — preheader exemption
+// Fix #1: Hidden text, preheader exemption
 // ============================================================================
 
-describe("spam scorer — preheader exemption (fix #1)", () => {
+describe("spam scorer: preheader exemption (fix #1)", () => {
   test("preheader with display:none + overflow:hidden is NOT flagged", () => {
     const html = `<html><body>
       <div style="display:none;overflow:hidden;max-height:0;">Preview text for inbox</div>
@@ -371,9 +371,9 @@ describe("spam scorer — preheader exemption (fix #1)", () => {
   test("React Email's zero-width-padded preheader is NOT flagged", () => {
     // React Email's <Preview> pads the preheader with hundreds of zero-width
     // characters so body copy does not leak into the inbox snippet. They are
-    // invisible, so they are not "text" — but they counted toward the 200-char
+    // invisible, so they are not "text", but they counted toward the 200-char
     // ceiling, which meant the standard preheader of every React Email was
-    // reported as "Hidden text detected — major spam filter red flag".
+    // reported as "Hidden text detected; major spam filter red flag".
     const padding = "‌​‍‎‏ ".repeat(50);
     const html = `<html><body>
       <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">SPF check failed for acme.com${padding}</div>
@@ -438,10 +438,10 @@ describe("spam scorer — preheader exemption (fix #1)", () => {
 });
 
 // ============================================================================
-// Fix #2: Deceptive links — ESP tracking domain exemption
+// Fix #2: Deceptive links, ESP tracking domain exemption
 // ============================================================================
 
-describe("spam scorer — ESP tracking domains (fix #2)", () => {
+describe("spam scorer: ESP tracking domains (fix #2)", () => {
   test("Mailchimp tracked link is NOT flagged as deceptive", () => {
     const html = `<html><body>
       <a href="https://click.mailchimp.com/track?u=abc&id=123">https://example.com/sale</a>
@@ -494,10 +494,10 @@ describe("spam scorer — ESP tracking domains (fix #2)", () => {
 });
 
 // ============================================================================
-// Fix #3: URL shorteners — hostname matching
+// Fix #3: URL shorteners, hostname matching
 // ============================================================================
 
-describe("spam scorer — URL shortener hostname matching (fix #3)", () => {
+describe("spam scorer: URL shortener hostname matching (fix #3)", () => {
   test("https://contact.com is NOT flagged as URL shortener (t.co substring)", () => {
     const html = `<html><body>
       <a href="https://contact.com/page">Visit us</a>
@@ -548,10 +548,10 @@ describe("spam scorer — URL shortener hostname matching (fix #3)", () => {
 });
 
 // ============================================================================
-// Fix #4: Unsubscribe — transactional exemption + options API
+// Fix #4: Unsubscribe, transactional exemption + options API
 // ============================================================================
 
-describe("spam scorer — transactional exemption (fix #4)", () => {
+describe("spam scorer: transactional exemption (fix #4)", () => {
   test("transactional password reset without unsubscribe is NOT error", () => {
     const html = `<html><body>
       <p>Reset your password</p>
@@ -634,10 +634,10 @@ describe("spam scorer — transactional exemption (fix #4)", () => {
 });
 
 // ============================================================================
-// Fix #5: Punctuation — scaled threshold + $ price exemption
+// Fix #5: Punctuation, scaled threshold + $ price exemption
 // ============================================================================
 
-describe("spam scorer — punctuation scaling (fix #5)", () => {
+describe("spam scorer: punctuation scaling (fix #5)", () => {
   test("price-heavy email with $29 $49 $99 is NOT flagged for punctuation", () => {
     const html = `<html><body>
       <p>Our plans: Basic $29/mo, Pro $49/mo, Enterprise $99/mo.</p>
@@ -685,10 +685,10 @@ describe("spam scorer — punctuation scaling (fix #5)", () => {
 });
 
 // ============================================================================
-// Fix #6: Spam phrases — word boundary matching
+// Fix #6: Spam phrases, word boundary matching
 // ============================================================================
 
-describe("spam scorer — word boundary matching (fix #6)", () => {
+describe("spam scorer: word boundary matching (fix #6)", () => {
   test('"unlimited time" is NOT flagged for "limited time" phrase', () => {
     const html = `<html><body>
       <p>You have unlimited time to complete the task at hand.</p>
@@ -744,7 +744,7 @@ describe("spam scorer — word boundary matching (fix #6)", () => {
 // Full false-positive scenario: Mailchimp newsletter
 // ============================================================================
 
-describe("spam scorer — realistic newsletter (integration)", () => {
+describe("spam scorer: realistic newsletter (integration)", () => {
   test("Mailchimp newsletter with preheader and tracked links scores well", () => {
     const html = `<html><body>
       <div style="display:none;font-size:0;max-height:0;overflow:hidden;mso-hide:all;">
@@ -773,7 +773,7 @@ describe("spam scorer — realistic newsletter (integration)", () => {
 // International physical-address detection
 // ============================================================================
 
-describe("spam scorer — physical address is not US-only", () => {
+describe("spam scorer: physical address is not US-only", () => {
   // A footer with an address must not be flagged as missing one, whatever the
   // country's street-word order. The US-only pattern flagged every European
   // address, which is wrong on a checker used worldwide.
@@ -805,7 +805,7 @@ describe("spam scorer — physical address is not US-only", () => {
   test("a bare-name street (Dutch 'Damrak 12') is caught by the <address> tag", () => {
     // Some countries write streets with no type word at all, which no content
     // regex can reliably recognise. The reliable, correct signal is the
-    // <address> element — the semantic tag for exactly this — which is why our
+    // <address> element, the semantic tag for exactly this, which is why our
     // own email footer uses it. Do not try to regex every country's format.
     const html = `<html><body>
       <p>Hello, here is your weekly update with enough words for testing.</p>
@@ -817,7 +817,7 @@ describe("spam scorer — physical address is not US-only", () => {
   });
 
   test("an email with no address at all is still flagged", () => {
-    // The broadening must not disarm the check — a bare postal-code-shaped
+    // The broadening must not disarm the check, a bare postal-code-shaped
     // number is not an address.
     const html = `<html><body>
       <p>Buy now! Limited offer, order 50000 units today.</p>

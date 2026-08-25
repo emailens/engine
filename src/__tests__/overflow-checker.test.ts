@@ -3,7 +3,7 @@ import { checkOverflow, auditEmail, createSession } from "../index";
 
 const rules = (html: string) => checkOverflow(html).issues.map((i) => i.rule);
 
-describe("checkOverflow — fixed widths", () => {
+describe("checkOverflow: fixed widths", () => {
   test("flags a fixed width wider than the email frame", () => {
     expect(rules(`<table width="700"><tr><td>x</td></tr></table>`)).toContain("fixed-width-overflow");
     expect(rules(`<div style="width: 720px">x</div>`)).toContain("fixed-width-overflow");
@@ -24,7 +24,7 @@ describe("checkOverflow — fixed widths", () => {
   });
 });
 
-describe("checkOverflow — fixed widths in <style> blocks", () => {
+describe("checkOverflow: fixed widths in <style> blocks", () => {
   test("flags an over-wide width declared in a <style> rule", () => {
     expect(rules(`<style>.w{width:900px}</style><div class="w">x</div>`)).toContain("fixed-width-overflow");
   });
@@ -34,7 +34,7 @@ describe("checkOverflow — fixed widths in <style> blocks", () => {
   });
 });
 
-describe("checkOverflow — unbreakable strings", () => {
+describe("checkOverflow: unbreakable strings", () => {
   test("flags a long unbroken string in visible text", () => {
     expect(rules(`<p>Visit https://example.com/very/long/tracking/aaaaaaaaaaaaaaaaaaaaaaaa now</p>`))
       .toContain("unbreakable-string");
@@ -55,7 +55,7 @@ describe("checkOverflow — unbreakable strings", () => {
   });
 });
 
-describe("checkOverflow — integration", () => {
+describe("checkOverflow: integration", () => {
   test("blank input is clean", () => {
     const r = checkOverflow("");
     expect(r.hasOverflow).toBe(false);

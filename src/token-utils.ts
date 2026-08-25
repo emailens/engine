@@ -195,7 +195,7 @@ function truncateWarnings(
 
   let result = [...warnings];
 
-  // Step 1: Deduplicate — keep one warning per property per severity,
+  // Step 1: Deduplicate; keep one warning per property per severity,
   // preferring the most relevant client
   const seen = new Set<string>();
   result = result.filter((w) => {

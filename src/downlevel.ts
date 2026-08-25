@@ -64,7 +64,7 @@ function extractFunctionCall(
  * Check if an rgb/rgba call uses space syntax (needs conversion).
  */
 function isSpaceSyntaxRgb(args: string): boolean {
-  // Space syntax: "R G B" or "R G B / A" — no commas
+  // Space syntax: "R G B" or "R G B / A"; no commas
   const inner = args.trim();
   return !inner.includes(",") && /^\d/.test(inner);
 }
@@ -331,7 +331,7 @@ function resolveCSSVariables(ast: csstree.CssNode): void {
 
   if (varDefs.length === 0) return;
 
-  // Resolve var() references — track the enclosing Rule selector for scoping
+  // Resolve var() references: track the enclosing Rule selector for scoping
   csstree.walk(ast, {
     visit: "Rule",
     enter(rule) {
@@ -355,7 +355,7 @@ function resolveCSSVariables(ast: csstree.CssNode): void {
           const varName = commaIdx !== -1 ? fullArgs.slice(0, commaIdx).trim() : fullArgs.trim();
           const fallback = commaIdx !== -1 ? fullArgs.slice(commaIdx + 1).trim() : null;
 
-          // Look up the variable — only from scopes that could apply to this selector
+          // Look up the variable, only from scopes that could apply to this selector
           let resolved: string | null = null;
 
           // Priority: same selector > universal selectors (:root, *, html)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * sync-caniemail.ts — Fetches CSS/HTML feature support data from caniemail.com
+ * sync-caniemail.ts: Fetches CSS/HTML feature support data from caniemail.com
  * and generates src/rules/css-support.ts with 150+ properties.
  *
  * Usage: bun run scripts/sync-caniemail.ts
@@ -249,7 +249,7 @@ function featureToPropertyKey(feature: CanIEmailFeature): string | null {
   if (category === "css" || category === "others") {
     const t = title.toLowerCase().trim();
 
-    // At-rules — take just the at-rule name (first word)
+    // At-rules: take just the at-rule name (first word)
     if (t.startsWith("@")) {
       return t.split(/[\s(,]/)[0];
     }
@@ -258,7 +258,7 @@ function featureToPropertyKey(feature: CanIEmailFeature): string | null {
     const funcMatch = t.match(/^([\w-]+)\(\)$/);
     if (funcMatch) return funcMatch[1];
 
-    // Regular CSS properties — title is the property name
+    // Regular CSS properties; title is the property name
     if (/^[a-z][a-z0-9-]*$/.test(t)) return t;
 
     // Derive from slug as fallback
@@ -413,7 +413,7 @@ function generateTsFile(
   lines.push(`import type { SupportLevel } from "../types";`);
   lines.push(``);
   lines.push(`/**`);
-  lines.push(` * CSS/HTML feature support matrix — auto-generated from caniemail.com.`);
+  lines.push(` * CSS/HTML feature support matrix: auto-generated from caniemail.com.`);
   lines.push(` * Last synced: ${new Date().toISOString().slice(0, 10)}`);
   lines.push(` * caniemail last updated: ${lastUpdate}`);
   lines.push(` *`);
@@ -430,7 +430,7 @@ function generateTsFile(
   lines.push(` * - hey-mail: caniemail.com (WebKit-based)`);
   lines.push(` * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)`);
   lines.push(` *`);
-  lines.push(` * DO NOT EDIT — regenerate with: bun run sync:caniemail`);
+  lines.push(` * DO NOT EDIT; regenerate with: bun run sync:caniemail`);
   lines.push(` */`);
   lines.push(`export const CSS_SUPPORT: Record<`);
   lines.push(`  string,`);
@@ -450,12 +450,12 @@ function generateTsFile(
   lines.push(`};`);
   lines.push(``);
 
-  // Per-cell caveat notes from caniemail (sparse — only cells that have one).
+  // Per-cell caveat notes from caniemail (sparse, only cells that have one).
   // Used by analyze.ts to make partial/unsupported warnings specific and
   // value-aware (e.g. only flag `margin` on negative/auto values).
   const noteKeys = sortedKeys.filter((k) => notesMatrix[k] && Object.keys(notesMatrix[k]).length);
   lines.push(`/**`);
-  lines.push(` * Caveat notes per (feature, client) from caniemail — the "why" behind a`);
+  lines.push(` * Caveat notes per (feature, client) from caniemail: the "why" behind a`);
   lines.push(` * partial/buggy/unsupported rating. Sparse: only cells with a note appear.`);
   lines.push(` */`);
   lines.push(`export const CSS_SUPPORT_NOTES: Record<`);
@@ -478,7 +478,7 @@ function generateTsFile(
   // Generate manual sets
   lines.push(`/**`);
   lines.push(` * CSS properties that Gmail strips from inline styles.`);
-  lines.push(` * Updated per caniemail.com data — Gmail keeps float and display (basic values).`);
+  lines.push(` * Updated per caniemail.com data: Gmail keeps float and display (basic values).`);
   lines.push(` */`);
   lines.push(`export const GMAIL_STRIPPED_PROPERTIES = new Set([`);
   for (const prop of GMAIL_STRIPPED_PROPERTIES) {

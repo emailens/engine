@@ -8,7 +8,7 @@ export const MJML_FIX_DATABASE: Record<string, CodeFix> = {
   // ── word-break (MJML) ────────────────────────────────────────────────
   "word-break::mjml": {
     language: "mjml",
-    description: "MJML renders text in table cells by default — word-break works via mj-text",
+    description: "MJML renders text in table cells by default; word-break works via mj-text",
     before: `<mj-text>
   <span style="word-break: break-all;">Long URL here</span>
 </mj-text>`,
@@ -65,7 +65,7 @@ export const MJML_FIX_DATABASE: Record<string, CodeFix> = {
   // ── border-radius (Outlook MJML) ────────────────────────────────────
   "border-radius::outlook::mjml": {
     language: "mjml",
-    description: "MJML limitation: border-radius is unsupported in Outlook — MJML does not generate VML",
+    description: "MJML limitation: border-radius is unsupported in Outlook; MJML does not generate VML",
     before: `<mj-button border-radius="6px" background-color="#6d28d9">
   Click Here
 </mj-button>`,
@@ -107,7 +107,7 @@ export const MJML_FIX_DATABASE: Record<string, CodeFix> = {
   </div>
 </mj-raw>`,
     after: `<!-- Flexbox in MJML is not Outlook-compatible.
-     Use mj-section and mj-column — MJML compiles these to table-based layouts. -->
+     Use mj-section and mj-column: MJML compiles these to table-based layouts. -->
 <mj-section>
   <mj-column width="50%">
     <mj-text>Column 1</mj-text>

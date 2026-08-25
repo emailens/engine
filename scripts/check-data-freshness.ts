@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * check-data-freshness.ts — Flags manually-curated data that may be stale.
+ * check-data-freshness.ts; Flags manually-curated data that may be stale.
  *
  * The engine relies on factual data about email client behavior that can
  * become outdated as clients release updates. This script scans source files
@@ -8,17 +8,17 @@
  * 90 days.
  *
  * Tracked data sources:
- *   1. CSS support matrix — auto-synced from caniemail.com (reads "Last synced" date)
- *   2. Dark mode behavior — manually verified against Litmus/Can I Email
- *   3. Client display limits — manually verified against Email Tool Tester/Litmus
- *   4. Superhuman CSS overrides — manually tested (no public data source exists)
+ *   1. CSS support matrix; auto-synced from caniemail.com (reads "Last synced" date)
+ *   2. Dark mode behavior: manually verified against Litmus/Can I Email
+ *   3. Client display limits: manually verified against Email Tool Tester/Litmus
+ *   4. Superhuman CSS overrides: manually tested (no public data source exists)
  *
  * Usage:
  *   bun run check:freshness           # or: bun run scripts/check-data-freshness.ts
  *
  * Exit codes:
- *   0 — all data sources are fresh
- *   1 — one or more sources are stale or missing a verification date
+ *   0: all data sources are fresh
+ *   1: one or more sources are stale or missing a verification date
  *
  * Adding a new tracked source:
  *   1. Add a "Last verified: YYYY-MM-DD" comment to the source file
@@ -56,7 +56,7 @@ function extractDateComment(filePath: string, pattern: RegExp): string | null {
 
 const root = path.resolve(import.meta.dir, "..");
 
-// Tracked data sources — add one by appending an entry (see the file header).
+// Tracked data sources: add one by appending an entry (see the file header).
 const SOURCES: Array<{
   name: string;
   file: string;
@@ -78,7 +78,7 @@ const SOURCES: Array<{
     file: "src/dark-mode.ts",
     pattern: /Last verified:\s*(\d{4}-\d{2}-\d{2})/,
     verb: "Last verified",
-    missingMsg: "No 'Last verified' date found — add a comment like: * Last verified: 2026-03-04",
+    missingMsg: "No 'Last verified' date found; add a comment like: * Last verified: 2026-03-04",
     verifyHow: "Check Litmus dark mode guide (litmus.com/blog/the-ultimate-guide-to-dark-mode-for-email-marketers) and caniemail.com prefers-color-scheme data",
   },
   {
@@ -86,7 +86,7 @@ const SOURCES: Array<{
     file: "src/constants.ts",
     pattern: /Display limits last verified:\s*(\d{4}-\d{2}-\d{2})/,
     verb: "Last verified",
-    missingMsg: "No 'Display limits last verified' date found — add a comment above CLIENT_DISPLAY_LIMITS",
+    missingMsg: "No 'Display limits last verified' date found; add a comment above CLIENT_DISPLAY_LIMITS",
     verifyHow: "Check emailtooltester.com/en/blog/email-subject-lines-character-limit/ and litmus.com preview text guide",
   },
   {
@@ -94,7 +94,7 @@ const SOURCES: Array<{
     file: "scripts/superhuman-overrides.ts",
     pattern: /Last verified:\s*(\d{4}-\d{2}-\d{2})/,
     verb: "Last verified",
-    missingMsg: "No 'Last verified' date found — add a comment",
+    missingMsg: "No 'Last verified' date found; add a comment",
     verifyHow: "Manual testing in Superhuman app or checking for Superhuman engineering blog posts",
   },
 ];

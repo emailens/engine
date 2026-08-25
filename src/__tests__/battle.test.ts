@@ -1,5 +1,5 @@
 /**
- * Battle tests — comprehensive edge-case coverage for all critical/important fixes.
+ * Battle tests: comprehensive edge-case coverage for all critical/important fixes.
  *
  * Tests are grouped by the issue they validate:
  * - DNS timeout handling
@@ -51,7 +51,7 @@ function createMockResolver(overrides?: Partial<Record<string, () => Promise<unk
 }
 
 // ============================================================================
-// Issue #1: DNS timeout — withTimeout must use Promise.race
+// Issue #1: DNS timeout; withTimeout must use Promise.race
 // ============================================================================
 
 describe("DNS timeout handling", () => {
@@ -128,7 +128,7 @@ describe("CSS function false positive prevention", () => {
     const html = `<html><body><div style="width: min(100%, 600px);">Content</div></body></html>`;
     const warnings = analyzeEmail(html);
     const minWarnings = warnings.filter((w) => w.property === "min");
-    // min() has limited email client support — should produce at least one warning
+    // min() has limited email client support, should produce at least one warning
     expect(minWarnings.length).toBeGreaterThan(0);
   });
 
@@ -156,7 +156,7 @@ describe("pseudo-selector and pseudo-element detection", () => {
     const html = `<html><head><style>a:hover { color: red; }</style></head><body><a href="#">Link</a></body></html>`;
     const warnings = analyzeEmail(html);
     const hoverWarnings = warnings.filter((w) => w.property === ":hover");
-    // :hover has limited support in email — at least one client should warn
+    // :hover has limited support in email, at least one client should warn
     if (CSS_SUPPORT[":hover"]) {
       const unsupportedClients = Object.entries(CSS_SUPPORT[":hover"]).filter(([, v]) => v === "unsupported");
       if (unsupportedClients.length > 0) {
@@ -190,7 +190,7 @@ describe("pseudo-selector and pseudo-element detection", () => {
   });
 
   // Regression: :focus-visible / :focus-within must be keyed with the colon
-  // prefix (via SLUG_TO_KEY), or analyzeEmail — which looks up `:${name}` —
+  // prefix (via SLUG_TO_KEY), or analyzeEmail, which looks up `:${name}`,
   // can never match them and the support data is dead.
   it.each([":focus-visible", ":focus-within"])("detects %s in <style> blocks", (pseudo) => {
     expect(CSS_SUPPORT[pseudo]).toBeDefined();
@@ -330,7 +330,7 @@ describe("domain normalization", () => {
 });
 
 // ============================================================================
-// Issue #16: Score calculation — skip checks excluded from denominator
+// Issue #16: Score calculation; skip checks excluded from denominator
 // ============================================================================
 
 describe("deliverability score calculation", () => {
@@ -362,7 +362,7 @@ describe("deliverability score calculation", () => {
     const report = await checkDeliverability("example.com", { _resolver: resolver });
     const bimi = report.checks.find((c) => c.name === "bimi");
     expect(bimi?.status).toBe("skip");
-    // Score should be 100 — BIMI skip is excluded from denominator
+    // Score should be 100; BIMI skip is excluded from denominator
     expect(report.score).toBe(100);
   });
 
@@ -527,7 +527,7 @@ describe("CSS_SUPPORT matrix integrity (post-fix)", () => {
 });
 
 // ============================================================================
-// Value-aware partial warnings — only flag a partial-support property on the
+// Value-aware partial warnings; only flag a partial-support property on the
 // values that actually break, per each client's caniemail caveat note.
 // ============================================================================
 
@@ -579,7 +579,7 @@ describe("value-aware partial warnings", () => {
     for (const [client, level] of Object.entries(CSS_SUPPORT["position"])) {
       if (level !== "partial") continue;
       const note = (CSS_SUPPORT_NOTES["position"]?.[client] || []).join(" ");
-      // superhuman is a manual override with no caniemail note — uses a safe default.
+      // superhuman is a manual override with no caniemail note, uses a safe default.
       if (client === "superhuman") {
         expect(note).toBe("");
         continue;

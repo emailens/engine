@@ -13,7 +13,7 @@ For the issue tracker philosophy: **bugs and concrete requests go in [Issues](ht
 ## Shipped
 
 - [x] Automated caniemail.com data sync (`bun run sync:caniemail`)
-- [x] GitHub Actions integration — score-threshold CI via `@emailens/cli lint --fail-on-warning` + the [Emailens GitHub Action](https://github.com/marketplace/actions/emailens-email-preview-check)
+- [x] GitHub Actions integration: score-threshold CI via `@emailens/cli lint --fail-on-warning` + the [Emailens GitHub Action](https://github.com/marketplace/actions/emailens-email-preview-check)
 - [x] AI-powered fix generation (`generateAiFix`, `AI_FIX_SYSTEM_PROMPT`)
 - [x] Compile module (`@emailens/engine/compile`) for JSX, MJML, Maizzle
 
@@ -53,7 +53,7 @@ Spam scoring is currently rule-based (SpamAssassin/CAN-SPAM heuristics). Tuning 
 
 Today's dark-mode simulator is a CSS transform. Validating its output against real client rendering (screenshots from Gmail/Outlook/Apple Mail dark mode) would catch divergence.
 
-**Why not now:** Needs a methodology design — which clients, what threshold for "accurate," how to gather ground truth at scale.
+**Why not now:** Needs a methodology design, which clients, what threshold for "accurate," how to gather ground truth at scale.
 
 ---
 

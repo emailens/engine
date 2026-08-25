@@ -8,7 +8,7 @@
  * Last verified: 2026-03-04
  *
  * Format: Record<propertyKey, SupportLevel>
- * Only include overrides — properties not listed here default to "unknown".
+ * Only include overrides: properties not listed here default to "unknown".
  */
 import type { SupportLevel } from "../src/types";
 
@@ -40,7 +40,7 @@ export const SUPERHUMAN_OVERRIDES: Record<string, SupportLevel> = {
   "text-transform": "supported",
   "text-indent": "supported",
   "word-spacing": "supported",
-  "@font-face": "supported",        // Blink — web fonts work
+  "@font-face": "supported",        // Blink, so web fonts work
 
   // Colors & Backgrounds
   "color": "supported",

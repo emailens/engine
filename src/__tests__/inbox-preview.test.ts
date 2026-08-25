@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { extractInboxPreview } from "../inbox-preview";
 
-describe("inbox-preview — truncation", () => {
+describe("inbox-preview: truncation", () => {
   test("returns per-client truncation data", () => {
     const html = `<html><head><title>This is a really long subject line that exceeds most client limits for inbox display</title></head>
     <body><div style="display:none;max-height:0;overflow:hidden;">This is a preheader that is also quite long and will be truncated by various email clients at different character limits depending on the device</div><p>Body text</p></body></html>`;
@@ -39,7 +39,7 @@ describe("inbox-preview — truncation", () => {
   });
 });
 
-describe("inbox-preview — short preheader", () => {
+describe("inbox-preview: short preheader", () => {
   test("preheader < 30 chars triggers warning", () => {
     const html = `<html><head><title>Test</title></head>
     <body><div style="display:none;max-height:0;overflow:hidden;">Short</div><p>Body</p></body></html>`;
@@ -59,7 +59,7 @@ describe("inbox-preview — short preheader", () => {
   });
 });
 
-describe("inbox-preview — zwnj padding", () => {
+describe("inbox-preview: zwnj padding", () => {
   test("detects zwnj/nbsp padding hack", () => {
     const html = `<html><head><title>Test</title></head>
     <body><div style="display:none;max-height:0;overflow:hidden;">Preview&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div><p>Body</p></body></html>`;
@@ -78,7 +78,7 @@ describe("inbox-preview — zwnj padding", () => {
   });
 });
 
-describe("inbox-preview — emoji in subject", () => {
+describe("inbox-preview: emoji in subject", () => {
   test("detects emoji in subject line", () => {
     const html = `<html><head><title>🎉 Big Sale Today!</title></head><body><p>Body</p></body></html>`;
     const result = extractInboxPreview(html);
@@ -102,7 +102,7 @@ describe("inbox-preview — emoji in subject", () => {
   });
 });
 
-describe("inbox-preview — empty/missing input", () => {
+describe("inbox-preview: empty/missing input", () => {
   test("empty HTML includes truncation: []", () => {
     const result = extractInboxPreview("");
     expect(result.truncation).toEqual([]);
