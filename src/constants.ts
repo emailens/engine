@@ -66,7 +66,7 @@ export const TEMPLATE_VARIABLE_PATTERNS: Array<[RegExp, string]> = [
 
 /** Shared empty report defaults for skipped checks and empty-input fast paths. */
 import type { DesignReport } from "./types";
-import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport, OverflowReport, VisualReport } from "./types";
+import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport, OverflowReport, VisualReport, VmlReport } from "./types";
 
 export const EMPTY_SPAM: SpamReport = { score: 100, level: "low", issues: [] };
 export const EMPTY_LINKS: LinkReport = {
@@ -80,6 +80,7 @@ export const EMPTY_INBOX_PREVIEW: InboxPreview = { subject: null, preheader: nul
 export const EMPTY_SIZE: SizeReport = { htmlBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
 export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] };
 export const EMPTY_OVERFLOW: OverflowReport = { hasOverflow: false, issues: [] };
+export const EMPTY_VML: VmlReport = { hasVml: false, issues: [] };
 export const EMPTY_VISUAL: VisualReport = { issues: [] };
 
 // ─── Content overflow thresholds (calibration knobs) ────────────────────────

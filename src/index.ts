@@ -26,6 +26,7 @@ export { extractInboxPreview } from "./inbox-preview";
 export { checkSize } from "./size-checker";
 export { checkTemplateVariables } from "./template-checker";
 export { checkOverflow } from "./overflow-checker";
+export { checkVml } from "./vml-checker";
 export { checkVisual } from "./visual-checker";
 export { checkDesignConsistency } from "./design-consistency";
 export { auditEmail } from "./audit";
@@ -80,6 +81,8 @@ export type {
   TemplateIssue,
   TemplateReport,
   OverflowIssue,
+  VmlIssue,
+  VmlReport,
   OverflowReport,
   VisualIssue,
   VisualReport,

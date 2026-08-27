@@ -271,6 +271,18 @@ export interface OverflowReport {
   issues: OverflowIssue[];
 }
 
+// ─── VML (Outlook-only markup inside conditional comments) ──────────────────
+
+export interface VmlIssue extends BaseIssue {
+  detail?: string;
+}
+
+export interface VmlReport {
+  /** True when the email contains any VML inside Outlook conditional comments. */
+  hasVml: boolean;
+  issues: VmlIssue[];
+}
+
 // ─── Visual rendering bugs (stylized emails) ────────────────────────────────
 
 export interface VisualIssue extends BaseIssue {
