@@ -9,11 +9,13 @@ import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
+import { checkVml } from "./vml-checker";
 import { checkDesignConsistencyFromDom } from "./design-consistency";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
   EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL, EMPTY_DESIGN,
+  EMPTY_VML,
 } from "./constants";
 import type {
   AccessibilityIssue,
@@ -29,6 +31,7 @@ import type {
   TemplateReport,
   OverflowReport,
   VisualReport,
+  VmlReport,
   DesignReport,
 } from "./types";
 
@@ -37,7 +40,7 @@ export interface AuditOptions extends ParseOptions {
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design" | "vml">;
 }
 
 export interface AuditReport {
@@ -54,6 +57,8 @@ export interface AuditReport {
   templateVariables: TemplateReport;
   overflow: OverflowReport;
   visual: VisualReport;
+  /** Structural faults in Outlook-only VML, which lives inside conditional comments. */
+  vml: VmlReport;
   /** Contrast failures present only once a client inverts colours. */
   darkContrast: AccessibilityIssue[];
   /** Contrast failures present only below the email's mobile breakpoint. */
@@ -74,6 +79,7 @@ export const EMPTY_AUDIT: AuditReport = {
   templateVariables: EMPTY_TEMPLATE,
   overflow: EMPTY_OVERFLOW,
   visual: EMPTY_VISUAL,
+  vml: EMPTY_VML,
   darkContrast: [],
   mobileContrast: [],
   design: EMPTY_DESIGN,
@@ -116,6 +122,9 @@ export function runAudit(
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);
+  // Takes raw HTML, not the DOM: VML sits inside conditional comments, so it is
+  // a comment node to the parser and invisible to every other checker here.
+  const vml = skip.has("vml") ? EMPTY_VML : checkVml(html, { positions: !!source });
   // Reuses the light-mode issues as the baseline, so only the dark render is
   // re-analysed. Skipping accessibility skips this too; without the baseline
   // it would report every contrast failure, not the dark-only ones.
@@ -134,7 +143,7 @@ export function runAudit(
     ? []:
     checkMobileContrastFromDom($, accessibility.issues);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual, darkContrast, mobileContrast, design };
+  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual, vml, darkContrast, mobileContrast, design };
 }
 
 /**

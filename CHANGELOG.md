@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.1 - 2026-08-27
+
+### Added
+
+- **`checkVml(html)`: the branch of the email nothing else could see.** VML lives inside `<!--[if mso]>` conditional comments, so to every HTML parser it is a comment node and to a headless-Chromium screenshot it does not exist. An email could therefore lint clean, preview perfectly, and still be broken in the one client the VML was written for. The analyzer had a standing blind spot exactly where Outlook advice mattered most: it recommended VML for border-radius and background images without ever reading the VML already in front of it.
+
+  Four rules, each grounded in a reported breakage rather than a style preference.
+
+  `vml-nested-shape` is the one this was built for: a shape inside another shape's `<v:textbox>`, typically a `<v:roundrect>` button inside a `<v:rect>` hero. Outlook does not support nesting, and it does not fail loudly. The inner shape draws against the container's positioning frame instead of its own and lands detached from the content it belongs to, while every other client renders the HTML fallback correctly. `<v:group>` is exempt, being the one container VML defines for the purpose.
+
+  `vml-invalid-dimension` catches a dimension whose number went missing (`height:px`, `width:`), which is what a template variable resolving to an empty string leaves behind. Outlook cannot size the shape, so a framed `<v:fill>` collapses and anything positioned against it moves.
+
+  `vml-arcsize-range` flags an `arcsize` outside the documented 0%–100%, where the corner radius stops being a value you chose and becomes whatever the renderer clamps to.
+
+  `vml-unbalanced-tag` catches a shape opened and never closed, or closed and never opened.
+
+  `vml-unrendered-text` catches label text sitting loose inside a shape with no element around it. Outlook draws the fill and the geometry and none of the text, so the reader gets a blank coloured block where the button label should be; wrapping the same text in `<center>` or `<v:textbox>` renders it. Only flagged when the shape holds visible text and no element whatsoever, so the patterns people actually copy never trip it.
+
+  All three rules are now verified against Outlook Classic (the Word engine) rather than inferred, and two of the messages were rewritten because the real behaviour is worse than the documented folklore. A nested shape does not merely misplace the inner shape. Three things happen, and the last was the surprise: the *containing* shape fails to render entirely; the table structure around it terminates early, so content after the shape falls out of the email frame; and every VML shape further down the email stops drawing its text, shipping buttons and headings as blank coloured blocks. That last one was confirmed with byte-identical probes placed either side of a single nested shape, the one before it rendering its labels and the one after it not. One bad shape near the top of an email degrades every shape below it. An invalid dimension does not collapse the shape: it draws at a size Outlook picks and silently clips the content inside, with no gap or broken image to notice. An out-of-range `arcsize` is clamped, so 120% draws the identical corner to 100%, which is why it stays a warning.
+
+  Tags are read as a document-order sequence rather than a parsed fragment, because one shape routinely opens in one conditional block and closes in another with ordinary HTML in between: there is no single fragment to hand a parser, but the open/close sequence is what the structural rules need. `auditEmail` gains `vml`.
+
 ## 0.11.0 - 2026-08-26
 
 ### Added
