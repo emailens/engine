@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.3 - 2026-08-28
+
+### Fixed
+
+- **The Outlook branch reached only one of the two transform entry points.** 0.11.2 wired `transformForClient`, but `transformForAllClients` does not route through it: it downlevels once and maps `applyTransform` over every client directly. That is the function the web app and the landing-page generator actually call, so the feature shipped inert in the product while its tests passed against the singular function. Both paths now take the Outlook branch, and the Outlook source is derived once per call and only when the email has conditional comments to resolve. Tests assert `transformForAllClients` and `createSession` alongside `transformForClient`, since testing the function that was changed rather than the path the caller uses is what hid this.
+
+
 ## 0.11.2 - 2026-08-28
 
 ### Changed

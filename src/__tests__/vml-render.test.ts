@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { renderOutlookBranch, resolveMsoBranch, vmlToCss, arcsizeToRadius, transformForClient } from "../index";
+import { renderOutlookBranch, resolveMsoBranch, vmlToCss, arcsizeToRadius, transformForClient, transformForAllClients, createSession } from "../index";
 
 const mso = (vml: string) => `<!--[if gte mso 9]>${vml}<![endif]-->`;
 
@@ -135,5 +135,45 @@ describe("transformForClient: only the Word engine gets the Outlook branch", () 
   test("an email with no conditional comments is unaffected for Outlook", () => {
     const plain = `<html><body><p>plain</p></body></html>`;
     expect(transformForClient(plain, "outlook-windows-legacy").html).toContain("plain");
+  });
+});
+
+// transformForAllClients is the entry point the app and the landing-page
+// generator actually call, and it does not route through transformForClient:
+// it downlevels once and maps applyTransform over every client. Wiring only
+// the singular function left the whole product on the old behaviour while the
+// tests passed, so both paths are asserted here and in createSession.
+describe("transformForAllClients and createSession take the same branch", () => {
+  const html = `<html><body>
+    ${mso(`<v:roundrect style="width:200px;height:40px;" arcsize="50%" fillcolor="#336699" stroke="f"><center>OUTLOOK</center></v:roundrect>`)}
+    <!--[if !mso]><!--><a id="fb">FALLBACK</a><!--<![endif]-->
+  </body></html>`;
+
+  test("transformForAllClients translates for the Word engine only", () => {
+    const all = transformForAllClients(html);
+    const word = all.find((t) => t.clientId === "outlook-windows-legacy")!;
+    expect(word.html).toContain('data-vml="roundrect"');
+    expect(word.html).not.toContain("FALLBACK");
+
+    for (const t of all.filter((t) => t.clientId !== "outlook-windows-legacy")) {
+      expect([t.clientId, /data-vml/.test(t.html)]).toEqual([t.clientId, false]);
+      expect([t.clientId, t.html.includes("FALLBACK")]).toEqual([t.clientId, true]);
+    }
+  });
+
+  test("createSession().transformForAllClients agrees with the standalone function", () => {
+    const viaSession = createSession(html).transformForAllClients()
+      .find((t) => t.clientId === "outlook-windows-legacy")!;
+    const viaDirect = transformForAllClients(html)
+      .find((t) => t.clientId === "outlook-windows-legacy")!;
+    expect(viaSession.html).toBe(viaDirect.html);
+    expect(viaSession.html).toContain('data-vml="roundrect"');
+  });
+
+  test("an email with no conditional comments is byte-identical across both paths", () => {
+    const plain = `<html><body><p>plain</p></body></html>`;
+    const all = transformForAllClients(plain);
+    const word = all.find((t) => t.clientId === "outlook-windows-legacy")!;
+    expect(word.html).toBe(transformForClient(plain, "outlook-windows-legacy").html);
   });
 });

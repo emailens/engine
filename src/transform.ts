@@ -867,7 +867,20 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
 
   // Downlevel once, reuse for all clients
   const downleveled = downlevelCSS(html);
+
+  // The Word engine needs a different source, not a different transform: it is
+  // the only client that reads conditional comments, so its preview is built
+  // from the Outlook branch while everyone else keeps the fallback. Computed
+  // once and only when the email actually has an Outlook branch to resolve.
+  const outlookSource = /<!--\[if/i.test(html)
+    ? downlevelCSS(renderOutlookBranch(html))
+    : downleveled;
+
   return Object.keys(CLIENT_CONFIGS).map((clientId) =>
-    applyTransform(downleveled, CLIENT_CONFIGS[clientId], framework)
+    applyTransform(
+      clientId === "outlook-windows-legacy" ? outlookSource : downleveled,
+      CLIENT_CONFIGS[clientId],
+      framework,
+    )
   );
 }
