@@ -1,14 +1,16 @@
 # Changelog
 
-## 0.12.0 - 2026-08-29
+## 0.11.6 - 2026-08-29
 
-### Changed
+### Fixed
 
 - **The Word engine is graded on the branch it reads.** 0.11.2 taught the renderer to resolve `<!--[if mso]>`; the analyzer kept reading the fallback, so the preview and the findings described two different emails. CSS inside a conditional `<style>` was invisible to every rule: the same declarations produced several findings in a plain `<style>` and none at all inside a conditional one, which meant the highest-leverage rules in a file were the only ones never checked.
 
   `analyzeEmail`, `auditEmail` and `createSession().analyze()` now share `analyzeAllBranches`, which runs the existing rules a second time over the resolved Outlook branch and takes only Word-engine findings from it. No other client can move, because no other client reads conditional comments. `analyzeEmailFromDom` stays DOM-only and is no longer the right entry point: a DOM is precisely the thing that has already discarded the comments.
 
-  **Warning counts change for `outlook-windows-legacy` on any email with an Outlook branch**, so regenerate anything cached or snapshotted. Emails without conditional comments are byte-identical to before, since the second parse does not fire.
+  **Measured impact on real email is nil**, which is why this is a patch. Across 76 emails (the 70-template public gallery plus the engine fixtures), comparing 0.11.5 against this: zero Word-engine findings gained, zero lost, and no other client moved. Conditional blocks in practice hold DPI xml, VML and the mso font-width hack, none of which carry declarations the rules grade. Even the fixtures that do put CSS there put `font-family` there, whose only Word-engine finding is a `<style>` warning those files already have.
+
+  So the release fixes a real structural inconsistency without changing any current answer. It matters for what it makes possible rather than what it moves today: an email that *does* put graded CSS behind `[if mso]` was previously ungraded for the one client that reads it, silently.
 
   Positions come from the first pass, which is the only one anchored to the source the caller holds. A finding unique to the branch carries no `loc` rather than a position into rewritten markup.
 
