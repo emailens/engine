@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.12.0 - 2026-08-29
+
+### Changed
+
+- **The Word engine is graded on the branch it reads.** 0.11.2 taught the renderer to resolve `<!--[if mso]>`; the analyzer kept reading the fallback, so the preview and the findings described two different emails. CSS inside a conditional `<style>` was invisible to every rule: the same declarations produced several findings in a plain `<style>` and none at all inside a conditional one, which meant the highest-leverage rules in a file were the only ones never checked.
+
+  `analyzeEmail`, `auditEmail` and `createSession().analyze()` now share `analyzeAllBranches`, which runs the existing rules a second time over the resolved Outlook branch and takes only Word-engine findings from it. No other client can move, because no other client reads conditional comments. `analyzeEmailFromDom` stays DOM-only and is no longer the right entry point: a DOM is precisely the thing that has already discarded the comments.
+
+  **Warning counts change for `outlook-windows-legacy` on any email with an Outlook branch**, so regenerate anything cached or snapshotted. Emails without conditional comments are byte-identical to before, since the second parse does not fire.
+
+  Positions come from the first pass, which is the only one anchored to the source the caller holds. A finding unique to the branch carries no `loc` rather than a position into rewritten markup.
+
+
 ## 0.11.5 - 2026-08-28
 
 ### Added

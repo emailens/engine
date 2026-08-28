@@ -16,6 +16,10 @@ import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snipp
 import { parseStyleProperties, getStyleValue, getStyleValues } from "./style-utils";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, type ParseOptions } from "./parse-html";
+import { resolveMsoBranch } from "./vml-render";
+
+/** The one client that reads conditional comments. */
+const WORD_ENGINE_CLIENT = "outlook-windows-legacy";
 import { cssBlockAnchor, locInAttr, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
 import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel } from "./types";
 
@@ -466,7 +470,75 @@ export function analyzeEmail(
   }
 
   const $ = loadHtml(html, options);
-  return analyzeEmailFromDom($, framework, options?.positions ? html : undefined);
+  return analyzeAllBranches($, html, framework, options?.positions ? html : undefined);
+}
+
+/**
+ * The entry point every caller should use: the DOM pass, plus the Word engine
+ * re-graded on the branch it actually reads.
+ *
+ * `analyzeEmailFromDom` remains DOM-only and cannot see conditional comments,
+ * because a DOM is exactly the thing that has already discarded them. Calling
+ * it directly leaves the Word engine graded on markup it never receives, which
+ * is what auditEmail and createSession were doing.
+ */
+export function analyzeAllBranches(
+  $: cheerio.CheerioAPI,
+  html: string,
+  framework?: Framework,
+  source?: string,
+): CSSWarning[] {
+  return withOutlookBranch(html, analyzeEmailFromDom($, framework, source), framework);
+}
+
+/**
+ * Re-analyse the Word engine against the branch it actually reads.
+ *
+ * Every other client sees the `<!--[if !mso]>` fallback, which the DOM pass
+ * above covers. Outlook Classic sees the `<!--[if mso]>` branch instead, and to
+ * a parser that branch is a comment node: CSS inside a conditional `<style>`
+ * block is invisible, so the highest-leverage rules in the file are never
+ * graded. Measured on a real template: the same declarations produce 41
+ * warnings in a plain `<style>` and none at all inside a conditional one.
+ *
+ * The renderer already resolves this branch. Analysing a different branch from
+ * the one we draw would leave the preview and the findings describing two
+ * different emails, which is the state this repairs.
+ *
+ * ponytail: a second parse, not a second analyzer. The existing rules run
+ * unchanged against resolved markup, and only Word-engine findings are taken
+ * from it, so no other client's results can move.
+ */
+function withOutlookBranch(
+  html: string,
+  warnings: CSSWarning[],
+  framework?: Framework,
+): CSSWarning[] {
+  if (!/<!--\[if/i.test(html)) return warnings;
+
+  let branchWarnings: CSSWarning[];
+  try {
+    const resolved = resolveMsoBranch(html);
+    if (resolved === html) return warnings;
+    branchWarnings = analyzeEmailFromDom(loadHtml(resolved), framework)
+      .filter((w) => w.client === WORD_ENGINE_CLIENT);
+  } catch {
+    // A malformed conditional comment must not cost the caller every other
+    // finding: fall back to the fallback-branch result.
+    return warnings;
+  }
+
+  // Locations come from the first pass, which is the only one anchored to the
+  // source the caller holds. Findings unique to the branch carry none rather
+  // than a position into rewritten markup.
+  const kept = warnings.filter((w) => w.client !== WORD_ENGINE_CLIENT);
+  const firstPassWord = warnings.filter((w) => w.client === WORD_ENGINE_CLIENT);
+  const byKey = new Map(firstPassWord.map((w) => [`${w.property}:${w.severity}`, w]));
+  const merged = branchWarnings.map((w) => byKey.get(`${w.property}:${w.severity}`) ?? w);
+  for (const w of firstPassWord) {
+    if (!merged.some((m) => m.property === w.property && m.severity === w.severity)) merged.push(w);
+  }
+  return [...kept, ...merged];
 }
 
 function getFixType(prop: string): FixType {

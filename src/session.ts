@@ -1,4 +1,4 @@
-import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
+import { analyzeAllBranches, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom } from "./accessibility-checker";
@@ -207,7 +207,7 @@ export function createSession(
     },
 
     analyze() {
-      return analyzeEmailFromDom($, framework, source);
+      return analyzeAllBranches($, html, framework, source);
     },
 
     score(warnings) {

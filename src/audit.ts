@@ -1,5 +1,5 @@
 import type { CheerioAPI } from "cheerio";
-import { analyzeEmailFromDom, generateCompatibilityScore } from "./analyze";
+import { analyzeAllBranches, generateCompatibilityScore } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom, checkDarkModeContrast, checkMobileContrastFromDom, checkDarkStylesContrastFromDom } from "./accessibility-checker";
@@ -111,7 +111,7 @@ export function runAudit(
   // it over only when positions were requested keeps the default path honest.
   const source = options?.positions ? html : undefined;
 
-  const warnings = skip.has("compatibility") ? [] : analyzeEmailFromDom($, framework, source);
+  const warnings = skip.has("compatibility") ? [] : analyzeAllBranches($, html, framework, source);
   const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
   const spam = skip.has("spam") ? EMPTY_SPAM : analyzeSpamFromDom($, options?.spam);
   const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
