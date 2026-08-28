@@ -10,6 +10,7 @@ import {
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import { downlevelCSS } from "./downlevel";
+import { renderOutlookBranch } from "./vml-render";
 import { MAX_HTML_SIZE } from "./constants";
 
 // =============================================================================
@@ -842,8 +843,15 @@ export function transformForClient(
     };
   }
 
+  // The Word engine is the only client that reads conditional comments, so it
+  // is the only one whose preview must be built from the Outlook branch rather
+  // than the fallback. Doing this for any other client would render markup they
+  // never see. Resolution and translation are one step: resolving alone would
+  // hand Chromium <v:rect> as an unknown inline element.
+  const source = clientId === "outlook-windows-legacy" ? renderOutlookBranch(html) : html;
+
   // Downlevel once per transformForClient call
-  const downleveled = downlevelCSS(html);
+  const downleveled = downlevelCSS(source);
   return applyTransform(downleveled, config, framework);
 }
 

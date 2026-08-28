@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.2 - 2026-08-28
+
+### Changed
+
+- **The Word-engine preview renders the branch Outlook actually sees.** Until now every preview of `outlook-windows-legacy` was built from the wrong half of the email: the `<!--[if mso]>` blocks stayed commented and the `<!--[if !mso]>` fallback stayed live, so the render showed precisely what Outlook does *not* draw and hid what it does. `transformForClient` now resolves the Outlook branch for that one client and translates its VML into CSS a browser can draw.
+
+  Resolution and translation ship together because neither is useful alone: VML has been dead in browsers since IE9, so an activated `<v:rect>` parses as an `HTMLUnknownElement` with no box and no fill, and its contents would render as bare inline text. `renderOutlookBranch`, `resolveMsoBranch`, `vmlToCss` and `arcsizeToRadius` are exported for callers that want the pieces.
+
+  The mapping covers `roundrect` and `rect` with solid, framed, tiled and gradient fills, which measurement across a reported production email and MJML's own output shows to be the whole surface in practice. `arcsize` uses the verified clamp, so 120% draws the same corner as 100%. A malformed dimension is deliberately left unset rather than guessed at, which means a shape whose `height:px` never resolved collapses in the preview the way it collapses in Outlook, instead of the preview quietly inventing a size the email never asked for.
+
+  **Not emulated:** how Word *mis*-renders a nested shape. That failure is confirmed (the container disappears, and text stops drawing in every VML shape after it), but reproducing it means perturbing layout into a picture wrong in a third way, different from both the correct render and Outlook's. `checkVml` reports it with a line number instead.
+
+  **Only `outlook-windows-legacy` changes.** Every other client, including Outlook Web, New Outlook and Outlook for Mac, still renders the fallback, because none of them read conditional comments.
+
+
 ## 0.11.1 - 2026-08-27
 
 ### Added
