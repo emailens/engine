@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.4 - 2026-08-28
+
+### Fixed
+
+- **Translated shapes were square, because the strip pass ran after them.** VML was being translated into CSS before `applyTransform`, which then removed `border-radius` and `display:inline-flex` as properties the Word engine does not support. That is true of author CSS and precisely wrong for a translated shape: the CSS a `<v:roundrect>` becomes *is* the rounded corner Outlook draws. Every button in an Outlook preview came out square with its label unaligned. Translation now runs after the strip pass in both entry points, and a test asserts a 120% arcsize still yields the 25px pill it draws in Outlook Classic.
+
+
 ## 0.11.3 - 2026-08-28
 
 ### Fixed

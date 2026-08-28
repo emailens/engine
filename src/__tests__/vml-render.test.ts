@@ -170,6 +170,25 @@ describe("transformForAllClients and createSession take the same branch", () => 
     expect(viaSession.html).toContain('data-vml="roundrect"');
   });
 
+  // Translating before applyTransform hands the Word strip set its own output:
+  // border-radius and inline-flex are exactly what it removes from author CSS,
+  // so every translated button came out square with its label unaligned. The
+  // shape's CSS describes what Outlook genuinely draws and must outlive the
+  // strip pass, which is why translation happens after it.
+  test("translated shape CSS survives the Word strip set", () => {
+    const html = `<html><body>${mso(
+      `<v:roundrect style="width:220px;height:50px; v-text-anchor:middle;" arcsize="120%" stroke="f" fillcolor="#B39A5F"><w:anchorlock/><center>Go</center></v:roundrect>`,
+    )}</body></html>`;
+    for (const out of [
+      transformForClient(html, "outlook-windows-legacy").html,
+      transformForAllClients(html).find((t) => t.clientId === "outlook-windows-legacy")!.html,
+    ]) {
+      // 120% clamps to 100%, so min(220,50)/2 = 25px. Verified in Outlook Classic.
+      expect(out).toContain("border-radius:25px");
+      expect(out).toContain("display:inline-flex");
+    }
+  });
+
   test("an email with no conditional comments is byte-identical across both paths", () => {
     const plain = `<html><body><p>plain</p></body></html>`;
     const all = transformForAllClients(plain);

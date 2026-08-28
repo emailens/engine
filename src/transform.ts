@@ -10,7 +10,7 @@ import {
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import { downlevelCSS } from "./downlevel";
-import { renderOutlookBranch } from "./vml-render";
+import { resolveMsoBranch, vmlToCss } from "./vml-render";
 import { MAX_HTML_SIZE } from "./constants";
 
 // =============================================================================
@@ -844,15 +844,23 @@ export function transformForClient(
   }
 
   // The Word engine is the only client that reads conditional comments, so it
-  // is the only one whose preview must be built from the Outlook branch rather
-  // than the fallback. Doing this for any other client would render markup they
-  // never see. Resolution and translation are one step: resolving alone would
-  // hand Chromium <v:rect> as an unknown inline element.
-  const source = clientId === "outlook-windows-legacy" ? renderOutlookBranch(html) : html;
+  // is the only one whose preview is built from the Outlook branch rather than
+  // the fallback. Doing this for any other client would render markup they
+  // never see.
+  const wordEngine = clientId === "outlook-windows-legacy" && /<!--\[if/i.test(html);
+  const source = wordEngine ? resolveMsoBranch(html) : html;
 
   // Downlevel once per transformForClient call
   const downleveled = downlevelCSS(source);
-  return applyTransform(downleveled, config, framework);
+  const result = applyTransform(downleveled, config, framework);
+
+  // Translate AFTER the strip pass, never before. The CSS a shape becomes
+  // (border-radius, inline-flex) describes what Outlook genuinely draws via
+  // VML, but those are the same properties the Word strip set removes from
+  // author CSS. Translating first would hand the stripper its own output and
+  // leave every rounded button square.
+  if (wordEngine) result.html = vmlToCss(result.html);
+  return result;
 }
 
 export function transformForAllClients(html: string, framework?: Framework): TransformResult[] {
@@ -871,16 +879,19 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   // The Word engine needs a different source, not a different transform: it is
   // the only client that reads conditional comments, so its preview is built
   // from the Outlook branch while everyone else keeps the fallback. Computed
-  // once and only when the email actually has an Outlook branch to resolve.
-  const outlookSource = /<!--\[if/i.test(html)
-    ? downlevelCSS(renderOutlookBranch(html))
-    : downleveled;
+  // once, and only when the email actually has an Outlook branch to resolve.
+  const hasOutlookBranch = /<!--\[if/i.test(html);
+  const outlookSource = hasOutlookBranch ? downlevelCSS(resolveMsoBranch(html)) : downleveled;
 
-  return Object.keys(CLIENT_CONFIGS).map((clientId) =>
-    applyTransform(
-      clientId === "outlook-windows-legacy" ? outlookSource : downleveled,
+  return Object.keys(CLIENT_CONFIGS).map((clientId) => {
+    const wordEngine = clientId === "outlook-windows-legacy" && hasOutlookBranch;
+    const result = applyTransform(
+      wordEngine ? outlookSource : downleveled,
       CLIENT_CONFIGS[clientId],
       framework,
-    )
-  );
+    );
+    // See transformForClient: translation must follow the strip pass.
+    if (wordEngine) result.html = vmlToCss(result.html);
+    return result;
+  });
 }
