@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.5 - 2026-08-28
+
+### Added
+
+- **End-to-end tests for the Outlook branch, after two releases shipped broken behind a green suite.** Neither 0.11.2 nor 0.11.3 was a missing unit test: both were tests that asserted on the function being changed rather than on the bytes a client finally receives. The new suite works only on the final `html` of the real pipeline, and runs every assertion against all three entry points (`transformForClient`, `transformForAllClients`, `createSession`) rather than a chosen one.
+
+  The load-bearing test names no behaviour at all: it asserts the three entry points produce byte-identical output for all 21 clients, so any future change that wires one path and forgets another fails immediately. Verified by reintroducing each shipped bug: wiring only the singular function fails 14 tests, translating before the strip pass fails 5, keying the Word engine on the `outlook` substring fails 4, and inventing a height for a shape whose dimension never resolved fails 4.
+
+  The real showcase pair ships as fixtures (`outlook-branch-broken.html`, `outlook-branch-clean.html`) so the assertions run on an email someone would actually send, not a fragment.
+
+### Fixed
+
+- **A pre-existing divergence is now pinned rather than silent.** `createSession('').transformForAllClients()` returns an empty array while the standalone function returns one empty result per client, so a caller iterating the session gets zero rows where the other gives 21. Not introduced here, and not changed here either, since callers may rely on it: it now has a test naming it as known behaviour.
+
+
 ## 0.11.4 - 2026-08-28
 
 ### Fixed

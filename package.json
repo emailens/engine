@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.11.4",
+  "version": "0.11.5",
   "description": "Email compatibility engine for HTML, MJML, Maizzle and React Email: transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link and image quality analysis.",
   "type": "module",
   "exports": {
