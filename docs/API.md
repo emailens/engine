@@ -27,6 +27,7 @@
   - [`checkTemplateVariables`](#checktemplatevariableshtml-string-templatereport)
   - [`checkOverflow`](#checkoverflowhtml-string-overflowreport)
   - [`checkVisual`](#checkvisualhtml-string-visualreport)
+  - [`checkVml`](#checkvmlhtml-string-options--positions-boolean--vmlreport)
   - [`checkDesignConsistency`](#checkdesignconsistencyhtml-string-designreport)
   - [`checkDarkModeContrast`](#checkdarkmodecontrasthtml-string-accessibilityissue)
   - [`checkDarkStylesContrastFromDom`](#checkdarkstylescontrastfromdom-cheerioapi-accessibilityissue)
@@ -141,6 +142,7 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `checkSize()` | Yes | Gmail clipping size check |
 | `checkTemplateVariables()` | Yes | Unresolved template variable detection |
 | `checkOverflow()` | Yes | Content overflow (fixed widths, unbreakable strings) |
+| `checkVml()` | Yes | Structural faults in Outlook-only VML |
 | `checkVisual()` | Yes | Visual bugs in stylized emails (background/font fallbacks) |
 | `checkDeliverability(domain)` |: | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
 | `transformForClient(clientId)` | No | Transform for one client |
@@ -469,6 +471,38 @@ const report = checkVisual(html);
 ```
 
 **Detects:** background images/gradients with no solid `background-color`; blank area (and hidden text) in Outlook (`missing-background-fallback`, gradient fallback computed from the first color stop); `font-family` stacks with no web-safe fallback; Times New Roman in Gmail/Outlook (`missing-font-fallback`, web-safe family appended).
+
+### `checkVml(html: string, options?: { positions?: boolean }): VmlReport`
+
+Validates the Outlook-only markup inside `<!--[if mso]>` conditional comments. This is the one
+section of an email the DOM analyzers structurally cannot reach: to every HTML parser the VML is a
+comment node, and to a headless-Chromium screenshot it does not exist at all, so an email can lint
+clean and preview perfectly while the branch Outlook actually renders is broken.
+
+Takes raw HTML rather than a DOM, and reads tags as a document-order sequence rather than a parsed
+fragment, because a single shape routinely opens in one conditional block and closes in another with
+ordinary HTML in between.
+
+```typescript
+import { checkVml } from "@emailens/engine";
+
+const report = checkVml(html, { positions: true });
+// { hasVml: true, issues: [{ rule: "vml-nested-shape", severity: "error", message: "…", detail: "…", loc: {…} }] }
+```
+
+**Detects**, all four verified against Outlook Classic (the Word engine) rather than inferred:
+
+| Rule | Severity | What Outlook actually does |
+|---|---|---|
+| `vml-nested-shape` | error | A shape inside another shape's `<v:textbox>`. Three failures at once: the *containing* shape does not render, the table structure around it terminates early so content after it falls outside the email frame, and every VML shape further down the email stops drawing its text. `<v:group>` is exempt, being the one container VML defines for the purpose. |
+| `vml-invalid-dimension` | error | A dimension whose number went missing (`height:px`), typically a template variable that resolved empty. The shape still draws, at a size Outlook picks, silently clipping the content inside. |
+| `vml-unrendered-text` | error | Label text with no element around it. The shape renders its fill and none of the text, so a button ships as a blank coloured block. `<center>` or `<v:textbox>` fixes it. |
+| `vml-arcsize-range` | warning | An `arcsize` outside the documented 0%–100%. Outlook clamps it, so 120% draws the identical corner to 100%: nothing breaks, but the radius is the renderer's clamp rather than a chosen value. |
+
+Also reports `vml-unbalanced-tag` for a shape opened and never closed, or closed and never opened.
+
+`hasVml` is `false` for any email with no VML at all, which is most of them; consumers can skip the
+section entirely rather than render an empty result.
 
 ### `checkDesignConsistency(html: string): DesignReport`
 

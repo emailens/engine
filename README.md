@@ -10,7 +10,7 @@
 [![CI](https://github.com/emailens/engine/actions/workflows/ci.yml/badge.svg)](https://github.com/emailens/engine/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://img.shields.io/npm/l/@emailens/engine)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-910%20passing-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-1036%20passing-brightgreen)]()
 [![node](https://img.shields.io/node/v/@emailens/engine)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
 [![GitHub stars](https://img.shields.io/github/stars/emailens/engine?style=flat)](https://github.com/emailens/engine/stargazers)
@@ -106,11 +106,14 @@ const { code } = await generateAiFix({
 
 ## What It Catches
 
-10 analysis engines, one `auditEmail()` call.
+14 analysis engines, one `auditEmail()` call.
 
 - **CSS compatibility**: 255 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
+- **Outlook VML**: structural faults in the Outlook-only markup inside `<!--[if mso]>` conditional comments — the one part of an email a DOM analyzer structurally cannot see, since to every HTML parser it is a comment node and to a screenshot it does not exist
 - **Content overflow**: fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
 - **Visual bugs**: gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix
+- **Design consistency**: colours that differ as values but not to a reader (OKLab distance), and runaway cardinality in type sizes, families and corner radii
+- **Dark and mobile contrast**: the two renders nobody checks — what a client's forced inversion does, what the email's own `prefers-color-scheme` block does, and what changes below the mobile breakpoint
 - **Spam scoring**: 45+ signals modeled after SpamAssassin, CAN-SPAM, and GDPR
 - **Accessibility**: WCAG contrast ratios, alt text, semantic structure, heading hierarchy
 - **Link validation**: broken hrefs, insecure HTTP, `javascript:` protocols, deceptive URLs
@@ -207,7 +210,7 @@ Full API reference: **[docs/API.md](./docs/API.md)**
 
 Covers:
 - `auditEmail` and `createSession`: core analysis
-- Standalone analyzers (CSS, spam, links, accessibility, images, inbox preview, size, templates)
+- Standalone analyzers (CSS, VML, spam, links, accessibility, images, inbox preview, size, templates)
 - DNS deliverability and SpamAssassin integration
 - Client transforms and dark mode simulation
 - Compile module (JSX, MJML, Maizzle)
@@ -220,7 +223,7 @@ Covers:
 
 See [ROADMAP.md](./ROADMAP.md) for the full picture (shipped items + items under consideration with rationale).
 
-**Shipped:** automated caniemail.com data sync · GitHub Actions integration via `@emailens/cli` and the [Marketplace Action](https://github.com/marketplace/actions/emailens-email-preview-check) · AI-powered fix generation · compile module for JSX/MJML/Maizzle.
+**Shipped:** Outlook VML structural validation (`checkVml`, verified against the Word engine) · automated caniemail.com data sync · GitHub Actions integration via `@emailens/cli` and the [Marketplace Action](https://github.com/marketplace/actions/emailens-email-preview-check) · AI-powered fix generation · compile module for JSX/MJML/Maizzle.
 
 **Considering:** Outlook VML auto-generation · plugin system for custom analyzers · MJML/Maizzle source-level linting · ESLint plugin · spam corpus tuning · dark-mode accuracy tests.
 
