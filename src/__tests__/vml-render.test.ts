@@ -196,3 +196,54 @@ describe("transformForAllClients and createSession take the same branch", () => 
     expect(word.html).toBe(transformForClient(plain, "outlook-windows-legacy").html);
   });
 });
+
+describe("resolveMsoBranch: the two spellings of a revealed block", () => {
+  // Found by looking at our own landing-page demo: the Outlook Classic panel
+  // drew the VML button *and* the HTML fallback stacked underneath it. The
+  // template opens its fallback `<!--[if !mso]><!-- -->`, and the resolver
+  // only matched `<!--[if !mso]><!-->`, so the branch Outlook skips survived
+  // into the render. A preview that invents a second CTA is worse than no
+  // preview: the failure it shows is ours, not the email's.
+  const FALLBACK = `<table><tr><td>fallback button</td></tr></table>`;
+
+  const both = [
+    ["<!-->", `<!--[if !mso]><!-->${FALLBACK}<!--<![endif]-->`],
+    ["<!-- -->", `<!--[if !mso]><!-- -->${FALLBACK}<!--<![endif]-->`],
+  ] as const;
+
+  for (const [spelling, html] of both) {
+    test(`${spelling} opener is deleted for the Word engine`, () => {
+      expect(resolveMsoBranch(html)).not.toContain("fallback button");
+    });
+  }
+
+  test("a compound negated condition is deleted too", () => {
+    // `[if (!mso)&(!IE)]` is as common in the wild as the bare form, and the
+    // paren used to defeat a pattern anchored on `!` directly after `[if`.
+    const html = `<!--[if (!mso)&(!IE)]><!-->${FALLBACK}<!--<![endif]-->`;
+    expect(resolveMsoBranch(html)).not.toContain("fallback button");
+  });
+
+  test("the hidden branch is still revealed", () => {
+    const html = `<!--[if mso]><v:rect></v:rect><![endif]-->`;
+    expect(resolveMsoBranch(html)).toContain("<v:rect>");
+  });
+
+  test("a VML button and its fallback resolve to exactly one button", () => {
+    // The shape of every real email that draws a rounded CTA for Outlook.
+    const html = `<!--[if mso]><v:roundrect arcsize="0%">VML</v:roundrect><![endif]-->
+      <!--[if !mso]><!-- --><a href="#">HTML</a><!--<![endif]-->`;
+    const out = resolveMsoBranch(html);
+    expect(out).toContain("VML");
+    expect(out).not.toContain("HTML");
+  });
+
+  test("an unmatched revealed opener is never un-hidden by the second pass", () => {
+    // Degrading to "left the fallback in" is recoverable. Degrading to
+    // "showed Outlook the branch written to hide from it" is not, so the
+    // hidden pass must refuse any condition carrying a negation.
+    const html = `<!--[if !mso]><!~~>${FALLBACK}<!--<![endif]-->`;
+    const out = resolveMsoBranch(html);
+    expect(out).toContain("<!--[if !mso]>");
+  });
+});

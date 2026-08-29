@@ -64,13 +64,43 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
 }
 
 /**
+ * The opener of a downlevel-revealed block. It has two spellings in the wild
+ * and no canonical one:
+ *
+ *   <!--[if !mso]><!-->       the shorthand, `<!--` closed by a bare `>`
+ *   <!--[if !mso]><!-- -->    an ordinary empty comment
+ *
+ * Matching only the first left the fallback in place for the Word engine, so
+ * a preview drew both the VML button and the HTML button written to replace
+ * it: two stacked CTAs in a render whose whole job is to be trusted. Outlook
+ * sees `[if !mso]`, evaluates it false and skips to `[endif]` whichever
+ * spelling closed the opener, so both must resolve the same way here.
+ *
+ * The condition is matched by *containing* a negated mso/vml term rather than
+ * starting with one, because `[if (!mso)&(!IE)]` is as common in real email as
+ * the bare `[if !mso]`.
+ */
+const DOWNLEVEL_REVEALED =
+  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<!--(?:>|\s*-->)([\s\S]*?)<!--\s*<!\[endif\]-->/gi;
+
+/**
+ * A downlevel-hidden block: the markup only Outlook reads.
+ *
+ * The lookahead keeps this off negated conditions. Without it a revealed block
+ * whose opener we failed to match would then be unwrapped by this pass, which
+ * turns a missed deletion into markup shown to the one client written to never
+ * see it. Failing towards "left something in" is recoverable; failing towards
+ * "revealed the hidden branch" is not.
+ */
+const DOWNLEVEL_HIDDEN =
+  /<!--\[if(?![^\]]*!)[^\]]*(?:mso|vml)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi;
+
+/**
  * Uncomment the Outlook-only blocks and delete the downlevel-revealed branch,
  * leaving the markup a Word-engine client actually parses.
  */
 export function resolveMsoBranch(html: string): string {
-  return html
-    .replace(/<!--\[if\s*!\s*(?:mso|vml)[^\]]*\]><!-->([\s\S]*?)<!--<!\[endif\]-->/gi, "")
-    .replace(/<!--\[if[^\]]*(?:mso|vml)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi, "$1");
+  return html.replace(DOWNLEVEL_REVEALED, "").replace(DOWNLEVEL_HIDDEN, "$1");
 }
 
 /** Translate the VML shapes a browser cannot draw into divs it can. */
