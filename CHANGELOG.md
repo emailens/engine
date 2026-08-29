@@ -1,16 +1,35 @@
 # Changelog
 
-## 0.11.6 - unreleased
+## 0.11.7 - unreleased
 
-> Held pending real-client verification. Nothing here is on npm; the published
-> version is 0.11.5. **This must go out as 0.12.0, not 0.11.6**: the version
-> here is a working label, and `no-responsive-rules` changes answers on real
-> email, flagging 30 of our own 70 gallery templates.
+### Fixed
+
+- **Both spellings of a downlevel-revealed opener now resolve.** The block that hides markup *from* Outlook has two forms in the wild and no canonical one:
+
+  ```
+  <!--[if !mso]><!-->       the shorthand, `<!--` closed by a bare `>`
+  <!--[if !mso]><!-- -->    an ordinary empty comment
+  ```
+
+  Only the first was matched. Outlook evaluates `[if !mso]` false and skips to `[endif]` whichever spelling closed the opener, so an email using the second kept its fallback in the Word-engine render: the preview drew the VML button *and* the HTML button written to replace it, stacked. A preview that invents a second call to action reports our failure as the email's, which is worse than reporting nothing.
+
+  Found in our own landing-page demo, whose template uses the second form. Any email written that way has been getting a doubled CTA in the Outlook Classic preview since the renderer learned to resolve conditional comments in 0.11.2.
+
+  Two further corrections in the same pass. The condition is now matched by *containing* a negated mso/vml term rather than starting with one, because `[if (!mso)&(!IE)]` is as common in real email as the bare `[if !mso]` and the paren defeated a pattern anchored on `!` directly after `[if`. And the downlevel-*hidden* pass now refuses any condition carrying a negation: without that, a revealed block whose opener we failed to match would be un-hidden by the second pass, turning a missed deletion into markup shown to the one client written never to see it. Failing towards "left the fallback in" is recoverable; failing towards "revealed the hidden branch" is not.
+
+
+## 0.11.6 - 2026-08-29
+
+> Published as a patch. The note here said it had to go out as 0.12.0, because
+> `no-responsive-rules` changes answers on real email and flags 30 of our own
+> 70 gallery templates. It shipped as 0.11.6 anyway, so consumers pinned to
+> `^0.11` picked up a new rule without asking for it. Recorded rather than
+> quietly corrected: the next rule that changes answers gets a minor.
 >
-> The hold is not about anything in this block. It is 0.11.5's renderer, which
-> draws a nested `<v:roundrect>` that Outlook Classic does not render at all,
-> photographed on 29 Aug. Two observations of that failure disagree on the
-> inner shape's fate, so there is not yet enough evidence to write the fix.
+> The renderer hold this block described is still open. 0.11.5 draws a nested
+> `<v:roundrect>` that Outlook Classic does not render at all, photographed on
+> 29 Aug. Two observations of that failure disagree on the inner shape's fate,
+> so there is still not enough evidence to write the fix.
 
 ### Added
 
