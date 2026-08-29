@@ -14,6 +14,12 @@
 
 ### Added
 
+- **`ghost-table-unbalanced`: the Outlook wrapper that never closes.** Outlook ignores `max-width`, so a layout is constrained for it with a plain HTML table opened in one conditional block and closed in another, with the whole email between. Balanced across the pair, and invisible to a DOM parser, which sees only comment nodes. Lose the closing block in an edit and Outlook is left with a table that never ends, swallowing the rest of the message, while every other client renders normally, which is why it survives review.
+
+  Counts balance across the conditional blocks rather than within one, since the halves are always separated. Reports only *unbalanced* wrappers, never the pattern itself, which is the recommended technique. Runs whether or not the email contains any VML: a ghost table is plain HTML, and gating it behind `hasVml` would miss every email that wraps without shapes.
+
+  Silent across 76 real emails, and on MJML's own output, which emits ghost tables natively.
+
 - **`no-responsive-rules`: the email has no instructions for a narrow screen.** Every other layout rule asks whether something is *wider* than the frame. This one asks whether there is a breakpoint at all, because a fixed-width design is not broken on any single client: it is broken across them, since each mobile client then invents its own behaviour.
 
   Found by photographing one of our own templates. Outlook Android stretched a fixed 600px table to fill the viewport while the hero image, correctly written as `width:100%; max-width:600px`, held at 600 and left grey gutters down both sides. Outlook Classic rendered the same file edge to edge. The image markup was textbook, every existing check passed the file clean, and the missing `@media` block was the fault.

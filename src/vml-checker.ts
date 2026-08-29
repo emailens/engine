@@ -177,6 +177,102 @@ function checkLooseText(
   }, locAt(source, open.offset, open.length)));
 }
 
+
+/**
+ * The table tags a ghost wrapper is built from. Outlook ignores `max-width`, so
+ * the standard way to constrain a layout for it is a plain HTML table opened in
+ * one conditional block and closed in another, with ordinary markup between:
+ *
+ *   <!--[if mso]><table width="600"><tr><td><![endif]-->
+ *   ...the email...
+ *   <!--[if mso]></td></tr></table><![endif]-->
+ *
+ * Balanced across the two blocks, and invisible to a DOM parser, which sees
+ * only comment nodes. Losing the closing block leaves Outlook a table that
+ * never ends.
+ */
+const GHOST_TAGS = new Set(["table", "tr", "td", "th", "tbody", "thead", "tfoot"]);
+
+/** Ghost-table tags across the Outlook-only blocks, in document order. */
+function ghostTags(blocks: MsoBlock[]): VmlTag[] {
+  const tags: VmlTag[] = [];
+  const re = /<(\/?)(table|tr|td|th|tbody|thead|tfoot)\b((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
+  for (const block of blocks) {
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(block.inner)) !== null) {
+      tags.push({
+        name: m[2].toLowerCase(),
+        closing: m[1] === "/",
+        selfClosing: m[4] === "/",
+        attrs: m[3],
+        offset: block.offset + m.index,
+        length: m[0].length,
+      });
+    }
+  }
+  return tags;
+}
+
+/**
+ * Report a ghost wrapper that never closes, or closes without opening.
+ *
+ * Deliberately only reports *unbalanced* wrappers, never the pattern itself:
+ * a correctly paired ghost table is the recommended technique, not a fault.
+ * Balance is counted per tag name rather than as a strict stack, because the
+ * two halves are written by hand in separate blocks and `</td></tr></table>`
+ * against `<table><tr><td>` is the normal, correct shape.
+ */
+function checkGhostTables(
+  issues: VmlIssue[],
+  seen: Map<string, VmlIssue>,
+  blocks: MsoBlock[],
+  source: string | undefined,
+): void {
+  const tags = ghostTags(blocks);
+  if (tags.length === 0) return;
+
+  const opens = new Map<string, VmlTag[]>();
+  const strays: VmlTag[] = [];
+  for (const tag of tags) {
+    if (tag.selfClosing) continue;
+    const list = opens.get(tag.name) ?? [];
+    if (tag.closing) {
+      if (list.length === 0) strays.push(tag);
+      else list.pop();
+    } else list.push(tag);
+    opens.set(tag.name, list);
+  }
+
+  for (const [name, list] of opens) {
+    if (!GHOST_TAGS.has(name)) continue;
+    for (const tag of list.slice(0, 1)) {
+      add(issues, seen, `ghost-open:${name}`, withLoc({
+        rule: "ghost-table-unbalanced",
+        severity: "error",
+        message: `<${name}> is opened inside an Outlook conditional comment and never closed.`,
+        detail:
+          `The closing half of a ghost wrapper lives in its own <!--[if mso]> block, usually much further ` +
+          `down the file, and is easy to lose in an edit. Outlook is left with a table that never ends, so ` +
+          `it swallows the rest of the email; every other client sees only comment nodes and renders ` +
+          `normally, which is why this survives review. Add the matching </${name}> in a closing ` +
+          `conditional block.`,
+      }, locAt(source, tag.offset, tag.length)));
+    }
+  }
+
+  for (const tag of strays.slice(0, 1)) {
+    add(issues, seen, `ghost-stray:${tag.name}`, withLoc({
+      rule: "ghost-table-unbalanced",
+      severity: "error",
+      message: `Closing </${tag.name}> inside an Outlook conditional comment has no matching opening tag.`,
+      detail:
+        `The opening half of the ghost wrapper is missing or was removed. Outlook receives a stray closing ` +
+        `tag, which ends a table it never started and can truncate the layout from that point.`,
+    }, locAt(source, tag.offset, tag.length)));
+  }
+}
+
 /**
  * Check hand-written VML for the mistakes Outlook punishes.
  *
@@ -195,11 +291,17 @@ export function checkVml(html: string, options?: { positions?: boolean }): VmlRe
   if (!html || !html.trim()) return EMPTY_VML;
   const source = options?.positions ? html : undefined;
 
-  const tags = vmlTags(msoBlocks(html));
-  if (tags.length === 0) return EMPTY_VML;
+  const blocks = msoBlocks(html);
+  const tags = vmlTags(blocks);
 
   const issues: VmlIssue[] = [];
   const seen = new Map<string, VmlIssue>();
+
+  // Ghost tables are plain HTML, so they are checked whether or not the email
+  // contains any VML at all.
+  checkGhostTables(issues, seen, blocks, source);
+
+  if (tags.length === 0) return { hasVml: false, issues };
 
   // A shape stays "open" until its closing tag; `groupDepth` tracks the one
   // container VML legitimately allows shapes inside.

@@ -243,3 +243,52 @@ describe("checkVml: the reported real-world hero", () => {
     expect(issue?.severity).toBe("warning");
   });
 });
+
+describe("checkVml: ghost tables (G-03)", () => {
+  const ghosts = (html: string) =>
+    checkVml(html).issues.filter((i) => i.rule === "ghost-table-unbalanced");
+
+  // Outlook ignores max-width, so a layout is constrained for it with a plain
+  // table opened in one conditional block and closed in another. Balanced
+  // across the pair, and invisible to a DOM parser, which sees comment nodes.
+  const OPEN = mso(`<table width="600"><tr><td>`);
+  const CLOSE = mso(`</td></tr></table>`);
+
+  test("accepts the correctly paired wrapper, which is the recommended pattern", () => {
+    expect(ghosts(`${OPEN}<p>content</p>${CLOSE}`)).toEqual([]);
+  });
+
+  test("flags a wrapper opened and never closed", () => {
+    const issues = ghosts(`${OPEN}<p>content</p>`);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0].severity).toBe("error");
+    expect(issues.map((i) => i.message).join(" ")).toContain("<table>");
+  });
+
+  test("flags a closing tag with no opener", () => {
+    expect(ghosts(CLOSE).length).toBeGreaterThan(0);
+  });
+
+  test("counts across separate conditional blocks, not within one", () => {
+    // The halves are always in different blocks with ordinary markup between,
+    // so a checker that balanced per block would flag every correct wrapper.
+    expect(ghosts(`${OPEN}<table><tr><td>real html</td></tr></table>${CLOSE}`)).toEqual([]);
+  });
+
+  test("ignores tables outside the Outlook branch entirely", () => {
+    // Unbalanced ordinary HTML is the DOM parser's problem, not this rule's.
+    expect(ghosts(`<table><tr><td>never closed`)).toEqual([]);
+  });
+
+  test("says nothing about an email with no conditional comments", () => {
+    expect(ghosts(`<html><body><table><tr><td>x</td></tr></table></body></html>`)).toEqual([]);
+  });
+
+  test("reports even when the email contains no VML at all", () => {
+    // Ghost tables are plain HTML. Gating this behind hasVml would miss every
+    // email that uses the wrapper without any shapes.
+    const report = checkVml(`${OPEN}<p>x</p>`);
+    expect(report.hasVml).toBe(false);
+    expect(report.issues.some((i) => i.rule === "ghost-table-unbalanced")).toBe(true);
+  });
+});
