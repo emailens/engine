@@ -1,6 +1,13 @@
 import type { CheerioAPI } from "cheerio";
 import * as csstree from "css-tree";
 import { EMAIL_MAX_WIDTH, UNBREAKABLE_STRING_LENGTH, EMPTY_OVERFLOW, MAX_WARNING_LOCATIONS } from "./constants";
+
+/**
+ * Below this, a fixed width is a deliberate column or spacer rather than a
+ * statement about the layout. 320px is the narrowest viewport still in common
+ * use, so anything at least this wide has to survive a phone somehow.
+ */
+const RESPONSIVE_MIN_WIDTH = 320;
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { visibleTextNodes } from "./dom-text";
 import { cssBlockAnchor, locInCssBlock, locInTextNode, locOfAttr } from "./source-location";
@@ -203,6 +210,54 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
         message: `A ${token.length}-character unbroken string ("${preview}") can't wrap and will force horizontal scrolling on narrow screens.`,
         detail: `Add overflow-wrap: anywhere (or word-break: break-word) to its container.`,
         ...(loc ? { loc, locs: [loc] } : {}),
+      });
+    }
+  }
+
+  // 3. A fixed-width layout with no responsive rules at all.
+  //
+  //    checkOverflow's other rules ask whether something is *wider* than the
+  //    frame. This asks whether the email has any instructions for a narrow
+  //    one. A 600px design with no @media block is not broken on any single
+  //    client, which is why it passes everything else: it is broken across
+  //    them, because each mobile client then invents its own behaviour.
+  //
+  //    Observed on a real template of ours: Outlook Android stretched the
+  //    fixed table to fill the viewport while the hero image, correctly
+  //    written as `width:100%; max-width:600px`, held at 600 and left grey
+  //    gutters down both sides. The markup was textbook; the absence of a
+  //    breakpoint was the fault.
+  if (!/@media/i.test($.html())) {
+    let widest = 0;
+    let widestLabel = "";
+    let widestLoc: SourceLocation | undefined;
+    $("table, td, div").each((_, el) => {
+      const $el = $(el);
+      const width = fixedPxWidth($el);
+      // A fixed width only matters here if it is layout-bearing. Spacer cells
+      // and small columns are fixed on purpose and say nothing about the
+      // design's responsiveness.
+      if (width === null || width < RESPONSIVE_MIN_WIDTH) return;
+      if (isFluid($el.attr("style") || "")) return;
+      if (width <= widest) return;
+      widest = width;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      widestLabel = `<${((el as any).tagName || "element").toLowerCase()}>`;
+      const fromStyle = /(?:^|[;\s])width\s*:\s*\d+px/i.test($el.attr("style") || "");
+      widestLoc = locOfAttr(el, fromStyle ? "style" : "width");
+    });
+
+    if (widest > 0) {
+      issues.push({
+        rule: "no-responsive-rules",
+        severity: "warning",
+        message: `${widestLabel} is a fixed ${widest}px wide and the email has no @media rules, so nothing tells a narrow screen what to do.`,
+        detail:
+          `Each mobile client then decides for itself: one scales the layout to fit, another leaves it to ` +
+          `scroll, a third stretches the container while any child with a px max-width stays put and leaves ` +
+          `gutters. Give the container width:100% with max-width:${widest}px, and add a breakpoint for the ` +
+          `parts that need to stack.`,
+        ...(widestLoc ? { loc: widestLoc, locs: [widestLoc] } : {}),
       });
     }
   }

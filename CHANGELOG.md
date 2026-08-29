@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.11.6 - 2026-08-29
+## 0.12.0 - 2026-08-29
+
+### Added
+
+- **`no-responsive-rules`: the email has no instructions for a narrow screen.** Every other layout rule asks whether something is *wider* than the frame. This one asks whether there is a breakpoint at all, because a fixed-width design is not broken on any single client: it is broken across them, since each mobile client then invents its own behaviour.
+
+  Found by photographing one of our own templates. Outlook Android stretched a fixed 600px table to fill the viewport while the hero image, correctly written as `width:100%; max-width:600px`, held at 600 and left grey gutters down both sides. Outlook Classic rendered the same file edge to edge. The image markup was textbook, every existing check passed the file clean, and the missing `@media` block was the fault.
+
+  Fires only when a layout-bearing element carries a fixed pixel width (at least 320px, so spacers and narrow columns are ignored), it has no fluid escape, and the document contains no `@media` rule anywhere. Across our 70-template gallery it flags 30 and stays silent on the 4 that have no media queries but are fluid.
 
 ### Fixed
 
