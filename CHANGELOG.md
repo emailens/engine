@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.12.0 - 2026-08-29
+## 0.11.6 - unreleased
+
+> Held pending real-client verification. Nothing here is on npm; the published
+> version is 0.11.5. **This must go out as 0.12.0, not 0.11.6**: the version
+> here is a working label, and `no-responsive-rules` changes answers on real
+> email, flagging 30 of our own 70 gallery templates.
+>
+> The hold is not about anything in this block. It is 0.11.5's renderer, which
+> draws a nested `<v:roundrect>` that Outlook Classic does not render at all,
+> photographed on 29 Aug. Two observations of that failure disagree on the
+> inner shape's fate, so there is not yet enough evidence to write the fix.
 
 ### Added
 
