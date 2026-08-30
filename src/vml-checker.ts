@@ -352,17 +352,29 @@ export function checkVml(html: string, options?: { positions?: boolean }): VmlRe
           message:
             `<v:${name}> is nested inside <v:${parent.name}>. Outlook does not support nesting one ` +
             `VML shape inside another.`,
+          // Two effects, not the three this used to claim. The withdrawn one
+          // said the table structure terminates early so content after the
+          // shape falls outside the email frame. It had no methodology behind
+          // it, and `T1c-blast-radius.html`, the fixture built to measure
+          // exactly this, contradicts it: the block after the nested shape
+          // rendered in place inside the same table with its background and
+          // borders intact, and only the VML labels were missing. The likely
+          // origin is over-reading "layout breaks after it" from a run where a
+          // 600px hero band vanished and everything below shifted up.
+          //
+          // Kept as a warning to whoever edits this next: the probe sentence
+          // below covers the downstream text suppression only. Do not let it
+          // lend its authority to a neighbouring clause again.
           detail:
-            `Verified in Outlook Classic, and the damage is not local. Three things happen: the containing ` +
+            `Verified in Outlook Classic, and the damage is not local. Two things happen: the containing ` +
             `<v:${parent.name}> does not render at all (its fill and everything inside it disappear, leaving ` +
-            `the inner shape stranded); the table structure around it terminates early, so content *after* ` +
-            `the shape falls out of the layout and renders outside the email frame; and every VML shape ` +
-            `further down the email stops drawing its text, so buttons and headings after this point ship as ` +
-            `blank coloured blocks. Confirmed with byte-identical probes either side of one nested shape: ` +
-            `the one before it renders its labels, the one after it does not. Every other client renders the ` +
-            `HTML fallback correctly, which is why none of this is visible outside the Word engine. Fix: lift ` +
-            `the inner shape out of <v:${parent.name}>, or drop the container shape and keep the inner one ` +
-            `(a framed background can degrade to a solid fill colour on the <td> instead).`,
+            `the inner shape stranded); and every VML shape further down the email stops drawing its text, ` +
+            `so buttons and headings after this point ship as blank coloured blocks. That second effect was ` +
+            `confirmed with byte-identical probes either side of one nested shape: the one before it renders ` +
+            `its labels, the one after it does not. Every other client renders the HTML fallback correctly, ` +
+            `which is why none of this is visible outside the Word engine. Fix: lift the inner shape out of ` +
+            `<v:${parent.name}>, or drop the container shape and keep the inner one (a framed background can ` +
+            `degrade to a solid fill colour on the <td> instead).`,
         }, loc));
       }
       if (!tag.selfClosing) openShapes.push(tag);

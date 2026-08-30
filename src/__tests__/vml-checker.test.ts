@@ -219,13 +219,32 @@ describe("checkVml: the reported real-world hero", () => {
 
   test("the nested-shape finding reports verified Outlook behaviour", () => {
     // Confirmed against Outlook Classic (Word engine): the containing shape
-    // does not render, and the table structure after it terminates early, so
-    // later content escapes the email frame. The wording must carry both,
-    // because the second half is the part authors do not expect.
+    // does not render, and every VML shape further down stops drawing its
+    // text. The wording must carry both, because the second is the part
+    // authors do not expect and the part that explains damage far from the
+    // shape they edited.
     const issue = report.issues.find((i) => i.rule === "vml-nested-shape");
     expect(issue?.detail).toMatch(/does not render/i);
-    expect(issue?.detail).toMatch(/after/i);
+    expect(issue?.detail).toMatch(/stops drawing its text/i);
     expect(issue?.severity).toBe("error");
+  });
+
+  test("the finding does not claim the table structure terminates", () => {
+    // This shipped as fact for three days and went out to the person who
+    // reported the bug. It had no methodology behind it, and
+    // `T1c-blast-radius.html`, the fixture built to measure exactly this,
+    // contradicts it: the block after the nested shape rendered in place
+    // inside the same table with its background and borders intact, and only
+    // the VML labels were missing.
+    //
+    // Asserted as an absence, which is unusual and deliberate. The claim is
+    // plausible, it reads well, and it sat next to a sentence describing real
+    // probe methodology that lent it unearned authority. Someone will be
+    // tempted to put it back.
+    const issue = report.issues.find((i) => i.rule === "vml-nested-shape");
+    expect(issue?.detail).not.toMatch(/terminates early/i);
+    expect(issue?.detail).not.toMatch(/outside the email frame/i);
+    expect(issue?.detail).not.toMatch(/three things/i);
   });
 
   test("the dimension finding says content is clipped, not merely collapsed", () => {
