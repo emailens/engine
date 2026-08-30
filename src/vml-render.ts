@@ -18,12 +18,32 @@
  * `roundrect` and `rect` are the whole surface. Anything else is left alone
  * rather than approximated.
  *
- * Deliberately NOT emulated: how Word *mis*-renders a nested shape. That is a
- * real and confirmed failure (the container disappears and text stops drawing
- * further down the document), but reproducing it means perturbing Chromium's
- * layout into a picture that is wrong in a third way, different from both the
- * correct render and Outlook's. `checkVml` reports it with a line number
- * instead, which is more useful and cannot mislead.
+ * How Word *mis*-renders a nested shape is emulated, but only the parts with
+ * evidence behind them. This note used to say the failure was not emulated at
+ * all, on the grounds that reproducing it meant perturbing Chromium into a
+ * picture wrong in a third way. That argument does not survive contact with
+ * the specific effects:
+ *
+ *   - the container's fill and geometry disappear    -> drop the box. Exact.
+ *   - VML shapes further down stop drawing text      -> blank their labels.
+ *                                                       Exact, and scoped to
+ *                                                       shapes we created.
+ *   - the table structure terminates early, so later
+ *     content escapes the frame                      -> WITHDRAWN. It had no
+ *                                                       methodology, and the
+ *                                                       fixture built to
+ *                                                       measure it contradicts
+ *                                                       it.
+ *
+ * Two of the three needed no distortion at all; the third turned out not to be
+ * a rendering problem but an evidence problem. Refusing to draw any of it
+ * meant the preview showed a tidy box with a button in it, a picture no Word
+ * engine produces, sitting beside a finding that said the region was
+ * destroyed. Between a warning and a screenshot, people believe the
+ * screenshot.
+ *
+ * Affected regions carry `data-vml-outlook` so a surface can label them, since
+ * a blank button should read as "Outlook does this" and not as our bug.
  */
 
 /** Read a length that VML wrote, tolerating a bare number or a px suffix. */
@@ -183,12 +203,61 @@ export function vmlToCss(html: string): string {
         solid ? `background-color:${solid}` : "",
         `padding:${padding}`,
       ].filter(Boolean).join(";");
+      // Outlook does not draw a shape containing another shape: the
+      // container's fill and geometry disappear and the inner shape is left
+      // stranded. Confirmed on Outlook Classic in T1a and T1c. Emulated rather
+      // than approximated, because "drop the box" is precisely what was
+      // observed and needs no distortion of the surrounding layout: the
+      // children stay exactly where they were, minus the frame around them.
+      //
+      // Detection rides on pass order: roundrect is translated above, so a
+      // shape nested here already carries `data-vml`. That covers
+      // roundrect-inside-rect, the reported production case and what
+      // MJML-shaped email produces. Exotic nesting is left to `checkVml`,
+      // which reads tag sequences rather than depending on this order.
+      if (/data-vml="/.test(content)) {
+        return `<div data-vml="rect" data-vml-outlook="container-dropped">${content}</div>`;
+      }
       return `<div data-vml="rect" style="${background}${box}">${content}</div>`;
     },
   );
 
   // Property elements have no visual role once their parent shape is gone.
-  return out.replace(/<\/?v:(?:fill|textbox|stroke|shadow|imagedata|path|formulas|handles)[^>]*?\/?>/gi, "");
+  out = out.replace(/<\/?v:(?:fill|textbox|stroke|shadow|imagedata|path|formulas|handles)[^>]*?\/?>/gi, "");
+  return blankLabelsAfterNestedShape(out);
+}
+
+/**
+ * The second confirmed consequence of a nested shape: every VML shape further
+ * down the email stops drawing its text, so buttons and headings after that
+ * point ship as blank coloured blocks.
+ *
+ * This is the effect with the best evidence behind it, confirmed with
+ * byte-identical probes either side of one nested shape, the one before it
+ * rendering its labels and the one after it not. It is also the one that makes
+ * the failure worth previewing at all: it explains damage far from the shape
+ * the author edited, which is exactly what a person cannot find by reading
+ * their own template.
+ *
+ * Scoped to shapes this translator created, which is both what was observed
+ * and the only thing we can blank precisely. Plain HTML after the shape is
+ * left alone: `T1c` shows it rendering in place, and blanking it would be
+ * inventing a failure rather than reproducing one.
+ *
+ * The geometry stays. A blank coloured block is the observed result, so the
+ * fill and size are the render, not leftovers.
+ */
+function blankLabelsAfterNestedShape(html: string): string {
+  const at = html.indexOf('data-vml-outlook="container-dropped"');
+  if (at === -1) return html;
+  // Everything from the nested container onward, which includes the stranded
+  // inner shape itself: T1c recorded that pill as unlabelled too.
+  const tail = html.slice(at).replace(
+    /(<div data-vml="roundrect")([^>]*>)([\s\S]*?)(<\/div>)/gi,
+    (whole, open: string, rest: string, label: string, close: string) =>
+      label.trim() ? `${open}${rest.slice(0, -1)} data-vml-outlook="label-dropped">${close}` : whole,
+  );
+  return html.slice(0, at) + tail;
 }
 
 /**

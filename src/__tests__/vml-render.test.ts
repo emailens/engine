@@ -247,3 +247,101 @@ describe("resolveMsoBranch: the two spellings of a revealed block", () => {
     expect(out).toContain("<!--[if !mso]>");
   });
 });
+
+describe("vmlToCss: a nested shape renders the way Outlook renders it", () => {
+  // The preview and the report contradicted each other: vml-nested-shape was
+  // reported with a line number while the render beside it drew a tidy box
+  // with a button inside, a picture no Word engine produces. Between a warning
+  // and a screenshot, people believe the screenshot.
+  //
+  // Two of the three documented effects are emulated, both exactly. The third,
+  // that the table structure terminates early and later content escapes the
+  // frame, was withdrawn: no methodology, and `T1c-blast-radius.html`
+  // contradicts it.
+  const nested = `<!--[if mso]>
+    <v:rect style="width:600px;height:100px;" fillcolor="#eeeeee">
+    <v:textbox inset="0,0,0,0">
+    <v:roundrect style="width:200px;height:40px;" arcsize="10%" fillcolor="#333333">
+    <center>INNER</center>
+    </v:roundrect>
+    </v:textbox>
+    </v:rect>
+    <![endif]-->`;
+
+  const plain = `<!--[if mso]>
+    <v:rect style="width:600px;height:100px;" fillcolor="#eeeeee">
+    <v:textbox inset="0,0,0,0">plain content</v:textbox>
+    </v:rect>
+    <![endif]-->`;
+
+  const later = `<!--[if mso]>
+    <v:roundrect style="width:200px;height:40px;" arcsize="10%" fillcolor="#336699">
+    <center>DOWNSTREAM</center>
+    </v:roundrect>
+    <![endif]-->`;
+
+  const render = (html: string) => vmlToCss(resolveMsoBranch(html));
+
+  test("the container loses its fill and geometry", () => {
+    // Effect one: Outlook does not draw a shape holding another shape.
+    const out = render(nested);
+    expect(out).toContain('data-vml-outlook="container-dropped"');
+    expect(out).not.toContain("#eeeeee");
+  });
+
+  test("an ordinary rect keeps its box", () => {
+    // The emulation has to mean something. If every rect lost its fill, the
+    // preview would be wrong about emails that render perfectly well.
+    const out = render(plain);
+    expect(out).toContain("#eeeeee");
+    expect(out).not.toContain("data-vml-outlook");
+  });
+
+  test("the stranded inner shape draws blank", () => {
+    // T1c recorded the inner pill as unlabelled, so the label goes and the
+    // fill stays: a blank coloured block is the observed render, not a
+    // leftover.
+    const out = render(nested);
+    expect(out).toContain("#333333");
+    expect(out).not.toContain("INNER");
+    expect(out).toContain('data-vml-outlook="label-dropped"');
+  });
+
+  test("a shape after the nested one loses its label too", () => {
+    // The effect with the best evidence: byte-identical probes either side of
+    // one nested shape, the one before rendering its labels and the one after
+    // not. It is also why the failure is worth previewing, because it explains
+    // damage far from the shape the author edited.
+    const out = render(nested + later);
+    expect(out).not.toContain("DOWNSTREAM");
+    expect(out).toContain("#336699");
+  });
+
+  test("a shape before the nested one keeps its label", () => {
+    // The other half of the same probe. Without this the test above would
+    // pass on an implementation that blanked every label in the document.
+    const out = render(later + nested);
+    expect(out).toContain("DOWNSTREAM");
+  });
+
+  test("plain HTML after the nested shape is untouched", () => {
+    // The withdrawn effect. T1c shows downstream plain content rendering in
+    // place inside the same table, so blanking it would be inventing a
+    // failure rather than reproducing one.
+    const out = render(nested + "<p>ordinary paragraph</p>");
+    expect(out).toContain("ordinary paragraph");
+  });
+
+  test("the emulation survives the full client pipeline", () => {
+    // Both earlier Outlook-branch regressions escaped because tests asserted
+    // on the function being changed rather than the bytes a client receives.
+    const out = transformForClient(`<html><body>${nested}</body></html>`, "outlook-windows-legacy").html;
+    expect(out).toContain('data-vml-outlook="container-dropped"');
+    expect(out).not.toContain("INNER");
+  });
+
+  test("no other client sees any of it", () => {
+    const out = transformForClient(`<html><body>${nested}</body></html>`, "gmail-web").html;
+    expect(out).not.toContain("data-vml-outlook");
+  });
+});

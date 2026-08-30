@@ -69,14 +69,14 @@ describe("every entry point agrees", () => {
 describe("the Word engine receives the Outlook branch, fully rendered", () => {
   for (const [name, fn] of ENTRY_POINTS) {
     describe(name, () => {
-      test("the nested hero collapses, because its height never resolved", () => {
+      test("the nested hero is not drawn at all, the way Outlook does not draw it", () => {
         const out = fn(BROKEN, WORD);
-        const rect = style(out, "rect");
-        expect(rect).not.toBeNull();
-        expect(rect).toContain("width:600px");
-        // The source says `height:px`. Inventing a value here would draw a box
-        // the email never asked for and hide the fault the linter reports.
-        expect(rect).not.toContain("height:");
+        // This used to assert the container kept `width:600px` with its height
+        // left unset, which described a box no Word engine draws. Outlook does
+        // not render a shape holding another shape: the fill and geometry go
+        // and the inner shape is left stranded. Confirmed in T1a and T1c.
+        expect(out).toContain('data-vml-outlook="container-dropped"');
+        expect(style(out, "rect")).toBeNull();
       });
 
       test("the button keeps the CSS that describes what Outlook draws", () => {
@@ -148,9 +148,12 @@ describe("the linter and the renderer describe the same email", () => {
   // shape while the preview rendered the email looking perfect.
   test("a finding in the linter has a visible consequence in the render", () => {
     const findings = checkVml(BROKEN).issues.map((i) => i.rule);
-    expect(findings).toContain("vml-invalid-dimension");
-    expect(style(transformForAllClients(BROKEN).find((t) => t.clientId === WORD)!.html, "rect"))
-      .not.toContain("height:");
+    expect(findings).toContain("vml-nested-shape");
+    const out = transformForAllClients(BROKEN).find((t) => t.clientId === WORD)!.html;
+    // The consequence is now the failure itself rather than an absent height.
+    // A finding that says the region is destroyed beside a render that draws
+    // it intact is the contradiction this whole file exists to prevent.
+    expect(out).toContain('data-vml-outlook="container-dropped"');
   });
 
   test("a clean linter result renders without a collapsed shape", () => {
@@ -223,8 +226,23 @@ describe("safety: nothing here may throw or corrupt an ordinary email", () => {
     // Translation rewrites shapes, not content. If a headline disappears the
     // rewrite has eaten something it should not have.
     const out = transformForAllClients(BROKEN).find((t) => t.clientId === WORD)!.html;
-    for (const phrase of ["Thirty templates", "Browse the templates", "Philippe", "email QA for developers"]) {
+    for (const phrase of ["Thirty templates", "Philippe", "email QA for developers"]) {
       expect([phrase, out.includes(phrase)]).toEqual([phrase, true]);
     }
+  });
+
+  test("a VML label after a nested shape is the one thing that does go", () => {
+    // "Browse the templates" was in the list above until the renderer learned
+    // to emulate the failure. It is a `<center>` label inside a shape, and a
+    // shape at or after a nested one ships as a blank coloured block in
+    // Outlook Classic. Losing it is the emulation working, not the rewrite
+    // eating content, and the distinction is worth a test of its own so the
+    // next person does not "fix" it by putting the label back.
+    const out = transformForAllClients(BROKEN).find((t) => t.clientId === WORD)!.html;
+    expect(out).not.toContain("Browse the templates");
+    expect(out).toContain('data-vml-outlook="label-dropped"');
+    // Every other client still gets it, which is why nobody sees this coming.
+    const gmail = transformForAllClients(BROKEN).find((t) => t.clientId === "gmail-web")!.html;
+    expect(gmail).toContain("Browse the templates");
   });
 });
