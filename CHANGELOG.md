@@ -1,6 +1,33 @@
 # Changelog
 
-## 0.11.7 - unreleased
+## 0.11.8 - unreleased
+
+### Fixed
+
+- **`vml-nested-shape` no longer claims the table structure terminates.** The finding told customers three things happen. One had no evidence behind it: *"the table structure around it terminates early, so content after the shape falls out of the layout and renders outside the email frame."*
+
+  The methodology sentence beside it covers the downstream text suppression only, and says so: *"That last one was confirmed with byte-identical probes."* The table clause sat next to it and borrowed its authority. `T1c-blast-radius.html`, the fixture built to measure exactly this, contradicts it: PROBE 2 sits after the nested shape inside the same 640px table and carries a plain HTML table with its own `bgcolor` and a 2px border, and the recorded result is "PROBE 2 shapes render, labels gone". Had the structure terminated, that bordered table is the first thing that would have moved.
+
+  Likely an over-reading of "hero shape gone, layout breaks after it" from a run where a 600px band vanished and everything below shifted up. A third strike: `T3` lists "table opened, never closed" as unknown and untested, so the message asserted a mechanism never observed.
+
+  The other two effects stand, and the practical conclusion is unchanged: one bad shape near the top still degrades the whole email below it, carried entirely by the confirmed downstream suppression. Guarded with a test asserting the absence, because the claim is plausible, reads well, and will tempt someone to put it back.
+
+### Changed
+
+- **A nested shape now renders the way Outlook renders it, instead of being reported and drawn intact.** The preview and the report contradicted each other: the finding said the region was destroyed while the render beside it drew a tidy box with a button in it. Between a warning and a screenshot, people believe the screenshot.
+
+  Previously this was deliberate, on the grounds that reproducing the failure meant perturbing Chromium into a picture wrong in a third way. That does not survive contact with the specific effects. The container losing its fill and geometry is exactly "drop the box", and the children do not move. VML shapes downstream losing their text is exactly "blank their labels", scoped to shapes this translator created, so the blast radius is what was observed. Neither needs distortion. The third effect was the risky one, and it turned out not to be a rendering problem but an evidence problem.
+
+  Holding this case to "we cannot draw it" also applied a standard nothing else in the transform meets: `border-radius`, `display:flex` and `max-width` are already stripped for the Word engine and those approximations ship with confidence.
+
+  Plain HTML after the shape is left alone, with a test to keep it that way. `T1c` shows it rendering in place, so blanking it would be inventing a failure rather than reproducing one. Geometry stays, because a blank coloured block is the observed render rather than a leftover.
+
+  Affected regions carry `data-vml-outlook` (`container-dropped`, `label-dropped`) so a surface can label them: a blank button should read as "Outlook does this" and not as a bug in the preview.
+
+  **Breaking for anyone reading the Word-engine render as bytes**: a nested container now emits no `style` attribute, and shape labels at or after it are removed. Every other client is untouched.
+
+
+## 0.11.7 - 2026-08-30
 
 ### Fixed
 
