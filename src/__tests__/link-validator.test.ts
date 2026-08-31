@@ -312,3 +312,82 @@ describe("link validator: duplicate links", () => {
     expect(rule).toBeUndefined();
   });
 });
+
+// ============================================================================
+// Link inventory
+// ============================================================================
+
+describe("link validator: inventory", () => {
+  test("every anchor appears in links, not just the problematic ones", () => {
+    // ImageReport has carried a full `images` inventory from the start while
+    // LinkReport carried only counts, so anything wanting to act per-link had
+    // to re-parse the HTML the engine had already parsed.
+    const html = `<html><body>
+      <a href="https://example.com/a">A</a>
+      <a href="https://example.com/b">B</a>
+      <a href="#">Broken</a>
+    </body></html>`;
+    const report = validateLinks(html);
+    expect(report.links).toHaveLength(3);
+    expect(report.links.map((l) => l.href)).toEqual([
+      "https://example.com/a",
+      "https://example.com/b",
+      "#",
+    ]);
+  });
+
+  test("href is kept whole, because a truncated URL cannot be resolved", () => {
+    const long = "https://example.com/" + "x".repeat(300);
+    const report = validateLinks(`<a href="${long}">go</a>`);
+    expect(report.links[0].href).toBe(long);
+  });
+
+  test("scheme classifies each link", () => {
+    const html = `<html><body>
+      <a href="https://a.com">s</a>
+      <a href="http://b.com">i</a>
+      <a href="mailto:x@y.com">m</a>
+      <a href="tel:+1">t</a>
+      <a href="#top">a</a>
+      <a href="//cdn.example.com">p</a>
+      <a href="">e</a>
+    </body></html>`;
+    expect(validateLinks(html).links.map((l) => l.scheme)).toEqual([
+      "https", "http", "mailto", "tel", "anchor", "protocol-relative", "empty",
+    ]);
+  });
+
+  test("isPlaceholder marks the hrefs that go nowhere", () => {
+    const html = `<html><body>
+      <a href="#">a</a>
+      <a href="javascript:void(0)">b</a>
+      <a href="https://real.com">c</a>
+    </body></html>`;
+    expect(validateLinks(html).links.map((l) => l.isPlaceholder)).toEqual([true, true, false]);
+  });
+
+  test("issues names the rules that fired for that link, like ImageInfo does", () => {
+    const report = validateLinks(`<a href="http://insecure.com">click here</a>`);
+    expect(report.links[0].issues).toContain("insecure-link");
+    expect(report.links[0].issues).toContain("generic-link-text");
+  });
+
+  test("a clean link has an empty issues array", () => {
+    const report = validateLinks(`<a href="https://example.com">Read the guide</a>`);
+    expect(report.links[0].issues).toEqual([]);
+  });
+
+  test("text is captured and bounded", () => {
+    const report = validateLinks(`<a href="https://e.com">${"word ".repeat(40)}</a>`);
+    expect(report.links[0].text.length).toBeLessThanOrEqual(80);
+  });
+
+  test("an email with no links has an empty inventory, not a missing one", () => {
+    const report = validateLinks(`<p>no links here</p>`);
+    expect(report.links).toEqual([]);
+  });
+
+  test("unparseable input still returns an inventory array", () => {
+    expect(validateLinks("").links).toEqual([]);
+  });
+});

@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import type { LinkIssue, LinkReport } from "./types";
+import type { LinkInfo, LinkIssue, LinkReport } from "./types";
 import { GENERIC_LINK_TEXT, EMPTY_LINKS } from "./constants";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { locOfAttr, locOfElement } from "./source-location";
@@ -32,6 +32,7 @@ function isPlaceholderHref(href: string): boolean {
  */
 export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
   const issues: LinkIssue[] = [];
+  const inventory: LinkInfo[] = [];
   const breakdown = { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 };
 
   const links = $("a");
@@ -43,7 +44,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       rule: "no-links",
       message: "Email contains no links",
     });
-    return { totalLinks: 0, issues, breakdown };
+    return { totalLinks: 0, issues, breakdown, links: [] };
   }
 
   const hrefCounts = new Map<string, number>();
@@ -52,6 +53,19 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     const href = $(el).attr("href") || "";
     const text = $(el).text().trim();
     const category = classifyHref(href);
+
+    // Recorded before any rule runs, so the inventory holds every anchor and
+    // not only the ones something was wrong with. `entry.issues` is filled in
+    // by the rules below via `flag`.
+    const entry: LinkInfo = {
+      href,
+      text: text.slice(0, 80),
+      scheme: category as LinkInfo["scheme"],
+      isPlaceholder: isPlaceholderHref(href),
+      issues: [],
+    };
+    inventory.push(entry);
+    const flag = (rule: string) => entry.issues.push(rule);
     // Findings about the URL point at the href; findings about the link as a
     // whole (no href, no text) point at the opening tag.
     const elLoc = locOfElement(el);
@@ -76,6 +90,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Empty or missing href
     if (!href || !href.trim()) {
+      flag("empty-href");
       issues.push({
         severity: "error",
         rule: "empty-href",
@@ -88,6 +103,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // javascript: protocol (not placeholder)
     if (category === "javascript" && !isPlaceholderHref(href)) {
+      flag("javascript-href");
       issues.push({
         severity: "error",
         rule: "javascript-href",
@@ -101,6 +117,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Placeholder href
     if (isPlaceholderHref(href)) {
+      flag("placeholder-href");
       issues.push({
         severity: "warning",
         rule: "placeholder-href",
@@ -114,6 +131,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // HTTP instead of HTTPS
     if (category === "http") {
+      flag("insecure-link");
       issues.push({
         severity: "warning",
         rule: "insecure-link",
@@ -126,6 +144,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Protocol-relative URL
     if (category === "protocol-relative") {
+      flag("protocol-relative");
       issues.push({
         severity: "warning",
         rule: "protocol-relative",
@@ -138,6 +157,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Generic link text
     if (text && GENERIC_LINK_TEXT.has(text.toLowerCase())) {
+      flag("generic-link-text");
       issues.push({
         severity: "warning",
         rule: "generic-link-text",
@@ -150,6 +170,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Link with no text and no aria-label
     if (!text && !$(el).attr("aria-label") && !$(el).find("img[alt]").length) {
+      flag("empty-link-text");
       issues.push({
         severity: "error",
         rule: "empty-link-text",
@@ -161,6 +182,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // mailto without address
     if (category === "mailto" && href.trim().toLowerCase() === "mailto:") {
+      flag("empty-mailto");
       issues.push({
         severity: "error",
         rule: "empty-mailto",
@@ -173,6 +195,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // tel: without number
     if (category === "tel" && href.trim().toLowerCase() === "tel:") {
+      flag("empty-tel");
       issues.push({
         severity: "error",
         rule: "empty-tel",
@@ -185,6 +208,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
 
     // Very long URL
     if (href.length > 2000) {
+      flag("long-url");
       issues.push({
         severity: "info",
         rule: "long-url",
@@ -196,8 +220,10 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     }
   });
 
-  // Broken anchor detection: #id links where no matching id exists
-  links.each((_, el) => {
+  // Broken anchor detection: #id links where no matching id exists.
+  // Second pass over the same selection, so the index lines up with the
+  // inventory built above.
+  links.each((i, el) => {
     const href = $(el).attr("href") || "";
     const trimmed = href.trim();
     if (trimmed.startsWith("#") && trimmed.length > 1) {
@@ -205,6 +231,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
       const target = $(`[id="${targetId}"]`);
       const anchorLoc = locOfAttr(el, "href");
       if (target.length === 0) {
+        inventory[i]?.issues.push("broken-anchor");
         issues.push({
           severity: "error",
           rule: "broken-anchor",
@@ -229,7 +256,7 @@ export function validateLinksFromDom($: cheerio.CheerioAPI): LinkReport {
     }
   }
 
-  return { totalLinks, issues, breakdown };
+  return { totalLinks, issues, breakdown, links: inventory };
 }
 
 /**

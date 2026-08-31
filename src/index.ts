@@ -67,6 +67,7 @@ export type {
   SpamIssue,
   SpamReport,
   SpamAnalysisOptions,
+  LinkInfo,
   LinkIssue,
   LinkReport,
   AccessibilityIssue,

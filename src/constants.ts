@@ -72,6 +72,7 @@ export const EMPTY_SPAM: SpamReport = { score: 100, level: "low", issues: [] };
 export const EMPTY_LINKS: LinkReport = {
   totalLinks: 0,
   issues: [],
+  links: [],
   breakdown: { https: 0, http: 0, mailto: 0, tel: 0, anchor: 0, javascript: 0, protocolRelative: 0, other: 0 },
 };
 export const EMPTY_ACCESSIBILITY: AccessibilityReport = { score: 100, issues: [] };

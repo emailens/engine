@@ -173,9 +173,37 @@ export interface LinkIssue extends BaseIssue {
   text?: string;
 }
 
+/**
+ * One anchor, as found. The link equivalent of `ImageInfo`.
+ *
+ * Exists so a consumer can act per-link (resolve, rewrite, report) without
+ * re-parsing HTML the engine has already parsed. `LinkReport` used to carry
+ * only counts and the links that had problems, which made the clean ones
+ * unreachable, and those are exactly the ones worth resolving.
+ */
+export interface LinkInfo {
+  /**
+   * The href exactly as written, never truncated. `LinkIssue.href` is clipped
+   * for display; this one is not, because a clipped URL cannot be fetched and
+   * fetching is the reason this inventory exists.
+   */
+  href: string;
+  /** Visible text, bounded at 80 characters as the issues are. */
+  text: string;
+  scheme:
+    | "https" | "http" | "mailto" | "tel"
+    | "anchor" | "javascript" | "protocol-relative" | "empty" | "other";
+  /** `#`, empty, or a `javascript:void` stand-in: a link that goes nowhere. */
+  isPlaceholder: boolean;
+  /** Rule names that fired for this link, mirroring `ImageInfo.issues`. */
+  issues: string[];
+}
+
 export interface LinkReport {
   totalLinks: number;
   issues: LinkIssue[];
+  /** Every anchor in the email, in document order. */
+  links: LinkInfo[];
   breakdown: {
     https: number;
     http: number;
