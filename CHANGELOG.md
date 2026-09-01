@@ -12,6 +12,12 @@
 
   **A correctly built bulletproof hero still paints.** `vmlToCss` runs after the strip pass, so a `v:rect` carrying a `v:fill` produces its background *after* this rule has run and keeps it. The rule therefore separates the two cases the way the real client does: a background that only exists in CSS disappears, a background carried by VML survives. Guarded by a test, because the ordering is load-bearing and invisible from either site.
 
+- **A `background` shorthand now degrades to its fallback colour instead of vanishing.** `background: #336699 url(hero.png) no-repeat` names the colour that shows in a client which cannot paint the image, which is exactly why authors write it that way, and Word paints it. The value-level strip deleted the whole declaration, so the preview rendered white where Outlook renders the author's fallback: a new wrong picture rather than a missing one.
+
+  `backgroundShorthandColor()` already existed in `color-utils` and already documented this ("`background: #111 url(hero.png)` paints #111 behind the image"); the strip simply never asked it. Now it does, keeping the colour when the value names one and deleting only when it does not.
+
+  This also fixes the same flaw in the pre-existing gradient strip, where `background: #336699 linear-gradient(...)` had been losing its fallback since gradients were first stripped.
+
 ### Note on what was NOT changed
 
   The same capture shows no hero *text* either, and the obvious reading is that a failed `v:rect` takes its `v:textbox` content with it. That reading is wrong. Every text node in that hero is `#FFFFFF`, so once the fill fails the text is white on white: present, and invisible. Keeping it is what the real client does, and emulating a drop would have been a second unfounded mechanism claim of exactly the kind 0.11.8 withdrew.

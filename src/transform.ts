@@ -9,6 +9,7 @@ import {
 } from "./rules/css-support";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
+import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { resolveMsoBranch, vmlToCss } from "./vml-render";
 import { MAX_HTML_SIZE } from "./constants";
@@ -800,7 +801,15 @@ function applyTransform(
         for (const vs of config.valueStrips ?? []) {
           if (prop === vs.prop && vs.pattern.test(value)) {
             removed.push(prop);
-            props.delete(prop);
+            // A `background` shorthand can name a solid colour behind the layer
+            // being removed, and that colour is precisely the author's fallback
+            // for a client that cannot paint the image. Word paints it. Dropping
+            // the whole declaration would render white where Outlook renders the
+            // fallback, which is a new wrong picture rather than a missing one.
+            const fallback =
+              prop === "background" ? backgroundShorthandColor(value) : null;
+            if (fallback) props.set(prop, fallback);
+            else props.delete(prop);
             return;
           }
         }

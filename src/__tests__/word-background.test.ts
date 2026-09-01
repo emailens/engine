@@ -54,6 +54,37 @@ describe("Word engine background images", () => {
     expect(out).not.toContain('background="');
   });
 
+  // The author's fallback colour is the whole point of writing the shorthand
+  // that way: it is what should show in a client that cannot paint the image.
+  // Deleting the declaration renders white where Outlook renders the fallback,
+  // which is a new wrong picture rather than a missing one.
+  describe("degrades the shorthand to its fallback colour", () => {
+    const td = (style: string) =>
+      transformForClient(
+        `<table><tr><td style="${style}">x</td></tr></table>`,
+        "outlook-windows-legacy",
+      ).html.match(/<td[^>]*>/)?.[0] ?? "";
+
+    it("keeps a colour declared alongside an image", () => {
+      expect(td("background:#336699 url('x.png') no-repeat;")).toContain("#336699");
+      expect(td("background:#336699 url('x.png') no-repeat;")).not.toContain("x.png");
+    });
+
+    it("keeps a named colour", () => {
+      expect(td("background:white url('x.png');")).toContain("white");
+    });
+
+    // Pre-dates the url() strip: the gradient valueStrips had the same flaw.
+    it("keeps a colour declared alongside a gradient", () => {
+      expect(td("background:#336699 linear-gradient(red,blue);")).toContain("#336699");
+      expect(td("background:#336699 linear-gradient(red,blue);")).not.toContain("gradient");
+    });
+
+    it("drops the declaration when there is no colour to keep", () => {
+      expect(td("background:url('x.png');")).not.toContain("x.png");
+    });
+  });
+
   it("does not touch any other client", () => {
     for (const id of ["outlook-windows", "gmail-web", "apple-mail-macos"]) {
       const out = transformForClient(heroCss, id).html;
