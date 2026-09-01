@@ -185,6 +185,11 @@ interface ClientTransformConfig {
   stripForms: boolean;
   /** Whether to strip <svg> elements */
   stripSvg: boolean;
+  /** Whether to remove the legacy `background` attribute. The Word engine paints
+   *  no background image by either route, which is the entire reason the VML
+   *  bulletproof pattern exists; a browser preview honours the attribute, so
+   *  leaving it in draws a hero the real client cannot draw. */
+  stripBackgroundAttribute?: boolean;
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -502,13 +507,17 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     strippedProperties: OUTLOOK_WORD_UNSUPPORTED,
     stripMode: "strip",
     valueStrips: [
-      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
-      { prop: "background-image", pattern: /linear-gradient|radial-gradient/ },
+      // Gradients and image URLs alike: the Word engine paints neither. Only
+      // VML does, and vmlToCss runs after this pass, so a hero built the
+      // bulletproof way keeps the background this strip would otherwise take.
+      { prop: "background", pattern: /linear-gradient|radial-gradient|url\(/ },
+      { prop: "background-image", pattern: /linear-gradient|radial-gradient|url\(/ },
     ],
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
     stripSvg: false,
+    stripBackgroundAttribute: true,
     additionalChecks: outlookWindowsAdditionalChecks,
   },
   "outlook-web": {
@@ -747,6 +756,19 @@ function applyTransform(
     }, "<svg>", clientId, framework));
     $("svg").each((_, el) => {
       $(el).replaceWith('<img alt="[SVG not supported]" />');
+    });
+  }
+
+  // 4b. Remove the legacy `background` attribute.
+  //
+  // Observed rather than assumed: Simon's Outlook 2019 capture of exactly this
+  // markup (27 Aug) shows the hero band with no image at all. The warning for
+  // this has always fired; only the render disagreed, which is the specific
+  // complaint that opened the thread. The style-level half is handled by
+  // valueStrips above.
+  if (config.stripBackgroundAttribute) {
+    $("[background]").each((_, el) => {
+      $(el).removeAttr("background");
     });
   }
 

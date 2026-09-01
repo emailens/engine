@@ -1,6 +1,23 @@
 # Changelog
 
-## 0.11.8 - unreleased
+## 0.11.9 - 2026-09-01
+
+### Fixed
+
+- **The Word engine no longer paints a background image it cannot paint.** `outlookWindowsAdditionalChecks` has always warned "Outlook Classic requires VML for background images", and the renderer ignored its own warning: a hero written as `background-image:url(...)`, or with the legacy `background` attribute, was handed straight to a Chromium preview that draws both happily.
+
+  This is the exact shape of the complaint that opened the Better Email thread, "issues that your simulated render doesn't spot", and it is the largest visible difference in the Outlook 2019 capture sent on 27 Aug: the real client shows an empty hero band where our preview showed the photograph.
+
+  Handled as two halves. `background` and `background-image` join the existing gradient `valueStrips` with `url(` added to the pattern, and the legacy `background` attribute is removed under a new `stripBackgroundAttribute` config flag. Solid colours are untouched, since Word paints those.
+
+  **A correctly built bulletproof hero still paints.** `vmlToCss` runs after the strip pass, so a `v:rect` carrying a `v:fill` produces its background *after* this rule has run and keeps it. The rule therefore separates the two cases the way the real client does: a background that only exists in CSS disappears, a background carried by VML survives. Guarded by a test, because the ordering is load-bearing and invisible from either site.
+
+### Note on what was NOT changed
+
+  The same capture shows no hero *text* either, and the obvious reading is that a failed `v:rect` takes its `v:textbox` content with it. That reading is wrong. Every text node in that hero is `#FFFFFF`, so once the fill fails the text is white on white: present, and invisible. Keeping it is what the real client does, and emulating a drop would have been a second unfounded mechanism claim of exactly the kind 0.11.8 withdrew.
+
+
+## 0.11.8 - 2026-08-31
 
 ### Fixed
 
