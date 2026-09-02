@@ -342,3 +342,31 @@ describe("positions", () => {
     expect(found.locsTruncated).toBe(true);
   });
 });
+
+describe("hostile input", () => {
+  it("stays linear when the stylesheet is nothing but colour-function openings", () => {
+    // Each `rgb(` used to scan to the end of the stylesheet looking for its
+    // closing paren, so a file of them was quadratic: 156 KB took 11.7s
+    // against a 2 MB input cap. The scan is bounded now.
+    const time = (n: number) => {
+      const css = "rgb(".repeat(n);
+      const html = `<html><head><style>${css}</style></head><body><p>x</p></body></html>`;
+      const started = Date.now();
+      checkStyleSurvival(html);
+      return Date.now() - started;
+    };
+    // Generous, because CI machines vary; the failure this guards took minutes.
+    expect(time(40_000)).toBeLessThan(3_000);
+    expect(time(160_000)).toBeLessThan(6_000);
+  });
+
+  it("still finds a real colour after the bound was added", () => {
+    expect(rules(doc(`<style>.a{color:rgb(0 0 0)}</style>`))).toEqual([
+      "gmail-space-separated-color",
+    ]);
+    // A colour function longer than the bound is not one; nothing is reported
+    // and nothing hangs.
+    const long = `<style>.a{color:rgb(${"0 ".repeat(400)})}</style>`;
+    expect(() => checkStyleSurvival(doc(long))).not.toThrow();
+  });
+});

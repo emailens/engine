@@ -8493,6 +8493,8 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "[aria-live]",
   "[lang]",
   "[dir]",
+  "[width]",
+  "[height]",
 ]);
 
 /** CSS properties that Outlook Word engine ignores */

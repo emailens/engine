@@ -50,15 +50,22 @@ const MAX_LOCS = 20;
  * than `rgb(0, 0, 0)`. Scans to the matching paren so a nested `calc()` or a
  * `/ 50%` alpha does not end the match early.
  */
+const MAX_COLOR_FUNCTION_LENGTH = 256;
+
 function hasSpaceSeparatedColor(css: string): boolean {
   const fn = /\b(?:rgba?|hsla?)\(/gi;
   let m: RegExpExecArray | null;
   while ((m = fn.exec(css))) {
     const start = m.index + m[0].length;
+    // Bounded, because the scan used to run to the end of the stylesheet for
+    // every `rgb(` it saw. A file of nothing but `rgb(` is then quadratic: 156
+    // KB took 11.7s, and the input cap is 2 MB. No colour function is anywhere
+    // near this long, so past it the text is not one.
+    const limit = Math.min(css.length, start + MAX_COLOR_FUNCTION_LENGTH);
     let depth = 1;
     let comma = false;
     let i = start;
-    for (; i < css.length && depth > 0; i++) {
+    for (; i < limit && depth > 0; i++) {
       const c = css[i];
       if (c === "(") depth++;
       else if (c === ")") depth--;

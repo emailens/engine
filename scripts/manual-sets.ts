@@ -90,9 +90,16 @@ export const STRUCTURAL_FIX_PROPERTIES = [
  * an `aria-*` hint the renderer drops. caniemail is describing what a client
  * does, and for these the honest severity is "worth knowing", not "fix this".
  *
- * A feature belongs here only when its absence leaves the email rendering the
- * same. `[hidden]` is the counter-example and stays a warning: unsupported
- * there means content the author hid becomes visible.
+ * A feature belongs here for one of two reasons. Either its absence leaves the
+ * email rendering the same, or the finding is a constant: it fires on markup
+ * every email has, and the attribute's presence is itself the trigger, so no
+ * edit an author makes can clear it. A warning nobody can act on turns
+ * `--failOnWarning` into a switch that is always on, which costs more than the
+ * finding is worth.
+ *
+ * `[hidden]` is the counter-example and stays a warning: unsupported there
+ * means content the author hid becomes visible, and removing the attribute is
+ * a real choice they can make.
  */
 export const GRACEFUL_FEATURES = [
   "doctype",
@@ -108,4 +115,12 @@ export const GRACEFUL_FEATURES = [
   "[aria-live]",
   "[lang]",
   "[dir]",
+  // Sizing an image or a table with these attributes is how email has always
+  // been written, and 4 of the 6 fixtures here do it. HEY Mail drops them, so
+  // the image falls back to its intrinsic size, which is worth knowing and is
+  // not worth a warning on essentially every email ever sent. Adding a CSS
+  // width alongside does not clear it either, because the attribute is what
+  // the rule sees.
+  "[width]",
+  "[height]",
 ];

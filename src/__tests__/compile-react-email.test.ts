@@ -293,7 +293,10 @@ describe("compileReactEmail sandbox", () => {
 // ============================================================================
 
 describe("compileReactEmail sandbox: code-generation blocking", () => {
-  test("constructor.constructor escape is blocked by codeGeneration.strings: false", async () => {
+  test("a sandbox-realm object's constructor cannot compile code", async () => {
+    // `({})` is created inside the context, so its constructor chain reaches
+    // that context's Function, where codeGeneration.strings: false applies.
+    // This is the half of the story that holds; the other half is below.
     const source = `
       import { Html, Text } from "@react-email/components";
 
@@ -424,6 +427,51 @@ describe("CompileError contract", () => {
       expect(err).toBeInstanceOf(Error);
       expect((err as CompileError).name).toBe("CompileError");
       expect((err as CompileError).format).toBe("jsx");
+    }
+  });
+});
+
+describe('the "vm" strategy is not a security boundary', () => {
+  // Pinned as a fact, not asserted as acceptable. `codeGeneration.strings:
+  // false` stops the *context's* Function from compiling strings, but host
+  // intrinsics are handed into the sandbox and the Function reached through
+  // one of them belongs to the host realm, where the flag does not apply. The
+  // effect is total: the real `process`, and `process.env` with it.
+  //
+  // This is why "isolated-vm" is the default and why the missing-dependency
+  // message spells out what choosing "vm" costs. If a future Node release
+  // closes this, the test fails and someone gets to update the docs that
+  // currently warn about it.
+  const escape = (expr: string) => `
+    import { Html, Text } from "@react-email/components";
+    let out = "";
+    try { out = String(${expr}); } catch (e) { out = "blocked:" + e.message; }
+    export default function Email() {
+      return (<Html><Text>{"OUT:" + out}</Text></Html>);
+    }
+  `;
+  const read = (html: string) => /OUT:([^<]*)/.exec(html)?.[1] ?? "(no marker)";
+
+  test("a host intrinsic's constructor reaches the host process", async () => {
+    const html = await compileReactEmail(escape('Object.constructor("return process")().version'), VM_OPTS);
+    expect(read(html)).toMatch(/^v\d+\./);
+  });
+
+  test("and the host environment through it", async () => {
+    const html = await compileReactEmail(
+      escape('Object.keys(Error().constructor.constructor("return process")().env).length > 0'),
+      VM_OPTS,
+    );
+    expect(read(html)).toBe("true");
+  });
+
+  test("every host intrinsic in the sandbox is a route, not just Object", async () => {
+    for (const via of ["Promise", "Symbol", "JSON.parse('{}').constructor"]) {
+      const html = await compileReactEmail(
+        escape(`typeof ${via}.constructor("return process")()`),
+        VM_OPTS,
+      );
+      expect([via, read(html)]).toEqual([via, "object"]);
     }
   });
 });

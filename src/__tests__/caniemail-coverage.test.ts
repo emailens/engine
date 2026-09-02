@@ -551,15 +551,17 @@ describe("a correct email does not drown in findings", () => {
 <img src="hero.png" width="600" height="200" alt="Hero" style="display: block;">
 </td></tr></table></body></html>`;
 
-  it("raises only what a client genuinely drops", () => {
-    // HEY Mail strips the `width` and `height` attributes, so a table sized
-    // only by attribute really is unconstrained there; the fix is to repeat
-    // the size in an inline style. That is the entire actionable output.
+  it("raises nothing to fix", () => {
+    // An email that follows every rule the engine itself gives should have
+    // nothing at warning severity or above. `[width]` and `[height]` used to
+    // appear here, for HEY Mail: true, but true of almost every email ever
+    // written, and unclearable because the attribute is what the rule sees.
+    // They report at info now, which is where a constant belongs.
     const actionable = analyzeEmail(CLEAN)
       .filter((x) => x.severity !== "info")
       .map((x) => `${x.property}/${x.client}`)
       .sort();
-    expect(actionable).toEqual(["[height]/hey-mail", "[width]/hey-mail"]);
+    expect(actionable).toEqual([]);
   });
 
   it("names nothing the author did not write", () => {

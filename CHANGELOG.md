@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.2 - 2026-09-02
+## 0.12.2 - 2026-09-03
 
 ### Fixed
 
@@ -29,6 +29,49 @@
   The same principle already governed `GRACEFUL_FEATURES` inside the engine,
   typed at construction and exported as a plain string set. It should have
   governed this from the start.
+
+
+- **A stylesheet of colour-function openings was quadratic.** `rgb(` with no
+  closing paren made the scan run to the end of the stylesheet, once per
+  occurrence. 156 KB of `rgb(` took 11.7 seconds against a 2 MB input cap, so a
+  crafted email could hold a process for tens of minutes. The scan is bounded at
+  256 characters, which no real colour function approaches: the same input now
+  takes 93 ms and the cost is linear. Found by fuzzing the rules added in
+  0.12.1, not by reading them.
+
+### Changed
+
+- **`[width]` and `[height]` report at info, not warning.** HEY Mail drops both
+  attributes, so an image sized only by attribute falls back to its intrinsic
+  size there. True, and true of nearly every email ever written: four of this
+  repo's six fixtures trip it, as does the CLI's own "clean email" fixture. The
+  attribute's presence is what the rule sees, so adding a CSS width alongside
+  does not clear it and no edit an author makes will. A warning that fires on
+  everything and cannot be cleared turns the CLI's `--failOnWarning` into a
+  switch that is always on, which is how this surfaced. The finding stays, at
+  the severity a constant deserves.
+
+- **The `"vm"` sandbox is now described as what it is.** The type doc already
+  said "NOT a true security boundary", which was honest, but two things around
+  it were not. The missing-dependency messages for `isolated-vm` and `quickjs`
+  offered `"vm"` as "a lighter (but less secure) alternative" at exactly the
+  moment someone chooses a strategy, and a test called
+  `constructor.constructor escape is blocked by codeGeneration.strings: false`
+  implied the class of escape was handled.
+
+  It is not. `codeGeneration.strings: false` governs the *context's* `Function`;
+  host intrinsics are passed into the sandbox and the `Function` reached
+  through one of them compiles in the host realm, where the flag does not
+  apply. `Object.constructor("return process")()` returns the real process, and
+  `process.env` with it, through at least six routes. The old test passes
+  because `({})` is a sandbox-realm object, which is the one case that is
+  blocked; its name generalised from that to the whole class.
+
+  The test is renamed to what it proves, three tests pin the escape as a known
+  property of the strategy, and both fallback messages now say that choosing
+  `"vm"` means compiled code can reach the host process and its environment.
+  Nothing about the default changes: `isolated-vm` is still the default and
+  still a real isolate, and no shipped consumer selects `"vm"`.
 
 ## 0.12.1 - 2026-09-02
 

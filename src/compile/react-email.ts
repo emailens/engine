@@ -9,9 +9,14 @@ const EXECUTION_TIMEOUT_MS = 5_000;
 /**
  * Sandbox strategy for JSX execution.
  *
- * - `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency,
- *   but NOT a true security boundary (prototype-chain escapes are possible).
- *   Suitable for CLI / local use where users run their own code.
+ * - `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency, and NOT a
+ *   security boundary. The hardening removes `process`, `Buffer` and timers
+ *   from the sandbox and sets `codeGeneration.strings: false`, but host
+ *   intrinsics are passed in, and the `Function` constructor reached through
+ *   one of them compiles in the *host* realm where that flag does not apply:
+ *   `Object.constructor("return process")()` returns the real process, and
+ *   `process.env` with it. Demonstrated in the test suite. Use it only for
+ *   templates you already trust, such as a developer compiling their own.
  *
  * - `"isolated-vm"` (default): Separate V8 isolate via the `isolated-vm`
  *   npm package. True heap isolation; escapes require a V8 engine bug.
@@ -280,7 +285,9 @@ async function executeInIsolatedVm(
     throw new CompileError(
       'Sandbox strategy "isolated-vm" requires the "isolated-vm" package. Install it:\n' +
         "  npm install isolated-vm\n" +
-        'Or use sandbox: "vm" for a lighter (but less secure) alternative.',
+        'Or pass sandbox: "vm", which needs no native addon and is NOT a security' +
+        ' boundary: code you compile can reach the host process and its environment.' +
+        ' Only choose it for templates you already trust.',
       "jsx",
       "execution",
     );
@@ -391,7 +398,9 @@ async function executeInQuickJs(
     throw new CompileError(
       'Sandbox strategy "quickjs" requires the "quickjs-emscripten" package. Install it:\n' +
         "  npm install quickjs-emscripten\n" +
-        'Or use sandbox: "vm" for a lighter alternative.',
+        'Or pass sandbox: "vm", which needs no native addon and is NOT a security' +
+        ' boundary: code you compile can reach the host process and its environment.' +
+        ' Only choose it for templates you already trust.',
       "jsx",
       "execution",
     );
