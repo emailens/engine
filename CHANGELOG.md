@@ -1,5 +1,73 @@
 # Changelog
 
+## 0.12.0 - 2026-09-02
+
+A minor, and measured rather than assumed. Across the six shipped fixtures this
+gains 269 findings, loses 3, and moves 40 from warning to info. Every fixture
+moves: the smallest goes 26 to 50, the Outlook-branch pair 62 to 127. The three
+losses are all Superhuman `position`, which now knows it supports `relative` and
+`absolute`. That is not a patch.
+
+The gains are concentrated in features the sync had never keyed, in rough order
+of volume: `@media prefers-color-scheme` (60), `doctype` (42), `<body>` (36),
+`meta-color-scheme` (36), `[lang]` (25), `[role]` (12), `[align]` (9). The 40
+severity moves are all `@media`, which stops claiming Gmail cannot run a media
+query.
+
+Everything here is read from caniemail's own test results. No claim in this
+release rests on our model of what a client draws, so the real-client hold that
+governs the renderer does not apply to it.
+
+### Fixed
+
+- **`@media` reported another feature's support data.** Six caniemail features describe the `@media` at-rule, and the sync mapped all six onto one key. The merge kept whichever the API listed first, `css-at-media-device-pixel-ratio`, so `@media` carried device-pixel-ratio's answers: Gmail came out `unsupported`, and every email with a media query in it collected eleven "does not support" warnings for a feature Gmail runs. The five media features now have their own rows, detected by matching the query's prelude, and `@media` holds general media-query support.
+
+  This also makes `@media (prefers-color-scheme: dark)` gradeable on its own row, which is the question dark-mode work actually asks.
+
+- **Merging a client's platforms dropped and swapped its caveat notes.** Grading a client on its worst platform (below) merged the support *levels* correctly but unioned the *notes*, which are per-platform. Two things went wrong: a note from a platform that lost the merge was carried onto the winning answer, and a later, better platform deleted the winning platform's note outright. Across Proton Mail, AOL and Thunderbird that left 13 cells holding a caveat with no explanation and 8 describing a different platform's answer — `@media` on Proton Mail lost "Does not support landscape media query", `light-dark` lost "the color stays light even in dark mode".
+
+  Because the value-aware gate reads those notes, the deletions silently *removed* findings: a caveat with no text has nothing for a value to trigger.
+
+  Notes now follow the answer they describe. Verified by replaying the whole API against the generated file: zero cells disagree.
+
+- **Our own Superhuman overrides now carry their reasoning.** `position` and `transition` are hand-set to `partial` with the detail in a line comment. `SUPERHUMAN_NOTES` moves that into the note the gate actually reads, so Superhuman reports `position: fixed` and `sticky` (which it strips) and stays quiet on `relative` and `absolute` (which it supports), instead of firing on all four.
+
+- **25 element features had no detector.** `HTML_ELEMENT_SELECTORS` was a hand-written map and the sync kept adding keys to `HTML_ELEMENT_FEATURES` without it: `<abbr>`, `<ruby>`, `<wbr>`, `<address>`, `<small>` and twenty more were classified, given a row, and never looked for. 113 (feature, client) findings the engine could not emit. The selector for an element feature is now the tag itself unless one is written down, so the map only holds the exceptions.
+
+  `<body>` is one of those exceptions. Every email has one, so grading its presence put nine warnings on every report forever, which is a constant rather than a finding; it is now graded when the body actually carries styling to lose.
+
+- **`href="#"` was read as a local anchor.** A bare `#` is a placeholder for a link nobody has written yet, and it is all over half-built templates; it produced thirteen warnings about anchor navigation.
+
+- **An image message could say "and 1 others".** Reachable: APNG breaks in exactly five clients, one over the four the message names in full.
+
+- **A warning's suggestion spoke a different language from its message.** The message said "Gmail does not support the hidden attribute" while the generic suggestion beside it said `"[hidden]" is not supported in this email client.` An attribute or doctype finding is also `fixType: "structural"` now, because there is no CSS value to swap.
+
+- **The CSS `try` covered the walk, not just the parse.** A throw in any detector abandoned the rest of that `<style>` block, discarding every declaration not yet visited, and the report just came back shorter. It now covers parsing only, so a detector that throws reads as the bug it is.
+
+- **The sync refuses to write when upstream moves.** A feature that stops resolving, a `CLIENT_MAP` entry caniemail has renamed, or a client whose column goes blank produced no error, only a quieter engine forever after. The sync now counts what it dropped, checks every mapped platform still exists and that no client falls under 60% coverage, and exits non-zero instead of overwriting good data. `check:freshness` gained the same kind of floor: caniemail already ships a second date format in the same payload, and if `last_test_date` adopted it every date would be dropped and the report would cheerfully say nothing was stale.
+
+### Added
+
+- **The rest of caniemail.** The sync keyed 256 of 308 features into 250 rows; it now keys all 308.
+
+  - **38 HTML features** that fell through a mapper which only understood `<tag>`: `align`, `background`, `width`/`height`, `valign`, `cellpadding`/`cellspacing`, `dir`, `lang`, `target`, `srcset`, `loading`, `hidden`, `required`, `role`, five `aria-*`, `popover`, `command`, the eight typed `<input>`/`<button>` variants, local anchors, `mailto:` links, the HTML5 doctype, HTML comments, HTML5 semantics, image maps, the `color-scheme` meta tag, and AMP for Email.
+  - **14 image formats**, previously skipped outright. `image-analyzer` had two hand-written checks saying WebP is "not supported by all email clients" and SVG "by most"; it now names which clients, from the matrix, and covers AVIF, APNG, HEIF, BMP, TIFF, ICO, base64 data URIs and video-as-image.
+  - **`last_test_date`**, so `check:freshness` can say that 245 of these features have not been re-tested upstream in three years. A file synced today is not the same as data verified today.
+
+- **A client we ship as one entry is now graded on its worst platform.** caniemail tests Proton Mail and AOL on web, Android and iOS and we read only the web row; Thunderbird it tests on macOS and Windows, and we read only macOS. "Proton Mail" in a report means the product, so those now merge worst-wins. Gmail, Outlook, Yahoo and Apple Mail are unaffected: they ship as separate clients per platform already.
+
+### Changed
+
+- **The feature tables are typed by what is actually in them.** Every invariant holding this data together was previously prose: that the classification arrays cover the matrix and do not overlap, that a `GRACEFUL_FEATURES` entry is a real key, that a detector map names features that exist, that the client list and the matrix's columns are the same list. Nothing checked any of it, and the cost of that was already paid once this release: 25 element features were classified, given a row, and never looked for, because the array grew and its selector map did not.
+
+  The generated file now emits `FeatureKey`, `ClientId` and `ImageFormat`, and the matrix is written `satisfies Record<FeatureKey, Record<ClientId, SupportLevel>>`. That one line checks the partition in both directions — a key no array classifies fails to compile, and so does an array naming a key the matrix does not have. `EmailClient.id` is `ClientId`, so a client without a column no longer compiles either. The detector maps in `analyze.ts`, the image-format tables, and `GRACEFUL_FEATURES` are keyed by those unions, so a rename is an error rather than a detector that quietly stops finding anything.
+
+  The exports stay indexable by plain strings: the enforcement is at construction, where the literals are, not at the call sites that look up a property name parsed out of a stylesheet.
+
+- **`COMPOUND_VALUE_FEATURES` no longer holds selectors.** 37 of its 40 members were `:hover`, `::after`, `:nth-child` and friends; three were compound values. Selectors moved to a new `SELECTOR_FEATURES` export. This fell out of making the classifier total: every array is now the keys of exactly one kind, which is what makes the partition provable rather than coincidental.
+
+- **A feature a client merely ignores reports as info, not a warning.** `target="_blank"` is forced by most webmail anyway, the doctype gets rewritten, `aria-*` hints are dropped without moving a pixel. caniemail describes what a client does; a warning tells an author to fix something, and for these there is nothing to fix. `[hidden]` stays a warning: unsupported there means hidden content becomes visible.
+
 ## 0.11.9 - 2026-09-01
 
 ### Fixed
