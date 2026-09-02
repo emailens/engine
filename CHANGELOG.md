@@ -1,5 +1,108 @@
 # Changelog
 
+## 0.12.1 - 2026-09-02
+
+A patch, on the same reasoning as 0.11.1: that release added `checkVml`, four
+rules and a `vml` key on `auditEmail`, and shipped as a patch because it moved
+no existing answer. This is the same shape. Across the six shipped fixtures it
+gains no compatibility finding and loses none, and the new rules are silent on
+all of them. That silence is a statement about false positives, not about
+reach; the fixtures contain no `}}`, no space-separated colour and no
+conflicting multi-class element, which is why they say nothing.
+
+The delivery matters more than the label here. Most of this fixes a defect
+0.12.0 shipped: every finding it added on framework-generated markup carried
+advice about a file the author does not have. A minor would leave that in place
+for anyone on `^0.12.0` until they edited a manifest, which is the wrong way
+round for a fix. On MJML output eight properties stop giving generic advice.
+
+Additive only, so nothing is removed or renamed. As in 0.11.1, `AuditReport`
+gains a required key, which a consumer constructing that type rather than
+reading it will see.
+
+### Added
+
+- **Style-survival rules: will the client keep your CSS at all?** The support
+  matrix answers whether a client implements a property. These answer a
+  different question it cannot express, and one nobody can see without opening
+  the mail in that client: several clients discard CSS they parsed perfectly
+  well, because of where a semicolon sits or how two braces touch. Sourced from
+  `hteumeuleu/email-bugs`, the catalogue kept by caniemail's own maintainer.
+
+  - **Gmail keeps only the first 16 kB of CSS** ([#90]) and drops the rest, so
+    the email renders with part of its stylesheet and no error anywhere. Counted
+    cumulatively across every `<style>`, which is the part a per-block count gets
+    wrong. Lives in `size-checker.ts` beside the 102 kB clip, banded the same way.
+  - **Outlook on Windows honours only the first class on an element** ([#75]),
+    and ignores a descendant rule like `.text td` once a second class is present.
+    Reported only on a real conflict: two classes setting different properties
+    are fine, and flagging every multi-class element would bury the report.
+  - **Outlook.com namespaces only the first class in a compound** ([#61]), so
+    `.foo.bar` becomes `.x_foo.bar` and stops matching.
+  - **Gmail removes a whole style block using space-separated colours** ([#160]).
+    In a `style` attribute it drops every declaration on the element, not just
+    the colour. `rgb(0 0 0)` fires; `rgb(0, 0, 0)` does not.
+  - **Outlook.com and Outlook mobile discard everything after `}}`** ([#92]),
+    which minified CSS closing a media query produces. Whitespace between the
+    braces is the fix, so a rule tolerating whitespace would report the cure.
+  - **Yahoo and AOL discard everything after an attribute selector whose value
+    holds a semicolon** ([#74]). `[style*="..."]` is standard hybrid-layout
+    technique, so this fires on exactly the templates whose authors would never
+    suspect it.
+
+  Three of the eight rules proposed did not survive reading their sources. #61
+  is about chained selectors, not comma-separated lists, and the comma reading
+  would have fired on nearly every stylesheet written. #92's remedy is
+  whitespace between the braces, so "ignore whitespace" would have inverted it.
+  And "Gmail strips uppercase `!IMPORTANT`" has no source: #70 is about
+  `!important` being stripped when images are off, at any case, which is a user
+  setting rather than something decidable from the HTML. Outlook iOS's 5000px
+  clip ([#108]) is real but needs a rendered height, and `checkOverflow`
+  computes width only, so it is absent rather than guessed at.
+
+  New `styleSurvival` key on the audit report, skippable like every other
+  section. Each issue names the clients that drop the CSS, because the consuming
+  app groups findings per client.
+
+### Fixed
+
+- **The translation layer reaches the rules added in 0.12.0.** The engine grades
+  compiled HTML, because that is what a client receives, and phrases its advice
+  in source terms, because that is what the author can edit. `fix-snippets/` is
+  where the two meet, and nothing 0.12.0 added had an entry in it.
+
+  That was not merely a missing string. A compiler writes a great deal the
+  author never typed: MJML emits `align`, `role`, `width`, `height`, `lang`,
+  `dir`, a doctype and a styled `<body>`; Maizzle's markup transformer adds
+  `role`; React Email's `<Html>` renders the doctype. On a two-line MJML source
+  0.12.0 produced eight findings about markup MJML itself wrote, each with
+  generic advice to change something the author has no file for. Two of them
+  were warnings, not info.
+
+  Each now says what to do in the source, or why it is safe to leave.
+  `checkStyleSurvival` takes the `framework` parameter the other checkers take
+  and each issue carries a `frameworkNote`, because in all three frameworks the
+  stylesheet that ships is assembled by the compiler: "edit your `<style>`
+  block" is the wrong instruction for someone whose source has no `<style>`
+  block.
+
+  The guard compiles a deliberately plain source in each framework and fails on
+  any finding from the attribute or document families carrying generic advice.
+  It failed on all three when written, which is how the gap was found.
+
+- **A clear error when the wrong Maizzle major is installed.** The peer cap
+  below 6 has been right since 0.10.2, but the missing-dependency message still
+  said `npm install @maizzle/framework`, which installs 6.x — following our own
+  instruction landed you on the version that cannot work, and its failure reads
+  `Failed to load url <!DOCTYPE html>…` because Maizzle 6 resolves a string as a
+  path. The hint pins `@5`, and `isMaizzle6` detects the wrong major and says
+  so.
+
+  Framework versions are now recorded in CONTRIBUTING with the reason the cap
+  exists. `mjml >=4.0.0` was checked rather than assumed: 4.18.0 returns
+  synchronously, 5.4.0 returns a promise, and `compileMjml` awaits either, so
+  the claim holds. React Email is current at 1.0.12 / 2.1.0.
+
 ## 0.12.0 - 2026-09-02
 
 A minor, and measured rather than assumed. Across the six shipped fixtures this
@@ -439,3 +542,11 @@ governs the renderer does not apply to it.
 ## 0.1.0
 
 Initial release: CSS analysis, per-client transformation, compatibility scoring, dark mode simulation, framework-aware fix snippets, diff comparison, and fix prompt generation for 13 email clients.
+
+[#61]: https://github.com/hteumeuleu/email-bugs/issues/61
+[#74]: https://github.com/hteumeuleu/email-bugs/issues/74
+[#75]: https://github.com/hteumeuleu/email-bugs/issues/75
+[#90]: https://github.com/hteumeuleu/email-bugs/issues/90
+[#92]: https://github.com/hteumeuleu/email-bugs/issues/92
+[#108]: https://github.com/hteumeuleu/email-bugs/issues/108
+[#160]: https://github.com/hteumeuleu/email-bugs/issues/160
