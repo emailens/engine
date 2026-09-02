@@ -1,5 +1,11 @@
 import type { CheerioAPI } from "cheerio";
-import { GMAIL_CLIP_THRESHOLD, GMAIL_CLIP_WARNING_THRESHOLD, EMPTY_SIZE } from "./constants";
+import {
+  GMAIL_CLIP_THRESHOLD,
+  GMAIL_CLIP_WARNING_THRESHOLD,
+  GMAIL_STYLE_LIMIT,
+  GMAIL_STYLE_WARNING_THRESHOLD,
+  EMPTY_SIZE,
+} from "./constants";
 import { fromHtml } from "./parse-html";
 import type { SizeIssue, SizeReport } from "./types";
 
@@ -22,8 +28,14 @@ function humanizeBytes(bytes: number): string {
  *
  * @internal Used by audit pipeline with pre-parsed DOM.
  */
-export function checkSizeFromDom(_$: CheerioAPI, html: string): SizeReport {
+export function checkSizeFromDom($: CheerioAPI, html: string): SizeReport {
   const htmlBytes = new TextEncoder().encode(html).length;
+  // Summed across every <style>, because Gmail's ceiling is cumulative. A file
+  // that stays under it in each block and crosses it in total is the case a
+  // per-block count would call clean.
+  const styleBytes = $("style")
+    .toArray()
+    .reduce((n, el) => n + new TextEncoder().encode($(el).text()).length, 0);
   const humanSize = humanizeBytes(htmlBytes);
   const issues: SizeIssue[] = [];
   let clipped = false;
@@ -45,7 +57,28 @@ export function checkSizeFromDom(_$: CheerioAPI, html: string): SizeReport {
     });
   }
 
-  return { htmlBytes, humanSize, clipped, issues };
+  if (styleBytes > GMAIL_STYLE_LIMIT) {
+    issues.push({
+      rule: "gmail-style-truncated",
+      severity: "error",
+      message:
+        `${humanizeBytes(styleBytes)} of CSS is past Gmail's 16 KB ceiling for ` +
+        `<style>. Gmail keeps the rules before the limit and drops the rest, so ` +
+        `the email renders with part of its CSS and no error anywhere.`,
+      detail: `${styleBytes} bytes of CSS across all <style> elements exceeds the ${GMAIL_STYLE_LIMIT} byte limit.`,
+    });
+  } else if (styleBytes > GMAIL_STYLE_WARNING_THRESHOLD) {
+    issues.push({
+      rule: "gmail-style-warning",
+      severity: "warning",
+      message:
+        `${humanizeBytes(styleBytes)} of CSS, approaching Gmail's 16 KB <style> ` +
+        `ceiling. Past it, later rules are dropped silently.`,
+      detail: `${styleBytes} bytes is within ${GMAIL_STYLE_LIMIT - styleBytes} bytes of the limit.`,
+    });
+  }
+
+  return { htmlBytes, styleBytes, humanSize, clipped, issues };
 }
 
 /**

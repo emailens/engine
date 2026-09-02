@@ -18,6 +18,7 @@ export {
 // the same spellings the engine is.
 export type { FeatureKey, ClientId, ImageFormat } from "./rules/css-support";
 export { CSS_SUPPORT_NOTES, IMAGE_SUPPORT, IMAGE_SUPPORT_NOTES } from "./rules/css-support";
+export { checkStyleSurvival } from "./style-survival";
 export { FEATURE_URLS, featureUrl } from "./rules/feature-urls";
 // So a consumer showing the support table can answer the same question the
 // analyzer answers: is this client's caveat about the value in front of me?

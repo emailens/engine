@@ -6,6 +6,7 @@ import { checkAccessibilityFromDom, checkDarkModeContrast, checkMobileContrastFr
 import { analyzeImagesFromDom } from "./image-analyzer";
 import { extractInboxPreviewFromDom } from "./inbox-preview";
 import { checkSizeFromDom } from "./size-checker";
+import { checkStyleSurvivalFromDom } from "./style-survival";
 import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
@@ -14,7 +15,7 @@ import { checkDesignConsistencyFromDom } from "./design-consistency";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
-  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL, EMPTY_DESIGN,
+  EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_STYLE_SURVIVAL, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL, EMPTY_DESIGN,
   EMPTY_VML,
 } from "./constants";
 import type {
@@ -28,6 +29,7 @@ import type {
   ImageReport,
   InboxPreview,
   SizeReport,
+  StyleSurvivalReport,
   TemplateReport,
   OverflowReport,
   VisualReport,
@@ -40,7 +42,7 @@ export interface AuditOptions extends ParseOptions {
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design" | "vml">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design" | "vml" | "styleSurvival">;
 }
 
 export interface AuditReport {
@@ -54,6 +56,8 @@ export interface AuditReport {
   images: ImageReport;
   inboxPreview: InboxPreview;
   size: SizeReport;
+  /** Rules about clients discarding CSS they parsed fine. */
+  styleSurvival: StyleSurvivalReport;
   templateVariables: TemplateReport;
   overflow: OverflowReport;
   visual: VisualReport;
@@ -76,6 +80,7 @@ export const EMPTY_AUDIT: AuditReport = {
   images: EMPTY_IMAGES,
   inboxPreview: EMPTY_INBOX_PREVIEW,
   size: EMPTY_SIZE,
+  styleSurvival: EMPTY_STYLE_SURVIVAL,
   templateVariables: EMPTY_TEMPLATE,
   overflow: EMPTY_OVERFLOW,
   visual: EMPTY_VISUAL,
@@ -119,6 +124,9 @@ export function runAudit(
   const images = skip.has("images") ? EMPTY_IMAGES : analyzeImagesFromDom($);
   const inboxPreview = skip.has("inboxPreview") ? EMPTY_INBOX_PREVIEW : extractInboxPreviewFromDom($);
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
+  const styleSurvival = skip.has("styleSurvival")
+    ? EMPTY_STYLE_SURVIVAL
+    : checkStyleSurvivalFromDom($, source);
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);
@@ -143,7 +151,7 @@ export function runAudit(
     ? []:
     checkMobileContrastFromDom($, accessibility.issues);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, templateVariables, overflow, visual, vml, darkContrast, mobileContrast, design };
+  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, styleSurvival, templateVariables, overflow, visual, vml, darkContrast, mobileContrast, design };
 }
 
 /**

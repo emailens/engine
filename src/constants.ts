@@ -26,6 +26,16 @@ export const GMAIL_CLIP_THRESHOLD = 102 * 1024;
 /** Warning zone: messages approaching the clip threshold */
 export const GMAIL_CLIP_WARNING_THRESHOLD = 90 * 1024;
 
+/**
+ * Gmail keeps only the style rules falling before a cumulative 16 kB of CSS
+ * and silently drops the rest. Cumulative across every `<style>` element, not
+ * per element. https://github.com/hteumeuleu/email-bugs/issues/90
+ */
+export const GMAIL_STYLE_LIMIT = 16 * 1024;
+
+/** Warning zone, banded like the 90/102 kB pair above so the two read alike. */
+export const GMAIL_STYLE_WARNING_THRESHOLD = 14 * 1024;
+
 // ─── Per-client display limits ──────────────────────────────────────────────
 // Display limits last verified: 2026-03-04
 // Sources: emailtooltester.com, Campaign Monitor, Litmus preview text guide
@@ -66,7 +76,7 @@ export const TEMPLATE_VARIABLE_PATTERNS: Array<[RegExp, string]> = [
 
 /** Shared empty report defaults for skipped checks and empty-input fast paths. */
 import type { DesignReport } from "./types";
-import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, TemplateReport, OverflowReport, VisualReport, VmlReport } from "./types";
+import type { SpamReport, LinkReport, AccessibilityReport, ImageReport, InboxPreview, SizeReport, StyleSurvivalReport, TemplateReport, OverflowReport, VisualReport, VmlReport } from "./types";
 
 export const EMPTY_SPAM: SpamReport = { score: 100, level: "low", issues: [] };
 export const EMPTY_LINKS: LinkReport = {
@@ -78,7 +88,8 @@ export const EMPTY_LINKS: LinkReport = {
 export const EMPTY_ACCESSIBILITY: AccessibilityReport = { score: 100, issues: [] };
 export const EMPTY_IMAGES: ImageReport = { total: 0, totalDataUriBytes: 0, issues: [], images: [] };
 export const EMPTY_INBOX_PREVIEW: InboxPreview = { subject: null, preheader: null, subjectLength: 0, preheaderLength: 0, truncation: [], issues: [] };
-export const EMPTY_SIZE: SizeReport = { htmlBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
+export const EMPTY_SIZE: SizeReport = { htmlBytes: 0, styleBytes: 0, humanSize: "0 B", clipped: false, issues: [] };
+export const EMPTY_STYLE_SURVIVAL: StyleSurvivalReport = { issues: [] };
 export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] };
 export const EMPTY_OVERFLOW: OverflowReport = { hasOverflow: false, issues: [] };
 export const EMPTY_VML: VmlReport = { hasVml: false, issues: [] };

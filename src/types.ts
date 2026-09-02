@@ -289,9 +289,27 @@ export interface SizeIssue extends BaseIssue {
 
 export interface SizeReport {
   htmlBytes: number;
+  /** Bytes of CSS inside `<style>` elements, summed across all of them. */
+  styleBytes: number;
   humanSize: string;
   clipped: boolean;
   issues: SizeIssue[];
+}
+
+// ─── Style survival (will the client keep the CSS at all) ───────────────────
+
+export interface StyleSurvivalIssue extends BaseIssue {
+  /**
+   * The clients that discard the CSS. Required, not optional: the consuming
+   * app groups findings per client, and an issue that cannot name its clients
+   * does not surface at all.
+   */
+  clients: string[];
+  detail?: string;
+}
+
+export interface StyleSurvivalReport {
+  issues: StyleSurvivalIssue[];
 }
 
 // ─── Content overflow (layout) ──────────────────────────────────────────────
