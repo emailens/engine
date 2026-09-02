@@ -4,7 +4,13 @@ import { EMPTY_STYLE_SURVIVAL } from "./constants";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { cssBlockAnchor, locInCssBlock, locOfElement } from "./source-location";
 import type { ClientId } from "./rules/css-support";
-import type { SourceLocation, StyleSurvivalIssue, StyleSurvivalReport } from "./types";
+import { getStyleSurvivalNote } from "./fix-snippets";
+import type {
+  Framework,
+  SourceLocation,
+  StyleSurvivalIssue,
+  StyleSurvivalReport,
+} from "./types";
 
 /**
  * Will the client keep your CSS at all?
@@ -160,6 +166,7 @@ function readSheet(ast: csstree.CssNode): Sheet {
 export function checkStyleSurvivalFromDom(
   $: cheerio.CheerioAPI,
   source?: string,
+  framework?: Framework,
 ): StyleSurvivalReport {
   const issues: StyleSurvivalIssue[] = [];
   const add = (
@@ -170,11 +177,13 @@ export function checkStyleSurvivalFromDom(
     locs: SourceLocation[],
     detail?: string,
   ) => {
+    const frameworkNote = getStyleSurvivalNote(rule, framework);
     issues.push({
       rule,
       severity,
       clients: [...clients],
       message,
+      ...(frameworkNote ? { frameworkNote } : {}),
       ...(detail ? { detail } : {}),
       ...(locs.length ? { loc: locs[0], locs: locs.slice(0, MAX_LOCS) } : {}),
       ...(locs.length > MAX_LOCS ? { locsTruncated: true } : {}),
@@ -379,12 +388,17 @@ export function checkStyleSurvivalFromDom(
  */
 export function checkStyleSurvival(
   html: string,
-  options?: ParseOptions,
+  options?: ParseOptions & { framework?: Framework },
 ): StyleSurvivalReport {
   return fromHtml(
     html,
     EMPTY_STYLE_SURVIVAL,
-    ($) => checkStyleSurvivalFromDom($, options?.positions ? html : undefined),
+    ($) =>
+      checkStyleSurvivalFromDom(
+        $,
+        options?.positions ? html : undefined,
+        options?.framework,
+      ),
     options,
   );
 }

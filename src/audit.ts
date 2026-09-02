@@ -126,7 +126,7 @@ export function runAudit(
   const size = skip.has("size") ? EMPTY_SIZE : checkSizeFromDom($, html);
   const styleSurvival = skip.has("styleSurvival")
     ? EMPTY_STYLE_SURVIVAL
-    : checkStyleSurvivalFromDom($, source);
+    : checkStyleSurvivalFromDom($, source, framework);
   const templateVariables = skip.has("templateVariables") ? EMPTY_TEMPLATE : checkTemplateVariablesFromDom($, source);
   const overflow = skip.has("overflow") ? EMPTY_OVERFLOW : checkOverflowFromDom($, source);
   const visual = skip.has("visual") ? EMPTY_VISUAL : checkVisualFromDom($, source);

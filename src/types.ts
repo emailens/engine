@@ -306,6 +306,13 @@ export interface StyleSurvivalIssue extends BaseIssue {
    */
   clients: string[];
   detail?: string;
+  /**
+   * Where in the framework's source the offending CSS came from. Present only
+   * when the caller named a framework: the stylesheet that ships is assembled
+   * by the compiler, so "edit your <style> block" is the wrong instruction for
+   * someone whose source has no <style> block.
+   */
+  frameworkNote?: string;
 }
 
 export interface StyleSurvivalReport {

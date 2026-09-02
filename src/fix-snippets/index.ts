@@ -9,6 +9,7 @@ import { HTML_SUGGESTION_DATABASE } from "./html-suggestions";
 import { JSX_SUGGESTION_DATABASE } from "./jsx-suggestions";
 import { MJML_SUGGESTION_DATABASE } from "./mjml-suggestions";
 import { MAIZZLE_SUGGESTION_DATABASE } from "./maizzle-suggestions";
+import { FRAMEWORK_MARKUP_SUGGESTIONS, STYLE_SURVIVAL_NOTES } from "./framework-markup";
 
 /**
  * Inline code fix snippets: real, paste-ready code that turns
@@ -41,7 +42,23 @@ const SUGGESTION_DATABASE: Record<string, string> = {
   ...JSX_SUGGESTION_DATABASE,
   ...MJML_SUGGESTION_DATABASE,
   ...MAIZZLE_SUGGESTION_DATABASE,
+  // Advice about markup the compiler wrote rather than the author. Last,
+  // because these are the general answer for a feature and any of the
+  // per-framework files above should win if it has something sharper to say.
+  ...FRAMEWORK_MARKUP_SUGGESTIONS,
 };
+
+/**
+ * Where in the framework's source the CSS a style-survival rule found came
+ * from. Returns undefined without a framework, and for a rule with nothing
+ * framework-specific to say.
+ */
+export function getStyleSurvivalNote(
+  rule: string,
+  framework?: Framework,
+): string | undefined {
+  return framework ? STYLE_SURVIVAL_NOTES[`${rule}::${framework}`] : undefined;
+}
 
 /**
  * Look up a code fix for a given property, client, and optional framework.
