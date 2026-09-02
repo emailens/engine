@@ -40,6 +40,23 @@ const DANGEROUS_DIRECTIVE_RE =
  *
  * Requires peer dependency: @maizzle/framework
  */
+/**
+ * Is this the Maizzle 6 module?
+ *
+ * Maizzle 6 replaced the HTML template with a Vue single-file component, and
+ * its `render` resolves a string argument as a path rather than as source.
+ * Handed a template it reports `Failed to load url <!DOCTYPE html>…`, which
+ * describes nothing an author can act on, so the caller checks first and says
+ * what actually happened.
+ *
+ * `createRenderer` is the discriminator: exported by every v6 release and by
+ * no v5 one. The module carries no version to read, so a capability probe is
+ * what there is.
+ */
+export function isMaizzle6(mod: object): boolean {
+  return "createRenderer" in mod;
+}
+
 export async function compileMaizzle(source: string): Promise<string> {
   // ── 1. Validate ──────────────────────────────────────────────────────
   if (!source || !source.trim()) {
@@ -71,16 +88,29 @@ export async function compileMaizzle(source: string): Promise<string> {
     options: Record<string, unknown>,
   ) => Promise<{ html: string }>;
 
+  let maizzle: Record<string, unknown>;
   try {
-    const maizzle = await import("@maizzle/framework");
-    maizzleRender = maizzle.render;
+    maizzle = (await import("@maizzle/framework")) as unknown as Record<string, unknown>;
   } catch {
     throw new CompileError(
-      'Maizzle compilation requires "@maizzle/framework". Install it:\n  npm install @maizzle/framework',
+      'Maizzle compilation requires "@maizzle/framework". Install it:\n' +
+        "  npm install @maizzle/framework@5",
       "maizzle",
       "compile",
     );
   }
+
+  if (isMaizzle6(maizzle)) {
+    throw new CompileError(
+      "Maizzle 6 is installed, and this engine compiles Maizzle 5 templates.\n" +
+        "Maizzle 6 renders Vue single-file components rather than HTML, so an\n" +
+        "HTML template is not something it can read. Install the supported major:\n" +
+        "  npm install @maizzle/framework@5",
+      "maizzle",
+      "compile",
+    );
+  }
+  maizzleRender = maizzle.render as typeof maizzleRender;
 
   // ── 4. Compile with timeout ──────────────────────────────────────────
   const compilePromise = maizzleRender(source, {

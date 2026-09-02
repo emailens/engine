@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { compileMaizzle, CompileError } from "../compile/index";
+import { isMaizzle6 } from "../compile/maizzle";
 
 // Maizzle's first call initialises PostCSS + Tailwind CSS, which can take
 // several seconds on a cold start. Each compilation test uses a 30s timeout.
@@ -339,5 +340,23 @@ describe("CompileError contract (Maizzle)", () => {
         expect((err as CompileError).message).toContain(directive);
       }
     }
+  });
+});
+
+describe("the supported Maizzle major", () => {
+  test("tells a v6 module apart from a v5 one", () => {
+    // Maizzle 6 renders Vue single-file components; handed an HTML template its
+    // `render` tries to resolve it as a path and reports "Failed to load url
+    // <!DOCTYPE html>…", which names nothing the author can fix. The module
+    // exposes no version, so this probes for an export only v6 has.
+    expect(isMaizzle6({ render: () => {}, build: () => {}, serve: () => {} })).toBe(false);
+    expect(isMaizzle6({ render: () => {}, createRenderer: () => {}, defineConfig: () => {} }))
+      .toBe(true);
+  });
+
+  test("agrees with the version actually installed", async () => {
+    const mod = await import("@maizzle/framework");
+    const { version } = await import("@maizzle/framework/package.json");
+    expect(isMaizzle6(mod)).toBe(Number(version.split(".")[0]) >= 6);
   });
 });
