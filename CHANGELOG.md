@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.12.3 - 2026-09-03
+
+### Changed
+
+- **`<body>` reports at info, not warning.** Six clients replace `<body>` with a
+  `<div>` and drop the styles on it: Outlook for Mac, Yahoo Mail on Android and
+  iOS, Proton Mail, AOL and Fastmail. The finding is true and worth keeping.
+  What it cannot be is a warning.
+
+  Found by dogfooding: twelve transactional templates scored `<body> x6`, every
+  one of them. The correct fix is a full-width wrapper table carrying the same
+  background, with the background left on `<body>` as the fallback for the
+  clients that do honour it. Applying that fix does not move the score, because
+  both halves of it are right and the second half is the trigger. The only edit
+  that clears the finding is deleting the fallback, which makes the email worse.
+
+  That is the criterion 0.12.2 used to demote `[width]` and `[height]`: a
+  finding that fires on nearly every email and that no correct edit can clear
+  turns `--failOnWarning` into a switch that is always on. The advice moves into
+  the message, which now names the wrapper table rather than saying the client
+  "does not support `<body>`".
+
+  `GRACEFUL_FEATURES` is consulted by the element lane as well as by
+  `checkPropertySupport`, so the rule lives in one list instead of being split
+  across two severity mechanisms. `<body>` is still silent when it carries no
+  styling, which has been true since 0.12.0.
+
+  Measured across the six fixtures here: six actionable findings removed from
+  each, and the compatibility score gains a point (76 to 77, 95 to 96). A
+  consumer storing scores at creation time will see that one point of drift on
+  re-run, which is the whole of the change.
+
+  At info the message is the entire finding, so every element demoted this way
+  has to carry advice rather than the generic "does not support" wording. The
+  element lane has no fallback for that case on purpose, and a test enforces
+  that the list and the messages stay in step.
+
 ## 0.12.2 - 2026-09-03
 
 ### Fixed

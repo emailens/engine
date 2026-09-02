@@ -123,4 +123,11 @@ export const GRACEFUL_FEATURES = [
   // the rule sees.
   "[width]",
   "[height]",
+  // Every framework emits a <body>, and the clients that replace it with a
+  // <div> drop the styles on it. The right fix is a full-width wrapper table
+  // carrying the same background, and it does not clear the finding, because
+  // the body background is still the fallback and still worth keeping. The
+  // only edit that clears it is deleting that fallback, which is worse. Found
+  // by scoring twelve transactional templates: `<body> x6` on every one.
+  "<body>",
 ];

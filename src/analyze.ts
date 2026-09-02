@@ -121,6 +121,10 @@ const HTML_ELEMENT_MESSAGES: Partial<Record<HtmlElementFeature, (clientName: str
   "<svg>": (n) => `${n} does not support inline SVG.`,
   "<video>": (n) => `${n} does not support <video> elements.`,
   "<form>": (n) => `${n} strips form elements.`,
+  "<body>": (n) =>
+    `${n} replaces <body> with a <div>, dropping the styles set on it. ` +
+    `Repeat the background on a full-width wrapper table; keep it on <body> ` +
+    `too, as the fallback for the clients that do honour it.`,
 };
 
 /** Compound value detection: maps compound feature keys to {property, valueIncludes}. */
@@ -258,7 +262,11 @@ export function analyzeEmailFromDom(
     const supportData = CSS_SUPPORT[feature];
     if (!supportData) continue;
 
-    const baseSeverity = HTML_ELEMENT_SEVERITY[feature] || "warning";
+    // GRACEFUL_FEATURES is consulted here as well as in checkPropertySupport,
+    // so "this fires on every email and no edit clears it" is recorded in one
+    // list rather than split across two severity mechanisms.
+    const graceful = GRACEFUL_FEATURES.has(feature);
+    const baseSeverity = graceful ? "info" : HTML_ELEMENT_SEVERITY[feature] || "warning";
     const found = matches
       .toArray()
       .map((m) => locOfElement(m))
@@ -274,6 +282,10 @@ export function analyzeEmailFromDom(
     for (const client of EMAIL_CLIENTS) {
       const support = supportData[client.id];
       if (support === "unsupported") {
+        // No graceful branch here: an element demoted to info needs a message
+        // saying what to do instead, so every graceful element carries one and
+        // a test enforces that. A generic "ignores <body>" would be the wrong
+        // sentence at the one severity where the advice is all there is.
         const msgFn = HTML_ELEMENT_MESSAGES[feature];
         const message = msgFn
           ? msgFn(client.name)

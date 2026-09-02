@@ -8495,6 +8495,7 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "[dir]",
   "[width]",
   "[height]",
+  "<body>",
 ]);
 
 /** CSS properties that Outlook Word engine ignores */

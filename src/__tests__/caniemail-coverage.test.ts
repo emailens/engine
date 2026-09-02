@@ -578,3 +578,88 @@ describe("a correct email does not drown in findings", () => {
   });
 });
 
+
+describe("a finding no edit can clear reports at info", () => {
+  // The rule GRACEFUL_FEATURES encodes. `[width]`, `[height]` and `<body>` are
+  // all true findings on markup nearly every email has, where the correct fix
+  // leaves the trigger in place. A warning that cannot be cleared makes
+  // `--failOnWarning` a switch that is always on, which costs more than the
+  // finding is worth, so they report at info and keep their advice.
+  const withBackground = (wrapper: string) =>
+    `<html><body style="background:#eee">${wrapper}</body></html>`;
+
+  it("says nothing about a <body> carrying no styles", () => {
+    expect(analyzeEmail(`<html><body><p>x</p></body></html>`).filter((w) => w.property === "<body>"))
+      .toEqual([]);
+  });
+
+  it("still reports a styled <body>, because the clients really do drop it", () => {
+    const found = analyzeEmail(withBackground("<p>x</p>")).filter((w) => w.property === "<body>");
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.map((w) => w.client).sort()).toEqual([
+      "aol", "fastmail", "outlook-macos", "protonmail",
+      "yahoo-mail-android", "yahoo-mail-ios",
+    ]);
+  });
+
+  it("does not clear when the author applies the recommended fix", () => {
+    // The wrapper table is the fix, and the body background stays as the
+    // fallback for clients that honour it. Both are correct, and the finding
+    // survives both: that is why it cannot be a warning.
+    const fixed = withBackground(
+      `<table width="100%" bgcolor="#eee"><tr><td><p>x</p></td></tr></table>`,
+    );
+    const found = analyzeEmail(fixed).filter((w) => w.property === "<body>");
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((w) => w.severity === "info")).toBe(true);
+    // And nothing on that email is actionable, which is the point.
+    expect(analyzeEmail(fixed).filter((w) => w.severity !== "info")).toEqual([]);
+  });
+
+  it("carries the fix in the message rather than dropping the advice", () => {
+    const found = analyzeEmail(withBackground("<p>x</p>")).find((w) => w.property === "<body>");
+    expect(found!.message).toMatch(/wrapper table/i);
+  });
+
+  it("gives every demoted element the advice that replaces the warning", () => {
+    // At info the message is the whole finding, so an element in this list
+    // without a bespoke message would report "does not support <x>" and say
+    // nothing about what to do. The element lane has no generic graceful
+    // wording on purpose; this is what keeps that honest.
+    const elements = [...GRACEFUL_FEATURES].filter((f) =>
+      (HTML_ELEMENT_FEATURES as readonly string[]).includes(f),
+    );
+    expect(elements).toEqual(["<body>"]);
+    for (const feature of elements) {
+      const html = `<html><body style="background:#eee"><p>x</p></body></html>`;
+      const found = analyzeEmail(html).filter((w) => w.property === feature);
+      expect([feature, found.length > 0]).toEqual([feature, true]);
+      // Not the generic fallback, which would name the element and stop.
+      for (const w of found) {
+        expect([feature, w.message === `${w.client} does not support ${feature}.`])
+          .toEqual([feature, false]);
+      }
+    }
+  });
+
+  it("removes six actionable findings per email and nothing else", () => {
+    // Measured across this repo's fixtures when `<body>` was demoted: six
+    // clients drop it, so six findings move from warning to info and the
+    // compatibility score gains a point. Pinned so a future change to the
+    // element lane cannot quietly take the finding away entirely.
+    const html = `<html><body style="background:#eee"><p>x</p></body></html>`;
+    const body = analyzeEmail(html).filter((w) => w.property === "<body>");
+    expect(body).toHaveLength(6);
+    expect(body.every((w) => w.severity === "info")).toBe(true);
+  });
+
+  it("applies the same rule through both severity paths", () => {
+    // `<body>` is an element and `[width]` an attribute, and they reach the
+    // report through different loops. One list governs both.
+    for (const feature of ["<body>", "[width]", "[height]"]) {
+      expect([feature, GRACEFUL_FEATURES.has(feature)]).toEqual([feature, true]);
+    }
+    const img = `<html><body><img src="a.png" width="40" height="40" alt=""></body></html>`;
+    expect(analyzeEmail(img).filter((w) => w.severity !== "info")).toEqual([]);
+  });
+});
