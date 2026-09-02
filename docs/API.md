@@ -739,7 +739,7 @@ The engine internally parses HTML using [Cheerio](https://cheerio.js.org/). For 
 | `auditEmail()` | 1 parse + 8 analyses | Shared DOM, most efficient for full reports |
 | `createSession()` | 1 parse upfront | Amortized across all subsequent analysis calls |
 | `analyzeEmail()` | 1 parse + CSS property scan | Scans `<style>` blocks + inline styles × 21 clients |
-| `transformForAllClients()` | 15 parses (1 per client) | Each client mutates its own DOM copy |
+| `transformForAllClients()` | 21 parses (1 per client) | Each client mutates its own DOM copy |
 | `simulateDarkMode()` | 1 parse per call | Mutates DOM for color inversion |
 
 ### Optimization tips for consumers

@@ -21,11 +21,11 @@
 
 **Your email looks perfect in Apple Mail. Gmail strips half the CSS. Outlook renders it in Word.**
 
-`@emailens/engine` analyzes your email against 255 CSS and HTML features across 21 email clients, scores compatibility, and shows you exactly what to fix: before you hit send.
+`@emailens/engine` analyzes your email against 298 CSS and HTML features (plus 14 image formats) across 21 email clients, scores compatibility, and shows you exactly what to fix: before you hit send.
 
 Write it however you like. **HTML, MJML, Maizzle and React Email** all go in the front: the engine compiles the template with your own compiler and lints the HTML that actually gets sent, which is the only version your reader sees.
 
-Our data says you need this: of those 255 features, **only 6 are fully supported in every major email client**. See [The State of Email CSS](https://emailens.dev/email-css/report).
+Our data says you need this: of those 298 features, **only 6 are fully supported in every one of the 21 clients**. See [The State of Email CSS](https://emailens.dev/email-css/report).
 
 ![emailens lint output showing errors and warnings across email clients](./docs/lint-demo.png)
 
@@ -108,7 +108,7 @@ const { code } = await generateAiFix({
 
 14 analysis engines, one `auditEmail()` call.
 
-- **CSS compatibility**: 255 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
+- **CSS compatibility**: 298 CSS and HTML features tested across 21 email clients, with fix snippets and AI-powered auto-fix
 - **Outlook VML**: structural faults in the Outlook-only markup inside `<!--[if mso]>` conditional comments — the one part of an email a DOM analyzer structurally cannot see, since to every HTML parser it is a comment node and to a screenshot it does not exist
 - **Content overflow**: fixed widths wider than the email frame and unbreakable strings that force horizontal scrolling
 - **Visual bugs**: gradients/background images with no color fallback (invisible content in Outlook) and fonts with no web-safe fallback, each with a concrete fix

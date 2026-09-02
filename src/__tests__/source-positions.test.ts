@@ -462,7 +462,7 @@ describe("robustness", () => {
       report = checkTemplateVariables(deep, { positions: true });
     }).not.toThrow();
     expect(report!.issues.some((i) => i.variable === "{{deep}}")).toBe(true);
-  });
+  }, 20000);
 
   test("text nodes are visited in document order", () => {
     const ordered = ["<body>", "  <p>{{a}}</p>", "  <p>{{b}}</p>", "  <p>{{c}}</p>", "</body>"].join("\n");

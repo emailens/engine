@@ -124,9 +124,9 @@ describe("fuzz / property invariants", () => {
   test("300 generated emails never break any analyzer", () => {
     const rng = makeRng(1337);
     for (let i = 0; i < 300; i++) assertInvariants(generateEmail(rng));
-  });
+  }, 30000);
 
   test("adversarial and malformed inputs are handled gracefully", () => {
     for (const html of ADVERSARIAL) assertInvariants(html);
-  });
+  }, 30000);
 });

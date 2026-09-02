@@ -117,7 +117,9 @@ describe("value-aware partial support: the value the note is about", () => {
   });
 
   it("text-align: only the flow-relative and match-parent values", () => {
-    expect(partialClients("text-align: start")).toEqual(sorted(OUTLOOK_WORD, YAHOO_AOL));
+    expect(partialClients("text-align: start")).toEqual(
+      sorted(OUTLOOK_WORD, YAHOO_AOL),
+    );
     expect(partialClients("text-align: match-parent")).toEqual(
       sorted(OUTLOOK_WORD, YAHOO_AOL, ["gmail-android", "samsung-mail"]),
     );
@@ -256,7 +258,7 @@ describe("value-aware partial support: the gate cannot silence a client", () => 
   // value must still trigger it. A predicate that always returned false would
   // drop that client's caveat entirely and no other test would notice.
   const REACHABLE: Record<string, string[]> = {
-    background: ["url(a.png)", "url(a.png), url(b.png)"],
+    background: ["url(a.png)", "url(a.png), url(b.png)", "url(a.png) / 50%"],
     "border-radius": ["10% 20% / 30% 40%"],
     display: ["inline flex", "block", "contents"],
     "font-size": ["1rem", "90%"],
@@ -307,13 +309,13 @@ describe("value-aware partial support: the gate cannot silence a client", () => 
     // "Only supports `display:none`". Both are wordings, not data; a resync
     // that rephrases them would silently stop gating, so assert the shape.
     for (const [client, level] of Object.entries(CSS_SUPPORT["position"])) {
-      if (level !== "partial" || client === "superhuman") continue;
       const note = (CSS_SUPPORT_NOTES["position"]?.[client] ?? []).join(" ");
+      if (level !== "partial" || !note) continue;
       expect(note).toMatch(/supports\s+.+?\s+but not\s+/i);
     }
     for (const [client, level] of Object.entries(CSS_SUPPORT["display"])) {
-      if (level !== "partial") continue;
       const note = (CSS_SUPPORT_NOTES["display"]?.[client] ?? []).join(" ");
+      if (level !== "partial" || !note) continue;
       expect(note).toMatch(/only supports\s+`|`[^`]+`|two-value syntax/i);
     }
   });
@@ -389,7 +391,13 @@ const sheetClients = (decl: string): string[] => {
 describe("value-aware partial support: the three inherited properties", () => {
   // margin, position and overflow were gated in 0.10.0 and had no per-client
   // assertion here, which is why five mutations of their branches survived.
-  const CANNOT_SCROLL = ["gmail-android", "outlook-android", "yahoo-mail-android"];
+  // Proton Mail and AOL are `partial` on every platform, so their level did
+  // not move; they join because the notes are now unioned across platforms and
+  // only the Android note says "Cannot scroll through to hidden content",
+  // which is the phrase the `overflow` branch reads.
+  const CANNOT_SCROLL = [
+    "aol", "gmail-android", "outlook-android", "protonmail", "yahoo-mail-android",
+  ];
 
   it("overflow: a scrollable value fires only where the note says scrolling breaks", () => {
     expect(partialClients("overflow: auto")).toEqual(CANNOT_SCROLL.sort());
@@ -412,16 +420,25 @@ describe("value-aware partial support: the three inherited properties", () => {
     }
   });
 
-  it("position: a client with no note at all is reported, not guessed at", () => {
-    // Superhuman is a manual override with no caniemail note. Which keyword it
-    // drops is not knowable, and a broken position ruins a layout, so it is
-    // reported for every positioning keyword, but not for `static`.
+  it("position: our own override is gated by the note we wrote for it", () => {
+    // Superhuman is a manual override, so caniemail has no note for it and the
+    // gate would otherwise fall silent. SUPERHUMAN_NOTES carries what the
+    // override's comment always said, in the wording the `position` branch
+    // reads, so the estimate keeps reporting the keywords it is about.
     expect(CSS_SUPPORT["position"]["superhuman"]).toBe("partial");
-    expect((CSS_SUPPORT_NOTES["position"]?.["superhuman"] ?? []).join(" ")).toBe("");
-    for (const v of ["relative", "absolute", "fixed", "sticky"]) {
+    expect((CSS_SUPPORT_NOTES["position"]?.["superhuman"] ?? []).join(" ")).toMatch(
+      /supports\s+.+?\s+but not\s+/i,
+    );
+    for (const v of ["fixed", "sticky"]) {
       expect([v, partialClients(`position: ${v}`)]).toEqual([
         v,
         expect.arrayContaining(["superhuman"]),
+      ]);
+    }
+    for (const v of ["relative", "absolute"]) {
+      expect([v, partialClients(`position: ${v}`)]).toEqual([
+        v,
+        expect.not.arrayContaining(["superhuman"]),
       ]);
     }
     expect(partialClients("position: static")).toEqual([]);

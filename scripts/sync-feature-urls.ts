@@ -61,7 +61,7 @@ async function main() {
     ` * caniemail's page for each feature, for a diagnostic's \`codeDescription\`.`,
     ` *`,
     ` * ${keys.length} of ${known} features. The rest have no caniemail entry of`,
-    ` * their own and get no link, which is the honest outcome; a link to a 404`,
+    ` * their own and get no link, which is the honest outcome: a link to a 404`,
     ` * is worse than none.`,
     ` *`,
     ` * DO NOT EDIT; regenerate with: bun run sync:feature-urls`,

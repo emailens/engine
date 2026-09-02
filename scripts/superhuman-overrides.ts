@@ -161,3 +161,14 @@ export const SUPERHUMAN_OVERRIDES: Record<string, SupportLevel> = {
   "@import": "unsupported",         // external resources stripped
   "display:none": "supported",
 };
+
+/**
+ * The "why" behind a partial override, in the same shape as a caniemail cell
+ * note. Without one, a value-gated property (see `VALUE_CAVEAT_PROPS`) has no
+ * caveat to test a value against and stays silent, which for an estimate we
+ * chose deliberately would be the wrong kind of quiet.
+ */
+export const SUPERHUMAN_NOTES: Record<string, string[]> = {
+  "position": ["Partial. Supports `relative` and `absolute` but not `fixed` and `sticky`."],
+  "transition": ["Partial. Blink runs transitions, but the user's reduced-motion setting may disable them."],
+};

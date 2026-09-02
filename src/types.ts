@@ -1,10 +1,17 @@
+import type { ClientId } from "./rules/css-support";
+
 export type SupportLevel = "supported" | "partial" | "unsupported" | "unknown";
 
 export type Framework = "jsx" | "mjml" | "maizzle";
 export type InputFormat = "html" | Framework;
 
 export interface EmailClient {
-  id: string;
+  /**
+   * Not a free string: the matrix answers for exactly these clients, so a
+   * client we ship without a column (or a column with no client) is a compile
+   * error rather than a silently empty section of every report.
+   */
+  id: ClientId;
   name: string;
   category: "webmail" | "desktop" | "mobile";
   engine: string;

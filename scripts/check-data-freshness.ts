@@ -28,8 +28,15 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { FEATURE_LAST_TESTED } from "../src/rules/css-support";
 
 const STALE_DAYS = 90; // flag data older than this
+/**
+ * A sync only refreshes what caniemail itself re-tested. Features they last
+ * checked years ago are stale no matter how recently we pulled the file, so
+ * they get their own, much longer, threshold.
+ */
+const FEATURE_STALE_DAYS = 3 * 365;
 
 interface FreshnessCheck {
   name: string;
@@ -126,6 +133,32 @@ for (const check of checks) {
     console.log(`  How to verify: ${check.verifyHow}`);
     hasStale = true;
   }
+}
+
+// Per-feature test dates from caniemail. Not a pass/fail gate: nothing here is
+// ours to fix, and a feature can stay correct for years. It is the honest
+// footnote to the single sync date above.
+const featureDates = Object.entries(FEATURE_LAST_TESTED);
+const staleFeatures = featureDates
+  .filter(([, date]) => daysSince(date) > FEATURE_STALE_DAYS)
+  .sort(([, a], [, b]) => a.localeCompare(b));
+
+console.log(`\n📅  caniemail test dates  (${featureDates.length} features)`);
+// A floor, because the failure mode here is silence: caniemail already uses a
+// second date shape elsewhere in the same payload, and if `last_test_date`
+// adopted it every date would be dropped and this section would cheerfully
+// report that nothing is stale.
+const MIN_DATED_FEATURES = 250;
+if (featureDates.length < MIN_DATED_FEATURES) {
+  console.log(`  ⚠️  expected at least ${MIN_DATED_FEATURES}; caniemail's date format may have changed`);
+  hasStale = true;
+} else if (staleFeatures.length) {
+  const oldest = staleFeatures.slice(0, 5).map(([k, d]) => `${k} (${d})`);
+  console.log(`  ${staleFeatures.length} not re-tested in ${FEATURE_STALE_DAYS / 365} years`);
+  console.log(`  Oldest: ${oldest.join(", ")}`);
+  console.log("  Upstream's call, not ours: caniemail.com/#contribute takes re-tests.");
+} else {
+  console.log(`  Every feature re-tested within ${FEATURE_STALE_DAYS / 365} years.`);
 }
 
 console.log("\n" + "=".repeat(70));

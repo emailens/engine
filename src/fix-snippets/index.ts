@@ -122,6 +122,17 @@ function getClientPrefix(clientId: string): string | null {
  * `isGenericFallback` is true when a framework was specified but no
  * framework-specific entry was found (resolution fell through to tiers 3–4).
  */
+/**
+ * How a feature key reads mid-sentence. Kept in step with analyze.ts's
+ * `featureLabel`, so a warning's message and its suggestion do not describe the
+ * same finding in two different languages.
+ */
+function describeFeature(property: string): string {
+  if (property.startsWith("[")) return `The ${property.slice(1, -1)} attribute`;
+  if (property.startsWith("<") || property.startsWith("@")) return `\`${property}\``;
+  return `"${property}"`;
+}
+
 export function getSuggestion(
   property: string,
   clientId: string,
@@ -153,7 +164,7 @@ export function getSuggestion(
 
   // No entry; return a default
   return {
-    text: `"${property}" is not supported in this email client.`,
+    text: `${describeFeature(property)} is not supported in this email client.`,
     isGenericFallback: !!framework,
   };
 }

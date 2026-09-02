@@ -34,7 +34,7 @@ src/
 ├── index.ts                  # Public re-exports for main entry point
 ├── audit.ts                  # auditEmail() — shared DOM parse, runs all 10 analyzers
 ├── session.ts                # createSession() — pre-parsed DOM, exposes all methods
-├── analyze.ts                # CSS compatibility analysis (255 features × 21 clients)
+├── analyze.ts                # CSS compatibility analysis (298 features × 21 clients)
 ├── spam-scorer.ts            # Heuristic spam scoring (45+ signals)
 ├── link-validator.ts         # Static link analysis (no network requests)
 ├── accessibility-checker.ts  # WCAG accessibility audit
@@ -126,7 +126,7 @@ The engine relies on a mix of automated and manually-curated data. Run `bun run 
 
 | Data | Source | Script | Frequency |
 |---|---|---|---|
-| CSS support matrix (255 features × 21 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
+| CSS support matrix (298 features × 21 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
 
 ### Manually-Curated Data
 
@@ -153,7 +153,7 @@ This script scans all data files for their verification dates and reports which 
 Adding support data for a new CSS property (e.g., `aspect-ratio`):
 
 1. **Check caniemail.com**: look up the property's support across email clients
-2. **Add the entry to `src/rules/css-support.ts`**: add a new key to `CSS_SUPPORT` with support levels for all 21 clients:
+2. **Add the entry to `src/rules/css-support.ts`**: add a new key to `CSS_SUPPORT` with support levels for all 21 clients. The file is generated and type-checked against itself, so the key must also appear in exactly one of the classification arrays (`CSS_PROPERTY_FEATURES`, `SELECTOR_FEATURES`, …) or it will not compile:
    ```typescript
    "aspect-ratio": {
      "gmail-web": "unsupported",
@@ -192,7 +192,7 @@ Adding a new email client (e.g., Mail.ru). Support data is auto-generated, so th
    ```typescript
    { id: "mailru", name: "Mail.ru", category: "webmail", engine: "Mail.ru", darkModeSupport: true, icon: "mail" },
    ```
-3. **Add a transform config**: add a `"mailru"` entry to `CLIENT_CONFIGS` in `src/transform.ts`. Derive the stripped properties from the client's caniemail data (don't hand-guess). For a client **not** on caniemail, add a manual overrides file like `scripts/superhuman-overrides.ts` instead.
+3. **Add a transform config** (required, there is no fallback): add a `"mailru"` entry to `CLIENT_CONFIGS` in `src/transform.ts`. Steps 1 and 2 are type-checked against each other, so a client with no matrix column, or a column with no client, will not compile; a missing transform config is caught by the test suite instead. Derive the stripped properties from the client's caniemail data (don't hand-guess). For a client **not** on caniemail, add a manual overrides file like `scripts/superhuman-overrides.ts` instead.
 4. **Regenerate the matrix**: `bun run sync:caniemail` fills in `CSS_SUPPORT` / `CSS_SUPPORT_NOTES` for the new column across all entries automatically.
 5. **Add dark mode / inbox-preview behavior**: update `src/dark-mode.ts` and `src/inbox-preview.ts` if the client has specific behavior.
 6. **Add tests**: the `transformForAllClients` invariant already requires every registered client to have a transform config; pattern-match existing client tests in `src/__tests__/engine.test.ts`.

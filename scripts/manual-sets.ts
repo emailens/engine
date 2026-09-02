@@ -83,3 +83,29 @@ export const STRUCTURAL_FIX_PROPERTIES = [
   "<form>",
   "object-fit",
 ];
+
+/**
+ * Features whose "unsupported" means the client ignores them, not that
+ * anything breaks: a forced `target="_blank"`, a doctype the client rewrites,
+ * an `aria-*` hint the renderer drops. caniemail is describing what a client
+ * does, and for these the honest severity is "worth knowing", not "fix this".
+ *
+ * A feature belongs here only when its absence leaves the email rendering the
+ * same. `[hidden]` is the counter-example and stays a warning: unsupported
+ * there means content the author hid becomes visible.
+ */
+export const GRACEFUL_FEATURES = [
+  "doctype",
+  "meta-color-scheme",
+  "[target]",
+  "[loading]",
+  "[srcset]",
+  "[role]",
+  "[aria-describedby]",
+  "[aria-hidden]",
+  "[aria-label]",
+  "[aria-labelledby]",
+  "[aria-live]",
+  "[lang]",
+  "[dir]",
+];

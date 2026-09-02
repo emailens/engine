@@ -213,9 +213,9 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       // Note form: "Supports `x` [and `y`] but not `z`[, `w`]."; read the "not" list.
       const m = note.match(/supports\s+.+?\s+but not\s+([^.]+)/i);
       if (m) return m[1].toLowerCase().includes(used);
-      // No note (the Superhuman override) or one we cannot parse: report. Which
-      // keyword a client drops is not guessable, and positioning is the kind of
-      // caveat that ruins a layout rather than nudging it.
+      // No note, or one we cannot parse: report. Which keyword a client drops
+      // is not guessable, and positioning is the kind of caveat that ruins a
+      // layout rather than nudging it.
       return true;
     }
 
@@ -303,6 +303,9 @@ function triggers(prop: string, value: string, note: string, noteLc: string): bo
       if (noteLc.includes("multiple values")) {
         return topLevelSplit(value, ",").length > 1 || topLevelSplit(value, "/").length > 1;
       }
+      // Orange: "Does not support the `/ value` shorthand for `background-size`."
+      // A note about the shorthand is about the slash, and nothing else.
+      if (noteLc.includes("shorthand")) return topLevelSplit(value, "/").length > 1;
       return true;
     }
 

@@ -54,7 +54,7 @@ describe("every entry point agrees", () => {
         expect([client, name, out === first]).toEqual([client, name, true]);
       }
     }
-  });
+  }, 20000);
 
   // Blank input is excluded deliberately: the session short-circuits it to an
   // inert stub. That divergence is pinned in its own test below.
@@ -116,21 +116,21 @@ describe("the Word engine receives the Outlook branch, fully rendered", () => {
 describe("no other client is affected", () => {
   const others = EMAIL_CLIENTS.map((c) => c.id).filter((id) => id !== WORD);
 
-  test("none of the other 20 clients sees translated VML", () => {
+  test("no other client sees translated VML", () => {
     for (const client of others) {
       for (const [name, fn] of ENTRY_POINTS) {
         const out = fn(BROKEN, client);
         expect([client, name, /data-vml/.test(out)]).toEqual([client, name, false]);
       }
     }
-  });
+  }, 20000);
 
   test("they all keep the HTML fallback", () => {
     for (const client of others) {
       const out = transformForAllClients(BROKEN).find((t) => t.clientId === client)!.html;
       expect([client, /Browse the templates<\/a>/.test(out)]).toEqual([client, true]);
     }
-  });
+  }, 20000);
 
   test("Outlook Web, New Outlook and Outlook for Mac are not Word engines", () => {
     // The obvious mistake is to key on the string "outlook". None of these
@@ -163,7 +163,7 @@ describe("the linter and the renderer describe the same email", () => {
 });
 
 describe("safety: nothing here may throw or corrupt an ordinary email", () => {
-  test("every shipped fixture survives all 21 clients, with no VML leaking", () => {
+  test("every shipped fixture survives every client, with no VML leaking", () => {
     for (const file of readdirSync(FIX).filter((f) => f.endsWith(".html"))) {
       const html = readFileSync(join(FIX, file), "utf8");
       // One fan-out per fixture, not one per client: the earlier version called

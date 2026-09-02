@@ -2,6 +2,9 @@ import * as cheerio from "cheerio";
 import { EMPTY_IMAGES } from "./constants";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { locOfAttr, locOfElement } from "./source-location";
+import { IMAGE_SUPPORT } from "./rules/css-support";
+import type { ImageFormat } from "./rules/css-support";
+import { EMAIL_CLIENTS } from "./clients";
 import type { ImageIssue, ImageInfo, ImageReport } from "./types";
 
 const DATA_URI_WARN_BYTES = 100 * 1024;
@@ -13,6 +16,132 @@ function estimateBase64Bytes(dataUri: string): number {
   if (commaIdx === -1) return 0;
   const payload = dataUri.slice(commaIdx + 1);
   return Math.floor((payload.length * 3) / 4);
+}
+
+/**
+ * File extension / data-URI mime → the caniemail image format key.
+ *
+ * caniemail grades every one of these per client, so the answer to "can I ship
+ * an AVIF" is data, not a guess. `base64` is deliberately absent here: it is
+ * not an extension. `imageFormats()` adds it from the data-URI marker instead,
+ * because caniemail grades data-URI delivery as a row of its own (Gmail:
+ * unsupported), separately from the format the URI carries.
+ */
+const IMAGE_FORMAT_BY_EXTENSION: Record<string, ImageFormat> = {
+  apng: "apng",
+  avif: "avif",
+  bmp: "bmp",
+  gif: "gif",
+  hdr: "hdr",
+  heic: "heif",
+  heif: "heif",
+  ico: "ico",
+  jfif: "jpg",
+  jpeg: "jpg",
+  jpg: "jpg",
+  mp4: "mp4",
+  png: "png",
+  svg: "svg",
+  tif: "tiff",
+  tiff: "tiff",
+  webp: "webp",
+};
+
+/** Mime subtypes that are not spelled like their extension. */
+const DATA_URI_MIME_ALIAS: Record<string, ImageFormat> = {
+  "svg+xml": "svg",
+  "x-icon": "ico",
+  "vnd.microsoft.icon": "ico",
+  "x-png": "png",
+};
+
+/** How each format reads in a sentence, and what to ship instead. */
+const IMAGE_FORMAT_LABEL: Record<ImageFormat, string> = {
+  apng: "Animated PNG",
+  avif: "AVIF",
+  base64: "Base64 (data URI)",
+  bmp: "BMP",
+  gif: "GIF",
+  hdr: "HDR",
+  heif: "HEIF",
+  ico: "ICO",
+  jpg: "JPEG",
+  mp4: "Video-as-image (MP4)",
+  png: "PNG",
+  svg: "SVG",
+  tiff: "TIFF",
+  webp: "WebP",
+};
+
+const IMAGE_FORMAT_ADVICE: Partial<Record<ImageFormat, string>> = {
+  apng: "Use a GIF for animation, or a static PNG.",
+  avif: "Use PNG or JPEG.",
+  base64: "Host the image and reference it by URL.",
+  bmp: "Use PNG or JPEG.",
+  hdr: "Use PNG or JPEG.",
+  heif: "Use PNG or JPEG.",
+  ico: "Use PNG.",
+  mp4: "Use an animated GIF, or a static image linking to the video.",
+  svg: "Use PNG instead.",
+  tiff: "Use PNG or JPEG.",
+  webp: "Use PNG or JPEG.",
+};
+
+/**
+ * Which caniemail image formats a `src` uses. A data URI counts twice: once
+ * for base64 delivery, once for the format it carries.
+ */
+function imageFormats(src: string): ImageFormat[] {
+  const formats: ImageFormat[] = [];
+  const lower = src.toLowerCase();
+
+  if (lower.startsWith("data:")) {
+    if (lower.includes(";base64")) formats.push("base64");
+    const mime = /^data:image\/([a-z0-9.+-]+)/.exec(lower)?.[1];
+    const fromMime = mime && (IMAGE_FORMAT_BY_EXTENSION[mime] ?? DATA_URI_MIME_ALIAS[mime]);
+    if (fromMime) formats.push(fromMime);
+    return formats;
+  }
+
+  // Ignore the query string and fragment: `photo.webp?v=2` is still a WebP.
+  const path = lower.split(/[?#]/)[0];
+  const ext = /\.([a-z0-9]+)$/.exec(path)?.[1];
+  const fromExt = ext ? IMAGE_FORMAT_BY_EXTENSION[ext] : undefined;
+  if (fromExt) formats.push(fromExt);
+  return formats;
+}
+
+/**
+ * The clients that cannot render a format. Both lists come out in
+ * EMAIL_CLIENTS order, not ranked; it is the returned pair that is
+ * severity-ordered. An empty `broken` means nobody is known to break on it.
+ */
+function clientsWithout(format: ImageFormat): { broken: string[]; partial: string[] } {
+  const row = IMAGE_SUPPORT[format];
+  const broken: string[] = [];
+  const partial: string[] = [];
+  if (!row) return { broken, partial };
+  for (const client of EMAIL_CLIENTS) {
+    if (row[client.id] === "unsupported") broken.push(client.name);
+    else if (row[client.id] === "partial") partial.push(client.name);
+  }
+  // ponytail: no caniemail note here. A note belongs to one client, and this
+  // message speaks for a list of them; an unattributed caveat reads as a fact
+  // about all of them. The per-client detail lives in IMAGE_SUPPORT_NOTES.
+  return { broken, partial };
+}
+
+/** "A, B and C" — or "A, B and 9 others" once a list stops being readable. */
+function nameList(names: string[], max = 4): string {
+  if (!names.length) return "no clients";
+  if (names.length === 1) return names[0];
+  if (names.length <= max) {
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  }
+  // Five broken clients is one over the cap, and "and 1 others" is the kind of
+  // sentence that makes a reader distrust the number printed next to it.
+  const rest = names.length - max;
+  return `${names.slice(0, max).join(", ")} and ${rest} other${rest === 1 ? "" : "s"}`;
 }
 
 function isTrackingPixel(
@@ -135,25 +264,22 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
       });
     }
 
-    // WebP format
-    if (src.toLowerCase().endsWith(".webp") || src.includes("image/webp")) {
-      imgIssues.push("webp-format");
+    // Image format support, per client, from caniemail. Formats nobody is
+    // known to break on (PNG, JPEG, GIF) produce nothing.
+    for (const format of imageFormats(src)) {
+      const { broken, partial } = clientsWithout(format);
+      if (!broken.length) continue;
+      const label = IMAGE_FORMAT_LABEL[format] ?? format.toUpperCase();
+      const advice = IMAGE_FORMAT_ADVICE[format];
+      imgIssues.push(`${format}-format`);
       issues.push({
-        rule: "webp-format",
+        rule: `${format}-format`,
         severity: "info",
-        message: "WebP format detected, not supported by all email clients. Consider PNG or JPEG.",
-        src: truncateSrc(src),
-        ...(srcLoc ? { loc: srcLoc } : {}),
-      });
-    }
-
-    // SVG format
-    if (src.toLowerCase().endsWith(".svg") || src.includes("image/svg")) {
-      imgIssues.push("svg-format");
-      issues.push({
-        rule: "svg-format",
-        severity: "info",
-        message: "SVG format detected, not supported by most email clients. Use PNG instead.",
+        message:
+          `${label} is not supported by ${nameList(broken)}` +
+          ` (${broken.length} of ${EMAIL_CLIENTS.length} clients` +
+          `${partial.length ? `, partial in ${partial.length} more` : ""}).` +
+          `${advice ? ` ${advice}` : ""}`,
         src: truncateSrc(src),
         ...(srcLoc ? { loc: srcLoc } : {}),
       });
@@ -216,8 +342,8 @@ export function analyzeImagesFromDom($: cheerio.CheerioAPI): ImageReport {
  * Analyze images in an HTML email for best practices.
  *
  * Checks for missing dimensions, oversized data URIs, missing alt
- * attributes, unsupported formats (WebP, SVG), tracking pixels,
- * missing display:block, and overall image heaviness.
+ * attributes, image formats the target clients cannot render, tracking
+ * pixels, missing display:block, and overall image heaviness.
  */
 export function analyzeImages(html: string, options?: ParseOptions): ImageReport {
   return fromHtml(html, EMPTY_IMAGES, analyzeImagesFromDom, options);

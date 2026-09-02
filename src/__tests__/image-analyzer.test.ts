@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { analyzeImages } from "../index";
+import { analyzeImages, IMAGE_SUPPORT } from "../index";
 
 // ============================================================================
 // Clean images: should have no issues
@@ -303,5 +303,91 @@ describe("image analyzer: resilience", () => {
       ${"</div>".repeat(20)}
     </body></html>`;
     expect(() => analyzeImages(html)).not.toThrow();
+  });
+});
+
+// ─── Format detection ───────────────────────────────────────────────────────
+// The format is read from the `src`, and everything downstream (which clients
+// break, what to ship instead) hangs off getting that read right.
+
+describe("reading the format out of a src", () => {
+  const rules = (src: string) =>
+    analyzeImages(`<html><body><img src="${src}" alt="" width="600" height="200"></body></html>`)
+      .issues.filter((i) => i.rule.endsWith("-format"))
+      .map((i) => i.rule)
+      .sort();
+
+  test("reads the path, not the query string or fragment", () => {
+    expect(rules("a.webp?v=2")).toEqual(["webp-format"]);
+    expect(rules("a.webp#frag")).toEqual(["webp-format"]);
+    // The extension has to end the path; "webp" as a query value is not a format.
+    expect(rules("https://x.com/i?url=a.png&amp;fmt=webp")).toEqual([]);
+    expect(rules("https://x.com/a.png/resize/w_600")).toEqual([]);
+  });
+
+  test("ignores case, and does not need a scheme", () => {
+    expect(rules("A.AVIF")).toEqual(["avif-format"]);
+    expect(rules("//cdn.example.com/a.avif")).toEqual(["avif-format"]);
+  });
+
+  test("grades a data URI twice: once for delivery, once for payload", () => {
+    expect(rules("data:image/webp;base64,AAA")).toEqual(["base64-format", "webp-format"]);
+    // PNG renders everywhere, so only the delivery mechanism is reported.
+    expect(rules("data:image/png;base64,AAAA")).toEqual(["base64-format"]);
+    // Not base64-encoded, so only the payload format counts.
+    expect(rules("data:image/svg+xml;utf8,<svg/>")).toEqual(["svg-format"]);
+    expect(rules("data:image/jpeg,AAAA")).toEqual([]);
+  });
+
+  test("maps the mime spellings that are not the extension", () => {
+    // Both spell ICO. Without the alias the payload is invisible and only the
+    // base64 delivery gets graded.
+    expect(rules("data:image/x-icon;base64,AAAA")).toEqual(["base64-format", "ico-format"]);
+    expect(rules("data:image/vnd.microsoft.icon;base64,AAAA")).toEqual([
+      "base64-format", "ico-format",
+    ]);
+    expect(rules("a.ico")).toEqual(["ico-format"]);
+  });
+
+  test("maps an alias extension onto the format caniemail grades", () => {
+    expect(rules("a.heic")).toEqual(["heif-format"]);
+    expect(rules("a.tif")).toEqual(["tiff-format"]);
+    expect(rules("a.jfif")).toEqual([]); // jpg, universal
+  });
+
+  test("says nothing about an extension it does not know", () => {
+    expect(rules("https://cdn.example.com/img/1234")).toEqual([]);
+    expect(rules("a.jxl")).toEqual([]);
+  });
+
+  test("every format in the matrix is reachable from some src", () => {
+    // A format nobody can name is a row that can never be reported.
+    const byExt: Record<string, string> = {
+      apng: "a.apng", avif: "a.avif", bmp: "a.bmp", gif: "a.gif", hdr: "a.hdr",
+      heif: "a.heif", ico: "a.ico", jpg: "a.jpg", mp4: "a.mp4", png: "a.png",
+      svg: "a.svg", tiff: "a.tiff", webp: "a.webp", base64: "data:image/gif;base64,AAA",
+    };
+    expect(Object.keys(byExt).sort()).toEqual(Object.keys(IMAGE_SUPPORT).sort());
+  });
+});
+
+describe("naming the clients that break", () => {
+  const message = (src: string) =>
+    analyzeImages(`<html><body><img src="${src}" alt="" width="600" height="200"></body></html>`)
+      .issues.find((i) => i.rule.endsWith("-format"))?.message ?? "";
+
+  test("counts agree with the list, and read as a sentence", () => {
+    // APNG breaks in exactly five clients, one over the four the message names
+    // in full. "and 1 others" is the wording that makes a reader distrust the
+    // number beside it.
+    expect(message("a.apng")).toContain("and 1 other (5 of 21 clients)");
+    expect(message("a.apng")).not.toContain("1 others");
+    // Two names join with "and", no comma, no remainder.
+    expect(message("a.webp")).toContain("Outlook (New) and Outlook for Mac (2 of 21 clients");
+  });
+
+  test("names a format the way a person would write it", () => {
+    expect(message("a.webp")).toStartWith("WebP is not supported by");
+    expect(message("a.mp4")).toStartWith("Video-as-image (MP4) is not supported by");
   });
 });

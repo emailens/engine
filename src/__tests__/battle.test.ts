@@ -579,11 +579,8 @@ describe("value-aware partial warnings", () => {
     for (const [client, level] of Object.entries(CSS_SUPPORT["position"])) {
       if (level !== "partial") continue;
       const note = (CSS_SUPPORT_NOTES["position"]?.[client] || []).join(" ");
-      // superhuman is a manual override with no caniemail note, uses a safe default.
-      if (client === "superhuman") {
-        expect(note).toBe("");
-        continue;
-      }
+      // superhuman is a manual override, so its note comes from SUPERHUMAN_NOTES
+      // rather than caniemail; it is written in the same shape on purpose.
       expect(note).toMatch(parseable);
     }
   });
