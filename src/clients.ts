@@ -1,6 +1,7 @@
 import type { EmailClient } from "./types";
+import type { ClientId } from "./rules/css-support";
 
-export const EMAIL_CLIENTS: EmailClient[] = [
+const CLIENTS = [
   {
     id: "gmail-web",
     name: "Gmail",
@@ -174,7 +175,24 @@ export const EMAIL_CLIENTS: EmailClient[] = [
     darkModeSupport: true,
     icon: "monitor",
   },
-];
+] as const satisfies ReadonlyArray<Omit<EmailClient, "id"> & { id: ClientId }>;
+
+/**
+ * The roster and the matrix name the same clients, checked in both directions
+ * at compile time and costing nothing at runtime.
+ *
+ * This lives here rather than in `EmailClient.id`, which stays `string`.
+ * Narrowing that field reaches every consumer: `new Set(EMAIL_CLIENTS.map(c =>
+ * c.id))` infers `Set<ClientId>`, and `.has(someString)` on it stops
+ * compiling. 0.12.1 shipped that and broke the CLI in four places. Enforce
+ * where the literals are written; stay permissive where they are read.
+ */
+type ShippedId = (typeof CLIENTS)[number]["id"];
+type Assert<T extends never> = T;
+type _EveryColumnHasAClient = Assert<Exclude<ClientId, ShippedId>>;
+type _EveryClientHasAColumn = Assert<Exclude<ShippedId, ClientId>>;
+
+export const EMAIL_CLIENTS: EmailClient[] = [...CLIENTS];
 
 export function getClient(id: string): EmailClient | undefined {
   return EMAIL_CLIENTS.find((c) => c.id === id);

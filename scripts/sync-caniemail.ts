@@ -756,7 +756,13 @@ function generateTsFile(
   }
   lines.push(`] as const;`);
   lines.push(``);
-  // `satisfies` is the whole enforcement: Record<FeatureKey, …> requires every
+  // `satisfies` is the whole enforcement, and it sits on the literal rather
+  // than on the exported type on purpose. Narrowing the export reaches every
+  // caller that holds a client id as a string, inside this repo and outside
+  // it; 0.12.1 narrowed `EmailClient.id` the same way and broke the CLI in
+  // four places. Check where the literals are written, stay permissive where
+  // they are read.
+  // Record<FeatureKey, …> requires every
   // member of the union to be present, and an object literal may not carry a
   // key the target type does not name. So a feature the arrays fail to
   // classify, or classify twice, stops compiling here rather than quietly
@@ -766,7 +772,7 @@ function generateTsFile(
   lines.push(...supportBlock(sortedKeys, rows));
   lines.push(`} satisfies Record<FeatureKey, Record<ClientId, SupportLevel>>;`);
   lines.push(``);
-  lines.push(`export const CSS_SUPPORT: Record<string, Record<ClientId, SupportLevel>> =`);
+  lines.push(`export const CSS_SUPPORT: Record<string, Record<string, SupportLevel>> =`);
   lines.push(`  CSS_SUPPORT_TABLE;`);
   lines.push(``);
 
@@ -801,7 +807,7 @@ function generateTsFile(
   lines.push(...supportBlock(sortedImages, images));
   lines.push(`} satisfies Record<ImageFormat, Record<ClientId, SupportLevel>>;`);
   lines.push(``);
-  lines.push(`export const IMAGE_SUPPORT: Record<string, Record<ClientId, SupportLevel>> =`);
+  lines.push(`export const IMAGE_SUPPORT: Record<string, Record<string, SupportLevel>> =`);
   lines.push(`  IMAGE_SUPPORT_TABLE;`);
   lines.push(``);
 

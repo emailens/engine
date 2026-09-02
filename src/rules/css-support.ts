@@ -6907,7 +6907,7 @@ const CSS_SUPPORT_TABLE = {
   },
 } satisfies Record<FeatureKey, Record<ClientId, SupportLevel>>;
 
-export const CSS_SUPPORT: Record<string, Record<ClientId, SupportLevel>> =
+export const CSS_SUPPORT: Record<string, Record<string, SupportLevel>> =
   CSS_SUPPORT_TABLE;
 
 /**
@@ -8397,7 +8397,7 @@ const IMAGE_SUPPORT_TABLE = {
   },
 } satisfies Record<ImageFormat, Record<ClientId, SupportLevel>>;
 
-export const IMAGE_SUPPORT: Record<string, Record<ClientId, SupportLevel>> =
+export const IMAGE_SUPPORT: Record<string, Record<string, SupportLevel>> =
   IMAGE_SUPPORT_TABLE;
 
 /** Caveat notes per (image format, client), same shape as CSS_SUPPORT_NOTES. */

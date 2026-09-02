@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.12.2 - 2026-09-02
+
+### Fixed
+
+- **0.12.1 broke every consumer that keys a collection by client id.** It typed
+  `EmailClient.id` as `ClientId` to make the roster and the matrix provably the
+  same list. The invariant was worth having; the placement was wrong. Narrowing
+  a public field reaches every caller, and the natural thing to do with a client
+  list is exactly what breaks:
+
+  ```ts
+  const ids = new Set(EMAIL_CLIENTS.map((c) => c.id)); // now Set<ClientId>
+  ids.has(userSuppliedString);                         // no longer compiles
+  ```
+
+  Four sites in the CLI and two in the MCP server, none of them doing anything
+  unusual. `EmailClient.id` is `string` again, and `CSS_SUPPORT` and
+  `IMAGE_SUPPORT` are indexed by `string` again for the same reason.
+
+  The check moved to where the literals are written rather than where they are
+  read: `CLIENTS` is declared `as const satisfies …{ id: ClientId }`, and two
+  type-level assertions prove the roster and the matrix name each other in both
+  directions. That is stronger than what 0.12.1 shipped, which only caught a
+  client with no column and not a column with no client, and it is invisible to
+  anyone downstream. Verified by breaking it: a typo'd id fails both assertions.
+
+  The same principle already governed `GRACEFUL_FEATURES` inside the engine,
+  typed at construction and exported as a plain string set. It should have
+  governed this from the start.
+
 ## 0.12.1 - 2026-09-02
 
 A patch, on the same reasoning as 0.11.1: that release added `checkVml`, four
