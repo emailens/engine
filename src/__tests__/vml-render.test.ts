@@ -371,6 +371,43 @@ describe("office settings block", () => {
     expect(out.html).not.toContain("96");
   });
 
+  test("strips the shape the boilerplate is actually written in", () => {
+    // Almost nobody writes a bare <xml>. The Office block is conventionally
+    // wrapped in <noscript>, carries the namespace attribute, and sits beside
+    // other settings blocks. Each of those is a different match for the
+    // pattern, and the bare form is the one least likely to appear in the wild.
+    const real =
+      `<!--[if gte mso 9]><noscript><xml xmlns:o="urn:schemas-microsoft-com:office:office">` +
+      `<o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch>` +
+      `</o:OfficeDocumentSettings></xml></noscript><![endif]-->` +
+      `<table><tr><td>body</td></tr></table>`;
+    const out = resolveMsoBranch(real);
+    expect(out).not.toContain("96");
+    expect(out).not.toContain("<xml");
+    expect(out).toContain("body");
+  });
+
+  test("strips an uppercase tag and several blocks in one branch", () => {
+    const out = resolveMsoBranch(
+      `<!--[if gte mso 9]><XML><o:PixelsPerInch>96</o:PixelsPerInch></XML>` +
+        `<xml><o:AllowPNG/></xml><![endif]--><p>body</p>`,
+    );
+    expect(out).not.toMatch(/96|AllowPNG/);
+    expect(out).toContain("body");
+  });
+
+  test("leaves the VML beside it alone, which is the whole point of unwrapping", () => {
+    // The strip runs on the branch just opened, which is exactly where VML
+    // lives. Eating a shape here would be worse than printing "96".
+    const out = resolveMsoBranch(
+      `<!--[if gte mso 9]><xml><o:PixelsPerInch>96</o:PixelsPerInch></xml>` +
+        `<v:rect style="width:10px;height:10px"><v:fill color="#f00"/></v:rect><![endif]-->`,
+    );
+    expect(out).not.toContain("96");
+    expect(out).toContain("v:rect");
+    expect(out).toContain("v:fill");
+  });
+
   test("an unclosed <xml> is left alone rather than swallowing the email", () => {
     const out = resolveMsoBranch(`<!--[if mso]><xml><o:Foo><![endif]--><p>body</p>`);
     expect(out).toContain("<p>body</p>");
@@ -378,6 +415,31 @@ describe("office settings block", () => {
 });
 
 describe("applyMsoHide", () => {
+  test("crosses a quoted font family, which the canonical preheader has", () => {
+    // A character class excluding both quotes cannot get past
+    // `font-family:'Segoe UI'`, so the one element this feature exists for was
+    // the one it skipped. Every real preheader carries a font stack.
+    const preheader =
+      `<div style="display:none;font-size:1px;color:#fff;mso-hide:all;font-family:'Segoe UI',Arial">Preview</div>`;
+    expect(applyMsoHide(preheader)).toContain("display:none!important");
+    // And the mirror: a double-quoted family inside a single-quoted attribute.
+    const swapped = `<div style='font-family:"Segoe UI",Arial;mso-hide:all'>p</div>`;
+    expect(applyMsoHide(swapped)).toContain("display:none!important");
+  });
+
+  test("wins against a display the author marked important", () => {
+    // `display:block !important` is how an author keeps something visible in
+    // every client that is not Word. A plain `display:none` appended after it
+    // loses the cascade, so the element stayed painted in the preview.
+    const out = applyMsoHide(`<div style="display:block!important;mso-hide:all">p</div>`);
+    expect(out).toContain("display:none!important");
+  });
+
+  test("does not touch an element without mso-hide, quoted family or not", () => {
+    const html = `<div style="font-family:'Segoe UI';color:red">p</div>`;
+    expect(applyMsoHide(html)).toBe(html);
+  });
+
   test("gives mso-hide:all something a browser can act on", () => {
     const out = applyMsoHide(`<div style="mso-hide:all">preheader</div>`);
     expect(out).toContain("display:none");

@@ -462,7 +462,10 @@ describe("robustness", () => {
       report = checkTemplateVariables(deep, { positions: true });
     }).not.toThrow();
     expect(report!.issues.some((i) => i.variable === "{{deep}}")).toBe(true);
-  }, 20000);
+    // 3-4s on its own, measured; the budget is headroom for a full-suite run,
+    // where this timed out at 31s against 20s while other files were running.
+    // The operation is not slow, the machine is busy.
+  }, 30_000);
 
   test("text nodes are visited in document order", () => {
     const ordered = ["<body>", "  <p>{{a}}</p>", "  <p>{{b}}</p>", "  <p>{{c}}</p>", "</body>"].join("\n");
@@ -542,7 +545,13 @@ describe("fuzz: positions never drift", () => {
       }).not.toThrow();
       for (const issue of allIssues(report!)) expectIssueAnchor(html, issue);
     }
-  });
+  }, 30_000);
+
+  // 300 full audits with positions on, which is the slowest thing in the suite
+  // and the one most sensitive to what else the machine is doing. It timed out
+  // at 13s under a concurrent build and passed on its own immediately after;
+  // the budget is generous because a flaky failure here teaches people to
+  // ignore the suite, which costs more than the minutes it saves.
 
   test("adversarial input produces no malformed locations", () => {
     const adversarial = [

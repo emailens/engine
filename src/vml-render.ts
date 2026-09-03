@@ -172,10 +172,22 @@ const MSO_HIDE = /mso-hide\s*:\s*all/i;
  */
 export function applyMsoHide(html: string): string {
   if (!MSO_HIDE.test(html)) return html;
+  // Each quote style gets its own alternative so the *other* quote may appear
+  // inside the value. One character class excluding both cannot cross
+  // `font-family:'Segoe UI'`, which is how the canonical preheader is written,
+  // so the single element this exists for was the one it skipped.
   return html.replace(
-    /\sstyle\s*=\s*(["'])([^"']*)\1/gi,
-    (whole, q: string, style: string) =>
-      MSO_HIDE.test(style) ? ` style=${q}${style};display:none${q}` : whole,
+    /(\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
+    (whole, lead: string, dq: string | undefined, sq: string | undefined) => {
+      const quote = dq === undefined ? "'" : '"';
+      const style = dq === undefined ? (sq as string) : dq;
+      if (!MSO_HIDE.test(style)) return whole;
+      // `!important`, because the author may have written `display:block
+      // !important` for the clients that are not Word. A plain `display:none`
+      // appended after that loses the cascade and the element stays painted.
+      const sep = style.trim() === "" || /;\s*$/.test(style) ? "" : ";";
+      return `${lead}${quote}${style}${sep}display:none!important${quote}`;
+    },
   );
 }
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.4 - 2026-09-03
+## 0.12.3 - 2026-09-04
 
 ### Fixed
 
@@ -35,7 +35,20 @@
   A preheader hidden with `display:none` alone still shows, which is correct:
   that is what Outlook Classic really does with it.
 
-## 0.12.3 - 2026-09-04
+  Two things the first pass got wrong, both found by running it against the
+  markup a preheader is actually written in. The attribute pattern excluded
+  both quote characters at once, so it could not cross
+  `font-family:'Segoe UI'` , and every real preheader carries a font stack, so
+  the single element this feature exists for was the one it skipped. Each quote
+  style now has its own alternative and the other may appear inside the value.
+  And the translation appended a plain `display:none`, which loses the cascade
+  to the `display:block !important` an author writes to keep something visible
+  in the clients that are not Word; it is `display:none!important` now.
+
+  The `<xml>` strip needed no such repair: it already handled namespace
+  attributes, an uppercase tag, several blocks in one branch, and the
+  `<noscript>` wrapper the boilerplate is usually written with, while leaving
+  VML alone.
 
 ### Changed
 
