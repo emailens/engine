@@ -11,12 +11,20 @@ import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snipp
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
-import { resolveMsoBranch, vmlToCss } from "./vml-render";
+import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
 import { MAX_HTML_SIZE } from "./constants";
 
 // =============================================================================
 // Shared helpers
 // =============================================================================
+
+/**
+ * The one client whose renderer is Microsoft Word rather than a browser engine,
+ * and so the only one that reads conditional comments and `mso-` properties.
+ */
+function isWordEngineClient(clientId: string): boolean {
+  return clientId === "outlook-windows-legacy";
+}
 
 /** Check if a selector contains pseudo-classes or pseudo-elements. */
 function hasPseudoSelector(selector: string): boolean {
@@ -878,7 +886,7 @@ export function transformForClient(
   // is the only one whose preview is built from the Outlook branch rather than
   // the fallback. Doing this for any other client would render markup they
   // never see.
-  const wordEngine = clientId === "outlook-windows-legacy" && /<!--\[if/i.test(html);
+  const wordEngine = isWordEngineClient(clientId) && /<!--\[if/i.test(html);
   const source = wordEngine ? resolveMsoBranch(html) : html;
 
   // Downlevel once per transformForClient call
@@ -891,6 +899,10 @@ export function transformForClient(
   // author CSS. Translating first would hand the stripper its own output and
   // leave every rounded button square.
   if (wordEngine) result.html = vmlToCss(result.html);
+  // Deliberately NOT gated on `wordEngine`, which only means "this email has an
+  // Outlook branch to resolve". An email can hide its preheader with
+  // mso-hide:all and carry no conditional comment at all.
+  if (isWordEngineClient(clientId)) result.html = applyMsoHide(result.html);
   return result;
 }
 
@@ -915,14 +927,16 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   const outlookSource = hasOutlookBranch ? downlevelCSS(resolveMsoBranch(html)) : downleveled;
 
   return Object.keys(CLIENT_CONFIGS).map((clientId) => {
-    const wordEngine = clientId === "outlook-windows-legacy" && hasOutlookBranch;
+    const wordEngine = isWordEngineClient(clientId) && hasOutlookBranch;
     const result = applyTransform(
       wordEngine ? outlookSource : downleveled,
       CLIENT_CONFIGS[clientId],
       framework,
     );
-    // See transformForClient: translation must follow the strip pass.
+    // See transformForClient: translation must follow the strip pass, and
+    // mso-hide is not gated on there being an Outlook branch.
     if (wordEngine) result.html = vmlToCss(result.html);
+    if (isWordEngineClient(clientId)) result.html = applyMsoHide(result.html);
     return result;
   });
 }

@@ -116,11 +116,67 @@ const DOWNLEVEL_HIDDEN =
   /<!--\[if(?![^\]]*!)[^\]]*(?:mso|vml)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi;
 
 /**
+ * The Office configuration an `[if mso]` block carries beside its markup:
+ *
+ *   <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch>…</xml>
+ *
+ * Word reads it as a directive and draws nothing. A browser has never heard of
+ * `<o:PixelsPerInch>`, so it treats it as an unknown *inline* element and paints
+ * the text content, which is how a bare "96" ended up above every template that
+ * carries this boilerplate , which is most of them. And because `<xml>` is not
+ * legal inside `<head>`, the parser evicts the block into the body, which is why
+ * it landed on the first line rather than out of sight.
+ *
+ * Only the closed form is stripped. An unclosed `<xml>` is left alone for the
+ * same reason an unmatched conditional is: failing towards "left something in"
+ * is recoverable, failing the other way is not.
+ */
+const OFFICE_SETTINGS = /<xml\b[^>]*>[\s\S]*?<\/xml>/gi;
+
+/**
  * Uncomment the Outlook-only blocks and delete the downlevel-revealed branch,
  * leaving the markup a Word-engine client actually parses.
  */
 export function resolveMsoBranch(html: string): string {
-  return html.replace(DOWNLEVEL_REVEALED, "").replace(DOWNLEVEL_HIDDEN, "$1");
+  return html
+    .replace(DOWNLEVEL_REVEALED, "")
+    .replace(DOWNLEVEL_HIDDEN, "$1")
+    // After the unwrap, never before: the settings block is inside the
+    // conditional we just opened.
+    .replace(OFFICE_SETTINGS, "");
+}
+
+/** `mso-hide:all`, in either spacing. */
+const MSO_HIDE = /mso-hide\s*:\s*all/i;
+
+/**
+ * Make `mso-hide:all` actually hide something.
+ *
+ * It is the only way to hide an element from the Word engine, because Outlook
+ * Classic ignores `display:none` , that is the whole reason the property
+ * exists. The transform is right to preserve it. But a browser has never heard
+ * of it either, so a preheader hidden *correctly* still painted at the top of
+ * the render: we showed the failure to the one author who had already written
+ * the fix.
+ *
+ * So translate it into something this renderer can act on, for exactly the
+ * reason `vmlToCss` exists. The preview is Chromium standing in for Word, and
+ * it can only draw what it understands.
+ *
+ * Must run AFTER the transform's strip pass, never before: `display` is on the
+ * Word unsupported list, so an earlier `display:none` would be stripped right
+ * back out and this would silently do nothing.
+ *
+ * ponytail: inline styles only. Catching `mso-hide` in a <style> block means
+ * resolving its selector against the DOM; every preheader in the wild is inline.
+ */
+export function applyMsoHide(html: string): string {
+  if (!MSO_HIDE.test(html)) return html;
+  return html.replace(
+    /\sstyle\s*=\s*(["'])([^"']*)\1/gi,
+    (whole, q: string, style: string) =>
+      MSO_HIDE.test(style) ? ` style=${q}${style};display:none${q}` : whole,
+  );
 }
 
 /** Translate the VML shapes a browser cannot draw into divs it can. */

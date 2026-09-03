@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { renderOutlookBranch, resolveMsoBranch, vmlToCss, arcsizeToRadius, transformForClient, transformForAllClients, createSession } from "../index";
+import { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeToRadius, transformForClient, transformForAllClients, createSession } from "../index";
 
 const mso = (vml: string) => `<!--[if gte mso 9]>${vml}<![endif]-->`;
 
@@ -343,5 +343,91 @@ describe("vmlToCss: a nested shape renders the way Outlook renders it", () => {
   test("no other client sees any of it", () => {
     const out = transformForClient(`<html><body>${nested}</body></html>`, "gmail-web").html;
     expect(out).not.toContain("data-vml-outlook");
+  });
+});
+
+describe("office settings block", () => {
+  // The `[if mso]` boilerplate nearly every hand-written email carries. Word
+  // reads it as a directive; a browser paints "96" above the message.
+  const BOILERPLATE = `<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->`;
+
+  test("is dropped rather than revealed as text", () => {
+    const out = resolveMsoBranch(`<html><head>${BOILERPLATE}</head><body><p>hi</p></body></html>`);
+    expect(out).not.toContain("96");
+    expect(out).not.toContain("<xml");
+    expect(out).toContain("<p>hi</p>");
+  });
+
+  test("keeps the markup that shares the conditional with it", () => {
+    const out = resolveMsoBranch(
+      `<!--[if gte mso 9]><xml><o:PixelsPerInch>96</o:PixelsPerInch></xml><table><tr><td>ghost</td></tr></table><![endif]-->`,
+    );
+    expect(out).not.toContain("96");
+    expect(out).toContain("ghost");
+  });
+
+  test("survives the whole Word transform, not just the unwrap", () => {
+    const out = transformForClient(`<html><head>${BOILERPLATE}</head><body><p>hi</p></body></html>`, "outlook-windows-legacy");
+    expect(out.html).not.toContain("96");
+  });
+
+  test("an unclosed <xml> is left alone rather than swallowing the email", () => {
+    const out = resolveMsoBranch(`<!--[if mso]><xml><o:Foo><![endif]--><p>body</p>`);
+    expect(out).toContain("<p>body</p>");
+  });
+});
+
+describe("applyMsoHide", () => {
+  test("gives mso-hide:all something a browser can act on", () => {
+    const out = applyMsoHide(`<div style="mso-hide:all">preheader</div>`);
+    expect(out).toContain("display:none");
+  });
+
+  test("leaves every other element's style untouched", () => {
+    const html = `<div style="mso-hide:all">a</div><p style="color:red">b</p>`;
+    const out = applyMsoHide(html);
+    expect(out).toContain(`<p style="color:red">b</p>`);
+  });
+
+  test("single-quoted styles too", () => {
+    expect(applyMsoHide(`<div style='mso-hide: all'>a</div>`)).toContain("display:none");
+  });
+
+  test("returns the input untouched when nothing is hidden", () => {
+    const html = `<div style="color:red">a</div>`;
+    expect(applyMsoHide(html)).toBe(html);
+  });
+
+  test("a correctly hidden preheader stays hidden through the Word transform", () => {
+    // The bug this fixes: the transform strips `display` for the Word engine
+    // (right , Outlook ignores it), leaving only `mso-hide:all`, which Chromium
+    // does not understand. The author who did it properly saw their preheader
+    // painted at the top of the render.
+    const out = transformForClient(
+      `<div style="display:none;mso-hide:all;max-height:0">preheader</div><p>body</p>`,
+      "outlook-windows-legacy",
+    );
+    expect(out.html).toContain("display:none");
+  });
+
+  test("a preheader hidden ONLY with display:none still shows, because Outlook ignores it", () => {
+    const out = transformForClient(
+      `<div style="display:none;max-height:0">preheader</div><p>body</p>`,
+      "outlook-windows-legacy",
+    );
+    expect(out.html).not.toContain("display:none");
+  });
+
+  test("applies with no conditional comment anywhere in the email", () => {
+    const out = transformForClient(`<div style="mso-hide:all">preheader</div>`, "outlook-windows-legacy");
+    expect(out.html).toContain("display:none");
+  });
+
+  test("every client gets it via transformForAllClients, and only Word acts on it", () => {
+    const all = transformForAllClients(`<div style="mso-hide:all">preheader</div>`);
+    const word = all.find((t) => t.clientId === "outlook-windows-legacy")!;
+    const gmail = all.find((t) => t.clientId === "gmail-web")!;
+    expect(word.html).toContain("display:none");
+    expect(gmail.html).not.toContain("display:none");
   });
 });

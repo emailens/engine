@@ -1,6 +1,41 @@
 # Changelog
 
-## 0.12.3 - 2026-09-03
+## 0.12.4 - 2026-09-03
+
+### Fixed
+
+- **The Outlook Classic preview no longer prints a stray "96".** Nearly every
+  hand-written email carries the Office boilerplate
+  `<!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch>…`.
+  `resolveMsoBranch` was right to uncomment it, because Outlook does read that
+  block , but it then handed a browser `<o:PixelsPerInch>96</o:PixelsPerInch>`,
+  which no browser has heard of, so it was treated as an unknown *inline*
+  element and its text content was painted: a bare `96` above the message. And
+  because `<xml>` is not legal inside `<head>`, the parser evicted the block into
+  the body, which is why it landed on the first line rather than out of sight.
+  The settings block is configuration, never content, so it is now dropped after
+  the unwrap. An unclosed `<xml>` is left alone, the same way an unmatched
+  conditional is.
+
+- **`mso-hide:all` now actually hides.** It is the only way to hide an element
+  from the Word engine, because Outlook Classic ignores `display:none` , that is
+  the entire reason the property exists. The transform was right to preserve it,
+  but the preview renders in a browser, which has never heard of it either, so a
+  preheader hidden *correctly* still painted at the top of the render. We were
+  showing the failure to the one author who had already written the fix. It is
+  now translated to `display:none` for `outlook-windows-legacy`, for exactly the
+  reason `vmlToCss` exists: this render is Chromium standing in for Word, and it
+  can only draw what it understands.
+
+  Applied after the strip pass, never before , `display` is on the Word
+  unsupported list, so translating first would have it stripped straight back
+  out. And not gated on the email having a conditional comment, which
+  `wordEngine` means and `mso-hide:all` does not require.
+
+  A preheader hidden with `display:none` alone still shows, which is correct:
+  that is what Outlook Classic really does with it.
+
+## 0.12.3 - 2026-09-04
 
 ### Changed
 
