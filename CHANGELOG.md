@@ -1,5 +1,82 @@
 # Changelog
 
+## 0.13.0 - 2026-09-22
+
+`^0.12.3` will not pick this up. npm's caret on `0.12.x` stops before `0.13.0`.
+That is deliberate: `auditEmail` grows a `targeting` field, compatibility
+warnings inside client-scoped selectors can disappear, truncation flags
+tighten, and three clients leave the authored dark-mode list.
+
+### Added
+
+- **Client targeting is a first-class pass, not a second caniemail matrix.**
+  HowToTarget.email is provenance. The engine owns a small matcher table
+  (`TARGETING_MATCHERS`) for techniques `EMAIL_CLIENTS` can detect, suppress,
+  preserve on inline, or simulate. Catalog rows without a matcher stay in
+  `TARGETING_HACKS` and are not bulk-imported as rules.
+
+  `u + .body` scopes to Gmail Web; the more specific `div > u + .body` scopes
+  to Gmail Android. Samsung `#MessageWebViewDiv`, Proton `#proton-root`, and
+  Superhuman `.ShadowHTML` wrap on `transformForClient`. MSO conditionals are
+  detected and left alone under strict policy: they are Word-engine strategy,
+  not a smell.
+
+  Findings live on `report.targeting`, not on compatibility scores. Progressive
+  policy (the default) suppresses Outlook warnings for properties that only
+  appear inside a Gmail wrapper; `targetingPolicy: "strict"` turns that
+  suppression off; `"lenient"` also silences deprecated-hack lint.
+
+  `analyzeEmail`, `auditEmail`, and `createSession` share one CSS parse.
+  `session.audit()` reuses the same cached pass as `analyze()` /
+  `checkTargeting()`. `bun run sync:howtotarget` fails if a matcher
+  `upstreamKey` vanished; `bun run check:freshness` fails if the catalog marks
+  a technique Deprecated while the matcher `lint` is still `"strict"`.
+
+  `AI_FIX_SYSTEM_PROMPT` targeting bullets are generated from the matcher
+  table, so the prompt and the linter cannot drift.
+
+- **`var()` is resolved before compatibility and contrast grade the value.**
+  Gmail, Outlook, and Yahoo still do not support custom properties, so
+  `custom-properties` keeps firing. What changes is everything downstream:
+  `color: var(--ink)` is graded as the resolved colour, and the accessibility
+  cascade no longer treats a variable as an unparseable skip. Fallback
+  arguments in `var(--x, #111)` are honoured.
+
+- **Overflow sees a row, not only a cell.** Sibling `td`s whose fixed widths
+  sum past 600px now warn (`table-row-overflow`), and a fixed-width image
+  wider than its parent cell warns (`image-container-overflow`). A
+  `max-width` at or under 600px counts as fluid, so a 640px image with
+  `max-width: 600px` is no longer a false overflow.
+
+### Changed
+
+- **Authored `@media (prefers-color-scheme: dark)` is only treated as real
+  where the client actually runs it.** Litmus (Feb 2025), caniemail, and
+  later writeups agree Apple Mail and Samsung Mail honour the query.
+  Thunderbird Dark Message Mode rewrites colours itself; HEY rewrites the
+  query to `@media (false)`; Superhuman Carbon overlays a theme. Those three
+  leave `PREFERS_COLOR_SCHEME_CLIENTS`, so opt-in-meta warnings no longer
+  fire for them, and dark-mode simulation still inverts even when the email
+  already contains a dark block. Outlook mobile copy now says `[data-ogsc]`
+  support is partial, not absent.
+
+- **Inbox truncation limits follow Email Tool Tester's August 2026
+  measurements**, with Litmus's "keep preview under 90" still the webmail
+  preheader ceiling. Gmail mobile uses the tightest measured pair (Pixel 7
+  Gmail app: 33 / 37). Gmail web is ~88 at 1400px. Outlook web subject is
+  ~51. Apple Mail iOS uses iPhone 48 / 99; iPad is tighter and noted in the
+  comment. Yahoo and Samsung Email had no new measurements and are unchanged.
+  Existing emails that were just under the old Gmail-mobile 40 will start
+  truncating.
+
+### Fixed
+
+- **Targeting selectors survived inlining by accident or not at all.**
+  `transformForClient` now preserves matcher selectors and inserts the
+  wrapper the selector assumes (`<u>` for Gmail, `#MessageWebViewDiv` for
+  Samsung, and so on), so a Gmail-only rule is still a Gmail-only rule after
+  the preview transform.
+
 ## 0.12.3 - 2026-09-04
 
 ### Fixed

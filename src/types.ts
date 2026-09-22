@@ -145,6 +145,16 @@ export interface DiffResult {
   unchanged: CSSWarning[];
 }
 
+/**
+ * Policy defining how client-specific CSS/HTML targeting hacks are treated during analysis.
+ * - "progressive" (default): Suppress false-positive compatibility warnings for clients excluded
+ *   by targeted scopes; emit warnings for deprecated or dangerous hacks.
+ * - "strict": Do not suppress compatibility warnings for targeted scopes (treat hacks as non-standard);
+ *   flag all client-targeting hacks as warnings/info.
+ * - "lenient": Suppress false positives for targeted scopes, and ignore non-fatal brittle warnings.
+ */
+export type TargetingPolicy = "progressive" | "strict" | "lenient";
+
 // ─── Spam scoring ────────────────────────────────────────────────────────────
 
 export interface SpamIssue extends BaseIssue {

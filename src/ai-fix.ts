@@ -2,6 +2,7 @@ import { generateFixPrompt } from "./export-prompt";
 import type { ExportPromptOptions } from "./export-prompt";
 import type { AiProvider, AiFixResult, CSSWarning } from "./types";
 import { estimateAiFixTokens } from "./token-utils";
+import { TARGETING_MATCHERS } from "./rules/targeting-matchers";
 
 export interface GenerateAiFixOptions extends ExportPromptOptions {
   /** Callback that sends a prompt to an LLM and returns the response text. */
@@ -94,6 +95,22 @@ export async function generateAiFix(
   };
 }
 
+function targetingFixBullets(): string {
+  const working: string[] = [];
+  const deprecated: string[] = [];
+  for (const matcher of TARGETING_MATCHERS) {
+    if (matcher.lint === "deprecated") {
+      deprecated.push(matcher.description);
+    } else if (matcher.clientIds.length > 0 && (matcher.scopesCompatibility || matcher.simulate)) {
+      working.push(`  - ${matcher.description} (${matcher.id})`);
+    }
+  }
+  const never = deprecated.length > 0
+    ? deprecated.join("; ")
+    : "\\0 null bytes, unicode stars, or .& chained-class tricks";
+  return `Client targeting (engine matchers / howtotarget.email):\n${working.join("\n")}\n  - Never use deprecated or brittle hacks (${never}), which cause modern parsers to discard stylesheets.`;
+}
+
 /**
  * System prompt for the AI fix provider. Consumers should pass this as
  * the `system` parameter to their LLM call for best results.
@@ -114,6 +131,7 @@ Rules:
   - <svg> → replace with <img> pointing to a hosted PNG
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.
 - For "Layout & Visual Issues", apply the provided Fix directly: add the background-color fallback beneath a gradient/image, append a web-safe font to the stack, and constrain fixed widths wider than the frame to width:100% with max-width.
+${targetingFixBullets()}
 - Apply ALL fixes from the issues list: do not skip any.
 - Use the framework syntax specified (JSX/MJML/Maizzle/HTML).
 - For JSX: use camelCase style props, React Email components, and proper TypeScript types.

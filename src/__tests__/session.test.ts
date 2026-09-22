@@ -11,6 +11,7 @@ import { checkSize } from "../size-checker";
 import { checkTemplateVariables } from "../template-checker";
 import { transformForAllClients } from "../transform";
 import { simulateDarkMode } from "../dark-mode";
+import { checkTargetingHacks } from "../targeting-checker";
 
 const SAMPLE_HTML = `
 <html lang="en">
@@ -48,6 +49,15 @@ describe("createSession", () => {
     expect(sessionReport.inboxPreview).toEqual(standaloneReport.inboxPreview);
     expect(sessionReport.size).toEqual(standaloneReport.size);
     expect(sessionReport.templateVariables).toEqual(standaloneReport.templateVariables);
+  });
+
+  test("session.audit() reuses the cached analyzeDocument pass", () => {
+    const session = createSession(SAMPLE_HTML);
+    const warnings = session.analyze();
+    const targeting = session.checkTargeting();
+    const report = session.audit();
+    expect(report.compatibility.warnings).toBe(warnings);
+    expect(report.targeting).toBe(targeting);
   });
 
   test("session.analyze() matches standalone analyzeEmail()", () => {
@@ -119,6 +129,14 @@ describe("createSession", () => {
     const session = createSession(SAMPLE_HTML);
     const sessionResult = session.checkTemplateVariables();
     const standaloneResult = checkTemplateVariables(SAMPLE_HTML);
+
+    expect(sessionResult).toEqual(standaloneResult);
+  });
+
+  test("session.checkTargeting() matches standalone checkTargetingHacks()", () => {
+    const session = createSession(SAMPLE_HTML);
+    const sessionResult = session.checkTargeting();
+    const standaloneResult = checkTargetingHacks(SAMPLE_HTML);
 
     expect(sessionResult).toEqual(standaloneResult);
   });

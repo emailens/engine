@@ -1,8 +1,9 @@
 import type { CheerioAPI } from "cheerio";
 import * as cheerio from "cheerio";
 import { MAX_HTML_SIZE } from "./constants";
+import type { TargetingPolicy } from "./types";
 
-/** Options shared by every entry point that parses HTML. */
+/** Options that only affect HTML parsing. */
 export interface ParseOptions {
   /**
    * Record source positions so issues carry a `loc`. Costs a little parse time
@@ -11,6 +12,17 @@ export interface ParseOptions {
    * annotations, agents.
    */
   positions?: boolean;
+}
+
+/** Parse options plus analysis policy. Does not change how HTML is loaded. */
+export interface AnalysisOptions extends ParseOptions {
+  /**
+   * Targeting policy for client-specific CSS hacks.
+   * - "progressive" (default): Suppresses false-positive warnings inside targeted rules.
+   * - "strict": Do not suppress compatibility warnings for targeted scopes.
+   * - "lenient": Suppress false positives and ignore non-fatal targeting warnings.
+   */
+  targetingPolicy?: TargetingPolicy;
 }
 
 /** Parse HTML, optionally with source positions. */

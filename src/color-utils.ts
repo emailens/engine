@@ -1,4 +1,5 @@
 import { splitTopLevel } from "./style-utils";
+import { resolveCssValue } from "./css-variables";
 /**
  * WCAG 2.1 color parsing, luminance, and contrast utilities.
  *
@@ -172,9 +173,16 @@ function oklchToRgb(L: number, C: number, H: number): [number, number, number] {
 /**
  * Parse a CSS color value to RGBA. Returns null for unresolvable values.
  */
-export function parseColor(value: string): RGBA | null {
+export function parseColor(value: string, variables?: Map<string, string>): RGBA | null {
   if (!value) return null;
-  const v = value.trim().toLowerCase();
+  let v = value.trim().toLowerCase();
+
+  if (v.includes("var(") && variables) {
+    const res = resolveCssValue(value, variables);
+    if (res.resolved !== value) {
+      return parseColor(res.resolved, variables);
+    }
+  }
 
   // Unresolvable
   if (v === "inherit" || v === "currentcolor" || v === "initial" || v === "unset" || v.startsWith("var(")) {
@@ -399,7 +407,7 @@ function functionArgs(value: string, nameRe: RegExp): string[] {
  * `to right`, `0%`) are discarded; a fully transparent stop is dropped, since
  * it shows whatever is painted beneath instead of contributing a colour.
  */
-export function gradientStops(value: string | undefined): RGBA[] {
+export function gradientStops(value: string | undefined, variables?: Map<string, string>): RGBA[] {
   if (!value) return [];
   const stops: RGBA[] = [];
   for (const args of functionArgs(value, /(?:repeating-)?(?:linear|radial|conic)-gradient/i)) {
@@ -408,9 +416,9 @@ export function gradientStops(value: string | undefined): RGBA[] {
       if (!trimmed || /^(?:to\b|at\b|from\b|in\b|[\d.]+(?:deg|turn|rad|grad)\b)/i.test(trimmed)) continue;
       // A stop is `<color> [position]`; the colour is the leading token,
       // except for functional colours, which carry their own parentheses.
-      const fnMatch = trimmed.match(/^(?:rgba?|hsla?|color|lab|lch|oklab|oklch)\([^)]*\)/i);
+      const fnMatch = trimmed.match(/^(?:rgba?|hsla?|color|lab|lch|oklab|oklch|var)\([^)]*\)/i);
       const token = fnMatch ? fnMatch[0] : trimmed.split(/\s+/)[0];
-      const parsed = parseColor(token);
+      const parsed = parseColor(token, variables);
       if (parsed && parsed.a > 0) stops.push(parsed);
     }
   }

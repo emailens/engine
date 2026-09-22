@@ -21,9 +21,6 @@ export const PREFERS_COLOR_SCHEME_CLIENTS = [
   "apple-mail-macos",
   "apple-mail-ios",
   "samsung-mail",
-  "thunderbird",
-  "hey-mail",
-  "superhuman",
 ] as const;
 
 /**
@@ -33,8 +30,9 @@ export const PREFERS_COLOR_SCHEME_CLIENTS = [
  * - Some use prefers-color-scheme media query (Apple Mail)
  * - Some do partial inversion (Outlook.com)
  *
- * Last verified: 2026-03-04
- * Sources: Litmus dark mode guide, caniemail.com, Parcel dark mode guide
+ * Last verified: 2026-09-22
+ * Sources: Litmus dark mode guide (2025-02-27 chart), Parcel dark mode guide,
+ * caniemail.com prefers-color-scheme (last tested 2023-03-08), Courier dark-mode primer
  */
 export function simulateDarkMode(
   html: string,
@@ -116,7 +114,7 @@ export function simulateDarkMode(
 
     case "outlook-ios":
     case "outlook-android":
-      // Outlook mobile apps apply partial inversion but do not inject [data-ogsc]/[data-ogsb] attributes
+      // Litmus 2025-02: partial invert; [data-ogsc] is partial (light BGs darkened).
       applyColorInversion($, "partial");
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
@@ -126,7 +124,7 @@ export function simulateDarkMode(
           message:
             `${getClient(clientId)?.name ?? clientId} applies partial color inversion in dark mode.`,
           suggestion:
-            "Add a @media (prefers-color-scheme: dark) block with inverted colors. Outlook mobile does not support [data-ogsc]/[data-ogsb] attribute overrides.",
+            "Add @media (prefers-color-scheme: dark) styles and duplicate them with [data-ogsc]/[data-ogsb] prefixes. Outlook mobile support for those attributes is partial.",
         });
       }
       break;
@@ -186,51 +184,46 @@ export function simulateDarkMode(
       break;
 
     case "thunderbird":
-      // Thunderbird 140+ has Dark Message Mode; respects prefers-color-scheme
-      if (!html.includes("prefers-color-scheme")) {
-        applyColorInversion($, "full");
-        warnings.push({
-          severity: "info",
-          client: clientId,
-          property: "dark-mode",
-          message:
-            "Thunderbird supports @media (prefers-color-scheme: dark). Consider adding dark mode styles.",
-          suggestion:
-            "Add a @media (prefers-color-scheme: dark) block with inverted colors for the best dark mode experience.",
-        });
-      }
+      // Dark Message Mode rewrites colours itself. caniemail and later writeups
+      // (Buttondown 2025) treat prefers-color-scheme as unsupported here.
+      applyColorInversion($, "full");
+      warnings.push({
+        severity: "info",
+        client: clientId,
+        property: "dark-mode",
+        message:
+          "Thunderbird Dark Message Mode applies its own full color rewrite; @media (prefers-color-scheme: dark) is not honoured.",
+        suggestion:
+          "Design so full inversion stays readable. Recipients can toggle Dark Message Mode off per message; authored dark CSS will not run.",
+      });
       break;
 
     case "hey-mail":
-      // HEY Mail respects prefers-color-scheme; simulate partial inversion
+      // caniemail: prefers-color-scheme:dark is rewritten to @media (false).
       applyColorInversion($, "partial");
-      if (!html.includes("prefers-color-scheme")) {
-        warnings.push({
-          severity: "info",
-          client: clientId,
-          property: "dark-mode",
-          message:
-            "HEY Mail supports @media (prefers-color-scheme: dark). Add dark mode styles for the best experience.",
-          suggestion:
-            "Add a @media (prefers-color-scheme: dark) block with inverted colors.",
-        });
-      }
+      warnings.push({
+        severity: "info",
+        client: clientId,
+        property: "dark-mode",
+        message:
+          "HEY Mail does not honour @media (prefers-color-scheme: dark); the query is rewritten to @media (false).",
+        suggestion:
+          "Do not rely on a dark media query for HEY. Keep light-mode contrast high enough to survive partial inversion.",
+      });
       break;
 
     case "superhuman":
-      // Superhuman uses Blink and respects prefers-color-scheme
+      // Carbon/Snow is a client theme overlay, not authored prefers-color-scheme.
       applyColorInversion($, "partial");
-      if (!html.includes("prefers-color-scheme")) {
-        warnings.push({
-          severity: "info",
-          client: clientId,
-          property: "dark-mode",
-          message:
-            "Superhuman respects @media (prefers-color-scheme: dark). Many Superhuman users run in dark mode.",
-          suggestion:
-            "Add @media (prefers-color-scheme: dark) styles; Superhuman's power-user audience often prefers dark mode.",
-        });
-      }
+      warnings.push({
+        severity: "info",
+        client: clientId,
+        property: "dark-mode",
+        message:
+          "Superhuman Carbon theme overlays its own dark styling; prefers-color-scheme is not a reliable control surface.",
+        suggestion:
+          "Test Carbon and Snow inside Superhuman. Authored dark CSS may be overridden by the client theme.",
+      });
       break;
   }
 

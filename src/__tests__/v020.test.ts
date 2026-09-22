@@ -515,8 +515,8 @@ describe("estimateAiFixTokens", () => {
       systemPromptTokens: 0,
     });
 
-    // Default should be 250 tokens higher
-    expect(withDefault.inputTokens - withZero.inputTokens).toBe(250);
+    // Default should be 500 tokens higher
+    expect(withDefault.inputTokens - withZero.inputTokens).toBe(500);
   });
 
   test("custom systemPromptTokens overrides default", async () => {
@@ -887,6 +887,11 @@ describe("AI_FIX_SYSTEM_PROMPT", () => {
     expect(AI_FIX_SYSTEM_PROMPT).toContain("JSX");
     expect(AI_FIX_SYSTEM_PROMPT).toContain("MJML");
     expect(AI_FIX_SYSTEM_PROMPT).toContain("Maizzle");
+  });
+
+  test("includes targeting matcher bullets", () => {
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("gmail-android-div-u-body");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("Gmail Android");
   });
 });
 

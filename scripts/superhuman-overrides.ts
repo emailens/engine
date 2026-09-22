@@ -5,7 +5,13 @@
  * Chromium/Blink rendering engine (Electron app) and its documented stripping
  * behaviours (forms, external stylesheets). Treat as best-effort estimates.
  *
- * Last verified: 2026-03-04
+ * Last verified: 2026-09-22
+ *
+ * Still no public CSS matrix. Rechecked against Superhuman Theme help
+ * (Carbon/Snow overlay), email-bugs#144 (2025-05: iOS/Android ignore
+ * font-size unless a border is present), and Blink-based rendering reports.
+ * Desktop Mac is unaffected by the font-size bug; do not mark font-size
+ * partial globally.
  *
  * Format: Record<propertyKey, SupportLevel>
  * Only include overrides: properties not listed here default to "unknown".
@@ -171,4 +177,5 @@ export const SUPERHUMAN_OVERRIDES: Record<string, SupportLevel> = {
 export const SUPERHUMAN_NOTES: Record<string, string[]> = {
   "position": ["Partial. Supports `relative` and `absolute` but not `fixed` and `sticky`."],
   "transition": ["Partial. Blink runs transitions, but the user's reduced-motion setting may disable them."],
+  "animation": ["Partial. Blink can run animations; Superhuman may honor OS reduced-motion and disable them."],
 };

@@ -128,3 +128,81 @@ describe("checkOverflow: an email with no responsive rules at all", () => {
     expect(rule(`<div><p>plain text email</p></div>`)).toBe(false);
   });
 });
+
+describe("checkOverflow: table row width summation & image bounding", () => {
+  test("flags table row whose sibling cells sum to > 600px", () => {
+    const html = `
+      <style>@media (max-width: 600px) { .col { width: 100% !important; } }</style>
+      <table>
+        <tr>
+          <td width="350">Column 1</td>
+          <td width="350">Column 2</td>
+        </tr>
+      </table>
+    `;
+    const report = checkOverflow(html);
+    const issue = report.issues.find((i) => i.rule === "table-row-overflow");
+    expect(issue).toBeDefined();
+    expect(issue?.message).toContain("700px");
+    expect(issue?.message).toContain("2 columns");
+  });
+
+  test("allows table row whose cells sum to <= 600px", () => {
+    const html = `
+      <table>
+        <tr>
+          <td width="280">Col 1</td>
+          <td width="280">Col 2</td>
+        </tr>
+      </table>
+    `;
+    const report = checkOverflow(html);
+    const rowIssue = report.issues.find((i) => i.rule === "table-row-overflow");
+    expect(rowIssue).toBeUndefined();
+  });
+
+  test("recognizes Outlook fallback width paired with fluid max-width style", () => {
+    const html = `
+      <style>@media (max-width: 600px) { .fluid { width: 100% !important; } }</style>
+      <table width="650" style="width: 100%; max-width: 600px;">
+        <tr><td>Content</td></tr>
+      </table>
+    `;
+    const report = checkOverflow(html);
+    const widthIssue = report.issues.find((i) => i.rule === "fixed-width-overflow");
+    expect(widthIssue).toBeUndefined();
+  });
+
+  test("flags image exceeding container column width without responsive sizing", () => {
+    const html = `
+      <table>
+        <tr>
+          <td width="300">
+            <img src="banner.jpg" width="450" />
+          </td>
+        </tr>
+      </table>
+    `;
+    const report = checkOverflow(html);
+    const imgIssue = report.issues.find((i) => i.rule === "image-container-overflow");
+    expect(imgIssue).toBeDefined();
+    expect(imgIssue?.message).toContain("450px");
+    expect(imgIssue?.message).toContain("300px");
+  });
+
+  test("does not flag image with responsive max-width: 100%", () => {
+    const html = `
+      <table>
+        <tr>
+          <td width="300">
+            <img src="banner.jpg" width="450" style="max-width: 100%; height: auto;" />
+          </td>
+        </tr>
+      </table>
+    `;
+    const report = checkOverflow(html);
+    const imgIssue = report.issues.find((i) => i.rule === "image-container-overflow");
+    expect(imgIssue).toBeUndefined();
+  });
+});
+

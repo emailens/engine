@@ -127,6 +127,9 @@ The engine relies on a mix of automated and manually-curated data. Run `bun run 
 | Data | Source | Script | Frequency |
 |---|---|---|---|
 | CSS support matrix (298 features × 21 clients) | [caniemail.com](https://www.caniemail.com/) API | `bun run sync:caniemail` | Before each release |
+| Targeting technique catalog | [howtotarget.email](https://www.howtotarget.email/) API | `bun run sync:howtotarget` | Before each release |
+
+Matchers that detect, scope, preserve-on-inline, or simulate those techniques live in `src/rules/targeting-matchers.ts` and are **not** generated. Add a matcher only when `EMAIL_CLIENTS` need one of those behaviors; leftover catalog rows are provenance, not a second support matrix. Sync fails if a matcher `upstreamKey` vanished from the catalog. `bun run check:freshness` fails if the catalog marks a technique Deprecated while the matcher `lint` is still `"strict"`.
 
 ### Manually-Curated Data
 

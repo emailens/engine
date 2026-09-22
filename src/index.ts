@@ -45,17 +45,18 @@ export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
 export { CompileError } from "./compile/errors";
 export { GENERIC_LINK_TEXT, MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
-export { EMPTY_DELIVERABILITY } from "./constants";
+export { EMPTY_DELIVERABILITY, EMPTY_TARGETING } from "./constants";
 export type { RGBA, WcagGrade } from "./color-utils";
 export type { DeliverabilityCheck, DeliverabilityReport, DeliverabilityIssue } from "./types";
 // SpamAssassinResult, SpamAssassinOptions are re-exported from "@emailens/engine/server"
 export { parseColor, formatRgb, relativeLuminance, contrastRatio, wcagGrade, alphaBlend, rgbToOklab, colorDistance } from "./color-utils";
+export { extractCssVariables, resolveCssValue, usesCustomProperties } from "./css-variables";
 export { downlevelCSS } from "./downlevel";
 export type { ExportPromptOptions, ExportScope } from "./export-prompt";
 export type { GenerateAiFixOptions } from "./ai-fix";
 export type { TokenEstimate, TokenEstimateWithWarnings, EstimateOptions } from "./token-utils";
 export type { AuditOptions, AuditReport } from "./audit";
-export type { ParseOptions } from "./parse-html";
+export type { ParseOptions, AnalysisOptions } from "./parse-html";
 export type { EmailSession, CreateSessionOptions } from "./session";
 export type { SandboxStrategy, CompileReactEmailOptions } from "./compile/react-email";
 export type {
@@ -100,4 +101,18 @@ export type {
   VisualReport,
   DesignIssue,
   DesignReport,
+  TargetingPolicy,
 } from "./types";
+
+export {
+  TARGETING_HACKS,
+  getTargetingHacksForClient,
+  getWorkingTargetingHacks,
+  TARGETING_MATCHERS,
+  detectSelectorListTargetingScope,
+} from "./rules/targeting-hacks";
+export type { TargetingHack, HackStatus, TargetingMatcher, TargetingSimulate } from "./rules/targeting-hacks";
+export { checkTargetingHacks } from "./targeting-checker";
+export type { DetectedHack, TargetingReport } from "./targeting-checker";
+
+

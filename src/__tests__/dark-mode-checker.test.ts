@@ -29,7 +29,11 @@ describe("dark mode: opt-in meta", () => {
       .map((w) => w.client);
     expect(clients).toContain("apple-mail-macos");
     expect(clients).toContain("apple-mail-ios");
+    expect(clients).toContain("samsung-mail");
     expect(clients).not.toContain("gmail-web");
+    expect(clients).not.toContain("thunderbird");
+    expect(clients).not.toContain("superhuman");
+    expect(clients).not.toContain("hey-mail");
   });
 
   test("is silent with <meta name=color-scheme>", () => {

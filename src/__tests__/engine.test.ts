@@ -575,11 +575,11 @@ describe("simulateDarkMode", () => {
     expect(infoWarning).toBeDefined();
   });
 
-  test("thunderbird skips inversion when prefers-color-scheme is present", () => {
+  test("thunderbird still inverts when prefers-color-scheme is present", () => {
     const html = `<html><head><style>@media (prefers-color-scheme: dark) { body { background: #000; } }</style></head><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
     const result = simulateDarkMode(html, "thunderbird");
-    // Should NOT invert colors since the email handles dark mode itself
-    expect(result.html).toMatch(/color:\s*#000000/);
+    expect(result.html).toContain("#e0e0e0");
+    expect(result.warnings.some((w) => w.message.includes("Dark Message Mode"))).toBe(true);
   });
 
   test("suggests prefers-color-scheme for Apple Mail", () => {

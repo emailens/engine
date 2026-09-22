@@ -9,9 +9,10 @@
  *
  * Tracked data sources:
  *   1. CSS support matrix; auto-synced from caniemail.com (reads "Last synced" date)
- *   2. Dark mode behavior: manually verified against Litmus/Can I Email
- *   3. Client display limits: manually verified against Email Tool Tester/Litmus
- *   4. Superhuman CSS overrides: manually tested (no public data source exists)
+ *   2. HowToTarget catalog; auto-synced from howtotarget.email
+ *   3. Dark mode behavior: manually verified against Litmus/Can I Email
+ *   4. Client display limits: manually verified against Email Tool Tester/Litmus
+ *   5. Superhuman CSS overrides: manually tested (no public data source exists)
  *
  * Usage:
  *   bun run check:freshness           # or: bun run scripts/check-data-freshness.ts
@@ -29,6 +30,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { FEATURE_LAST_TESTED } from "../src/rules/css-support";
+import { TARGETING_MATCHERS, targetingHackForMatcher } from "../src/rules/targeting-matchers";
 
 const STALE_DAYS = 90; // flag data older than this
 /**
@@ -79,6 +81,14 @@ const SOURCES: Array<{
     verb: "Last synced",
     missingMsg: "No sync date found",
     verifyHow: "Run: bun run sync:caniemail",
+  },
+  {
+    name: "HowToTarget catalog",
+    file: "src/rules/targeting-hacks.generated.ts",
+    pattern: /Last synced:\s*(\d{4}-\d{2}-\d{2})/,
+    verb: "Last synced",
+    missingMsg: "No sync date found",
+    verifyHow: "Run: bun run sync:howtotarget",
   },
   {
     name: "Dark Mode Client Behavior",
@@ -159,6 +169,31 @@ if (featureDates.length < MIN_DATED_FEATURES) {
   console.log("  Upstream's call, not ours: caniemail.com/#contribute takes re-tests.");
 } else {
   console.log(`  Every feature re-tested within ${FEATURE_STALE_DAYS / 365} years.`);
+}
+
+function matcherCatalogLintIssues(): string[] {
+  const issues: string[] = [];
+  for (const matcher of TARGETING_MATCHERS) {
+    const hack = targetingHackForMatcher(matcher);
+    if (!hack) {
+      issues.push(`${matcher.id}: upstreamKey ${matcher.upstreamKey} missing from catalog`);
+    } else if (hack.status === "deprecated" && matcher.lint === "strict") {
+      issues.push(
+        `${matcher.id}: catalog is Deprecated but matcher.lint is still "strict" — set lint to "deprecated" or drop the matcher`,
+      );
+    }
+  }
+  return issues;
+}
+
+const matcherLintIssues = matcherCatalogLintIssues();
+
+console.log(`\n🎯  HowToTarget matcher lint  (${TARGETING_MATCHERS.length} matchers)`);
+if (matcherLintIssues.length > 0) {
+  hasStale = true;
+  for (const issue of matcherLintIssues) console.log(`  ⚠️  ${issue}`);
+} else {
+  console.log("  Catalog Deprecated techniques are not still linted as strict.");
 }
 
 console.log("\n" + "=".repeat(70));

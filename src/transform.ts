@@ -13,6 +13,7 @@ import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
 import { MAX_HTML_SIZE } from "./constants";
+import { shouldPreserveSelector, applyTargetingSimulation } from "./rules/targeting-matchers";
 
 // =============================================================================
 // Shared helpers
@@ -93,7 +94,9 @@ function inlineStyles($: cheerio.CheerioAPI): string {
 
         const selectorText = csstree.generate(node.prelude);
 
-        if (hasPseudoSelector(selectorText)) {
+        const isClientTargeting = shouldPreserveSelector(selectorText);
+
+        if (hasPseudoSelector(selectorText) || isClientTargeting) {
           preserved.push(csstree.generate(node));
           return;
         }
@@ -846,6 +849,8 @@ function applyTransform(
   if (config.additionalChecks && !config.inlineAndStripStyles) {
     warnings.push(...config.additionalChecks($, clientId, html, framework));
   }
+
+  applyTargetingSimulation($, clientId);
 
   return { clientId, html: $.html(), warnings };
 }

@@ -21,10 +21,10 @@ const OUTPUT_RATIO = 1.3;
 
 /**
  * Default token overhead for the AI_FIX_SYSTEM_PROMPT exported from ai-fix.ts.
- * The system prompt is ~800 chars ≈ ~230 tokens. We use 250 as a safe default.
+ * The system prompt grows with TARGETING_MATCHERS; 500 is a safe default.
  * Consumers using a custom system prompt can override via `systemPromptTokens`.
  */
-const DEFAULT_SYSTEM_PROMPT_TOKENS = 250;
+const DEFAULT_SYSTEM_PROMPT_TOKENS = 500;
 
 export interface TokenEstimate {
   /** Estimated input tokens (prompt + system prompt) */
@@ -74,7 +74,7 @@ export interface EstimateOptions extends Omit<ExportPromptOptions, "warnings"> {
   /**
    * Token count for the system prompt. Added to the input token estimate
    * since the system prompt counts against the context window. Defaults
-   * to 250 (matching the built-in AI_FIX_SYSTEM_PROMPT). Set to 0 if
+   * to 500 (matching the built-in AI_FIX_SYSTEM_PROMPT). Set to 0 if
    * not using a system prompt, or override for custom system prompts.
    */
   systemPromptTokens?: number;

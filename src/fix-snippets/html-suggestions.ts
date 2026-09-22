@@ -40,6 +40,10 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
   "display:grid":
     "Replace CSS Grid with table layout for email compatibility.",
 
+  // ── custom-properties ────────────────────────────────────────────────
+  "custom-properties":
+    "Inline CSS custom properties (variables) into static literal values; Gmail, Outlook, and Yahoo do not support CSS variables.",
+
   // ── linear-gradient ───────────────────────────────────────────────────
   "linear-gradient":
     "Add a solid background-color fallback before the gradient.",
@@ -151,4 +155,13 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
   // ── padding ─────────────────────────────────────────────────────────────
   "padding::outlook":
     "Outlook ignores padding on <a> tags. Use the MSO font-width trick with &#8202; hair spaces, or use VML. React Email's <Button> handles this automatically.",
+
+  // ── Targeting hacks ──────────────────────────────────────────────────────
+  "css-hack":
+    "Deprecated or brittle email client hack detected. Modern email clients may discard the entire stylesheet. Replace with standard conditional or wrapper targeting.",
+  "[data-ogsc]":
+    "Outlook Web inverts text colors automatically in dark mode. Use [data-ogsc] .class { color: ... !important; } to enforce light text.",
+  "[data-ogsb]":
+    "Outlook Web inverts background colors automatically in dark mode. Use [data-ogsb] .class { background-color: ... !important; } to enforce dark backgrounds.",
 };
+

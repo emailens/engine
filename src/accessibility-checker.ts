@@ -6,6 +6,7 @@ import { fromHtml, type ParseOptions } from "./parse-html";
 import { simulateDarkMode } from "./dark-mode";
 import { locOfAttr, locOfElement, locOfFirst } from "./source-location";
 import { getStyleValue, splitStyleDeclarations, splitTopLevel } from "./style-utils";
+import { extractCssVariables, resolveCssValue } from "./css-variables";
 import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend, backgroundShorthandColor, gradientStops, formatRgb } from "./color-utils";
 import type { RGBA } from "./color-utils";
 
@@ -409,6 +410,7 @@ type Cascade = Map<unknown, Map<string, Decl>>;
  */
 function computeCascade($: cheerio.CheerioAPI, ctx: RenderContext): Cascade {
   const cascade: Cascade = new Map();
+  const cssVariables = extractCssVariables($);
   let order = 0;
 
   const record = (el: unknown, prop: string, decl: Decl) => {
@@ -444,7 +446,11 @@ function computeCascade($: cheerio.CheerioAPI, ctx: RenderContext): Cascade {
       if (child.type !== "Declaration") return;
       const prop = child.property.toLowerCase();
       if (!CASCADE_PROPS.has(prop)) return;
-      decls.push({ prop, value: csstree.generate(child.value), important: !!child.important });
+      let value = csstree.generate(child.value);
+      if (cssVariables.size > 0 && value.includes("var(")) {
+        value = resolveCssValue(value, cssVariables).resolved;
+      }
+      decls.push({ prop, value, important: !!child.important });
     });
     if (!decls.length) return;
 
@@ -508,6 +514,9 @@ function computeCascade($: cheerio.CheerioAPI, ctx: RenderContext): Cascade {
       let value = part.slice(colon + 1).trim();
       const important = /!\s*important$/i.test(value);
       if (important) value = value.replace(/!\s*important$/i, "").trim();
+      if (cssVariables.size > 0 && value.includes("var(")) {
+        value = resolveCssValue(value, cssVariables).resolved;
+      }
       record(el, prop, {
         value,
         important,

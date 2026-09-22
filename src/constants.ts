@@ -37,10 +37,13 @@ export const GMAIL_STYLE_LIMIT = 16 * 1024;
 export const GMAIL_STYLE_WARNING_THRESHOLD = 14 * 1024;
 
 // ─── Per-client display limits ──────────────────────────────────────────────
-// Display limits last verified: 2026-03-04
-// Sources: emailtooltester.com, Campaign Monitor, Litmus preview text guide
+// Display limits last verified: 2026-09-22
+// Sources: emailtooltester.com subject-line study (updated 2026-08-05),
+// Litmus preview text guide (keep preview under 90 characters).
 // Note: These are approximations; actual limits vary by device, screen size,
-// font rendering, and sender name length.
+// font rendering, and sender name length. Mobile Gmail uses the tightest
+// measured pair (Pixel 7 Gmail app). Apple Mail (iOS) uses iPhone figures;
+// iPad Apple Mail is tighter (~39 / 75).
 
 export interface ClientDisplayLimit {
   client: string;
@@ -49,12 +52,12 @@ export interface ClientDisplayLimit {
 }
 
 export const CLIENT_DISPLAY_LIMITS: ClientDisplayLimit[] = [
-  { client: "Gmail (Web)", subjectLimit: 70, preheaderLimit: 90 },
-  { client: "Gmail (Mobile)", subjectLimit: 40, preheaderLimit: 45 },
-  { client: "Outlook (Web)", subjectLimit: 60, preheaderLimit: 90 },
+  { client: "Gmail (Web)", subjectLimit: 88, preheaderLimit: 90 },
+  { client: "Gmail (Mobile)", subjectLimit: 33, preheaderLimit: 37 },
+  { client: "Outlook (Web)", subjectLimit: 51, preheaderLimit: 90 },
   { client: "Outlook (Desktop)", subjectLimit: 55, preheaderLimit: 35 },
   { client: "Apple Mail (macOS)", subjectLimit: 78, preheaderLimit: 140 },
-  { client: "Apple Mail (iOS)", subjectLimit: 41, preheaderLimit: 90 },
+  { client: "Apple Mail (iOS)", subjectLimit: 48, preheaderLimit: 99 },
   { client: "Yahoo Mail", subjectLimit: 46, preheaderLimit: 100 },
   { client: "Samsung Email", subjectLimit: 40, preheaderLimit: 70 },
 ];
@@ -94,6 +97,10 @@ export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] }
 export const EMPTY_OVERFLOW: OverflowReport = { hasOverflow: false, issues: [] };
 export const EMPTY_VML: VmlReport = { hasVml: false, issues: [] };
 export const EMPTY_VISUAL: VisualReport = { issues: [] };
+export const EMPTY_TARGETING: import("./targeting-checker").TargetingReport = (() => {
+  const warnings: import("./types").CSSWarning[] = [];
+  return { detectedHacks: [], warnings, deprecatedWarnings: warnings };
+})();
 
 // ─── Content overflow thresholds (calibration knobs) ────────────────────────
 /** Standard email body width. Fixed px widths beyond this overflow the frame. */

@@ -146,6 +146,28 @@ export function resolveMsoBranch(html: string): string {
     .replace(OFFICE_SETTINGS, "");
 }
 
+/**
+ * Unwrap downlevel-revealed blocks (progressive/modern content) and delete
+ * the Outlook-only MSO branch, producing clean modern HTML.
+ */
+export function unwrapModernMsoBranch(html: string): string {
+  return html
+    .replace(DOWNLEVEL_HIDDEN, "")
+    .replace(DOWNLEVEL_REVEALED, "$1")
+    .replace(OFFICE_SETTINGS, "");
+}
+
+/**
+ * Remove all conditional comment blocks completely.
+ */
+export function removeAllMsoConditionals(html: string): string {
+  return html
+    .replace(DOWNLEVEL_REVEALED, "")
+    .replace(DOWNLEVEL_HIDDEN, "")
+    .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, "")
+    .replace(OFFICE_SETTINGS, "");
+}
+
 /** `mso-hide:all`, in either spacing. */
 const MSO_HIDE = /mso-hide\s*:\s*all/i;
 

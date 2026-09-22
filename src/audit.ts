@@ -1,5 +1,5 @@
 import type { CheerioAPI } from "cheerio";
-import { analyzeAllBranches, generateCompatibilityScore } from "./analyze";
+import { analyzeDocument, generateCompatibilityScore, type CompatibilityPass } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom, checkDarkModeContrast, checkMobileContrastFromDom, checkDarkStylesContrastFromDom } from "./accessibility-checker";
@@ -12,11 +12,12 @@ import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
 import { checkVml } from "./vml-checker";
 import { checkDesignConsistencyFromDom } from "./design-consistency";
-import { fromHtml, type ParseOptions } from "./parse-html";
+import { checkTargetingHacks, type TargetingReport } from "./targeting-checker";
+import { fromHtml, type AnalysisOptions } from "./parse-html";
 import {
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
   EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_STYLE_SURVIVAL, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL, EMPTY_DESIGN,
-  EMPTY_VML,
+  EMPTY_VML, EMPTY_TARGETING,
 } from "./constants";
 import type {
   AccessibilityIssue,
@@ -37,12 +38,12 @@ import type {
   DesignReport,
 } from "./types";
 
-export interface AuditOptions extends ParseOptions {
+export interface AuditOptions extends AnalysisOptions {
   framework?: Framework;
   /** Options for spam analysis */
   spam?: SpamAnalysisOptions;
   /** Skip specific checks */
-  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design" | "vml" | "styleSurvival">;
+  skip?: Array<"spam" | "links" | "accessibility" | "images" | "compatibility" | "inboxPreview" | "size" | "templateVariables" | "overflow" | "visual" | "darkContrast" | "mobileContrast" | "design" | "vml" | "styleSurvival" | "targeting">;
 }
 
 export interface AuditReport {
@@ -50,6 +51,7 @@ export interface AuditReport {
     warnings: CSSWarning[];
     scores: Record<string, { score: number; errors: number; warnings: number; info: number }>;
   };
+  targeting: TargetingReport;
   spam: SpamReport;
   links: LinkReport;
   accessibility: AccessibilityReport;
@@ -74,6 +76,7 @@ export interface AuditReport {
 /** Unified empty report for blank input: hands out the same singletons every checker uses. */
 export const EMPTY_AUDIT: AuditReport = {
   compatibility: { warnings: [], scores: {} },
+  targeting: EMPTY_TARGETING,
   spam: EMPTY_SPAM,
   links: EMPTY_LINKS,
   accessibility: EMPTY_ACCESSIBILITY,
@@ -109,15 +112,27 @@ export function runAudit(
   $: CheerioAPI,
   html: string,
   framework: Framework | undefined,
-  options?: Pick<AuditOptions, "spam" | "skip" | "positions">,
+  options?: Pick<AuditOptions, "spam" | "skip" | "positions" | "targetingPolicy">,
+  precomputed?: CompatibilityPass,
 ): AuditReport {
   const skip = new Set(options?.skip ?? []);
-  // Analyzers that resolve positions inside text need the raw source; handing
-  // it over only when positions were requested keeps the default path honest.
   const source = options?.positions ? html : undefined;
+  const policy = options?.targetingPolicy;
+  const skipCompat = skip.has("compatibility");
+  const skipTarget = skip.has("targeting");
 
-  const warnings = skip.has("compatibility") ? [] : analyzeAllBranches($, html, framework, source);
-  const scores = skip.has("compatibility") ? {} : generateCompatibilityScore(warnings);
+  let warnings: CSSWarning[] = [];
+  let scores: AuditReport["compatibility"]["scores"] = {};
+  let targeting: TargetingReport = EMPTY_TARGETING;
+
+  if (!skipCompat) {
+    const pass = precomputed ?? analyzeDocument($, html, framework, source, policy);
+    warnings = pass.warnings;
+    scores = generateCompatibilityScore(warnings);
+    if (!skipTarget) targeting = pass.targeting;
+  } else if (!skipTarget) {
+    targeting = checkTargetingHacks(html, policy);
+  }
   const spam = skip.has("spam") ? EMPTY_SPAM : analyzeSpamFromDom($, options?.spam);
   const links = skip.has("links") ? EMPTY_LINKS : validateLinksFromDom($);
   const accessibility = skip.has("accessibility") ? EMPTY_ACCESSIBILITY : checkAccessibilityFromDom($);
@@ -151,7 +166,7 @@ export function runAudit(
     ? []:
     checkMobileContrastFromDom($, accessibility.issues);
 
-  return { compatibility: { warnings, scores }, spam, links, accessibility, images, inboxPreview, size, styleSurvival, templateVariables, overflow, visual, vml, darkContrast, mobileContrast, design };
+  return { compatibility: { warnings, scores }, targeting, spam, links, accessibility, images, inboxPreview, size, styleSurvival, templateVariables, overflow, visual, vml, darkContrast, mobileContrast, design };
 }
 
 /**

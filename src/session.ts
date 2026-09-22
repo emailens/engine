@@ -1,4 +1,4 @@
-import { analyzeAllBranches, generateCompatibilityScore } from "./analyze";
+import { analyzeDocument, generateCompatibilityScore, type CompatibilityPass } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom } from "./accessibility-checker";
@@ -8,12 +8,14 @@ import { checkSizeFromDom } from "./size-checker";
 import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
+import { type TargetingReport } from "./targeting-checker";
 import { transformForClient, transformForAllClients } from "./transform";
 import { simulateDarkMode } from "./dark-mode";
 import {
   MAX_HTML_SIZE,
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
   EMPTY_INBOX_PREVIEW, EMPTY_SIZE, EMPTY_TEMPLATE, EMPTY_OVERFLOW, EMPTY_VISUAL,
+  EMPTY_TARGETING,
 } from "./constants";
 import type {
   CSSWarning,
@@ -30,11 +32,11 @@ import type {
   VisualReport,
   TransformResult,
 } from "./types";
-import { loadHtml, type ParseOptions } from "./parse-html";
+import { loadHtml, type AnalysisOptions } from "./parse-html";
 import { runAudit, EMPTY_AUDIT } from "./audit";
 import type { AuditOptions, AuditReport } from "./audit";
 
-export interface CreateSessionOptions extends ParseOptions {
+export interface CreateSessionOptions extends AnalysisOptions {
   /** Framework for fix snippets (applies to analyze/audit/transform). */
   framework?: Framework;
 }
@@ -107,6 +109,9 @@ export interface EmailSession {
 
   /** Detect probable visual bugs in stylized emails, with fixes (shares pre-parsed DOM). */
   checkVisual(): VisualReport;
+
+  /** Scan for email client targeting hacks and deprecated techniques (shares pre-parsed DOM). */
+  checkTargeting(): TargetingReport;
 
   /**
    * Transform HTML for a specific client.
@@ -183,6 +188,7 @@ export function createSession(
       checkTemplateVariables: () => EMPTY_TEMPLATE,
       checkOverflow: () => EMPTY_OVERFLOW,
       checkVisual: () => EMPTY_VISUAL,
+      checkTargeting: () => EMPTY_TARGETING,
       transformForClient: (clientId) => ({ clientId, html: html || "", warnings: [] }),
       transformForAllClients: () => [],
       simulateDarkMode: (clientId) => ({ html: html || "", warnings: [] }),
@@ -197,17 +203,35 @@ export function createSession(
   const $ = loadHtml(html, options);
   const framework = options?.framework;
   const source = options?.positions ? html : undefined;
+  let cachedPass: CompatibilityPass | undefined;
+  function documentPass(): CompatibilityPass {
+    cachedPass ??= analyzeDocument($, html, framework, source, options?.targetingPolicy);
+    return cachedPass;
+  }
 
   return {
     html,
     framework,
 
     audit(opts) {
-      return runAudit($, html, framework, { ...opts, positions: options?.positions });
+      const targetingPolicy = opts?.targetingPolicy ?? options?.targetingPolicy;
+      const reusePass =
+        targetingPolicy === options?.targetingPolicy && !opts?.skip?.includes("compatibility");
+      return runAudit(
+        $,
+        html,
+        framework,
+        {
+          ...opts,
+          positions: options?.positions,
+          targetingPolicy,
+        },
+        reusePass ? documentPass() : undefined,
+      );
     },
 
     analyze() {
-      return analyzeAllBranches($, html, framework, source);
+      return documentPass().warnings;
     },
 
     score(warnings) {
@@ -248,6 +272,10 @@ export function createSession(
 
     checkVisual() {
       return checkVisualFromDom($, source);
+    },
+
+    checkTargeting() {
+      return documentPass().targeting;
     },
 
     // Transforms create isolated copies since they mutate the DOM

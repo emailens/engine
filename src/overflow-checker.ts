@@ -10,7 +10,7 @@ import { EMAIL_MAX_WIDTH, UNBREAKABLE_STRING_LENGTH, EMPTY_OVERFLOW, MAX_WARNING
 const RESPONSIVE_MIN_WIDTH = 320;
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { visibleTextNodes } from "./dom-text";
-import { cssBlockAnchor, locInCssBlock, locInTextNode, locOfAttr } from "./source-location";
+import { cssBlockAnchor, locInCssBlock, locInTextNode, locOfAttr, locOfElement } from "./source-location";
 import type { OverflowIssue, OverflowReport, SourceLocation } from "./types";
 
 /**
@@ -27,9 +27,15 @@ function fixedPxWidth($el: ReturnType<CheerioAPI>): number | null {
   return null;
 }
 
-/** An inline `width:100%` / `max-width:100%` means the element flexes to fit. */
+/**
+ * An inline `width:100%` / `max-width:100%` or max-width <= 600px means the
+ * element flexes or fits within the email frame.
+ */
 function isFluid(style: string): boolean {
-  return /max-width\s*:\s*100%/i.test(style) || /width\s*:\s*100%/i.test(style);
+  if (/max-width\s*:\s*100%/i.test(style) || /width\s*:\s*100%/i.test(style)) return true;
+  const maxMatch = style.match(/max-width\s*:\s*(\d+)px/i);
+  if (maxMatch && parseInt(maxMatch[1], 10) <= EMAIL_MAX_WIDTH) return true;
+  return false;
 }
 
 /**
@@ -177,6 +183,87 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
         }
       },
     });
+  });
+
+  // 1c. Multi-column table row width summation:
+  // Sibling cells within a row whose fixed widths sum to > EMAIL_MAX_WIDTH
+  // force horizontal overflow even if no single cell exceeds EMAIL_MAX_WIDTH.
+  $("table").each((_, tableEl) => {
+    const $table = $(tableEl);
+    if (isFluid($table.attr("style") || "")) return;
+
+    $table.find("tr").each((_, trEl) => {
+      // Avoid rows belonging to nested tables
+      if ($(trEl).closest("table")[0] !== tableEl) return;
+
+      const cells = $(trEl).children("td, th").toArray();
+      if (cells.length < 2) return;
+
+      let rowFixedPx = 0;
+      let rowHasFluid = false;
+      let explicitCellCount = 0;
+
+      for (const cell of cells) {
+        const $cell = $(cell);
+        const cellStyle = $cell.attr("style") || "";
+        if (isFluid(cellStyle)) {
+          rowHasFluid = true;
+          break;
+        }
+        const w = fixedPxWidth($cell);
+        if (w !== null) {
+          rowFixedPx += w;
+          explicitCellCount++;
+        }
+      }
+
+      if (!rowHasFluid && explicitCellCount >= 2 && rowFixedPx > EMAIL_MAX_WIDTH) {
+        const key = `row:${rowFixedPx}:${explicitCellCount}`;
+        if (!seen.has(key)) {
+          const loc = locOfElement(trEl) || locOfElement(tableEl);
+          const issue: OverflowIssue = {
+            rule: "table-row-overflow",
+            severity: "warning",
+            message: `Table row has ${explicitCellCount} columns totaling ${rowFixedPx}px, wider than the ${EMAIL_MAX_WIDTH}px email frame; it will force horizontal scrolling on mobile.`,
+            detail: `Make columns fluid with percentage widths (e.g. width:50%) or stack columns vertically on small screens.`,
+            ...(loc ? { loc, locs: [loc] } : {}),
+          };
+          seen.set(key, issue);
+          issues.push(issue);
+        }
+      }
+    });
+  });
+
+  // 1d. Constrained image bounding:
+  // <img> with fixed pixel width that exceeds its parent column's fixed pixel width
+  $("img").each((_, imgEl) => {
+    const $img = $(imgEl);
+    const imgStyle = $img.attr("style") || "";
+    if (isFluid(imgStyle)) return;
+
+    const imgWidth = fixedPxWidth($img);
+    if (imgWidth === null) return;
+
+    const $parent = $img.closest("td, th, div");
+    if (!$parent.length) return;
+
+    const parentWidth = fixedPxWidth($parent);
+    if (parentWidth !== null && imgWidth > parentWidth) {
+      const key = `img-overflow:${imgWidth}:${parentWidth}`;
+      if (!seen.has(key)) {
+        const loc = locOfAttr(imgEl, "width") || locOfElement(imgEl);
+        const issue: OverflowIssue = {
+          rule: "image-container-overflow",
+          severity: "warning",
+          message: `<img> has fixed width ${imgWidth}px exceeding its container's width (${parentWidth}px); it will blow out the layout.`,
+          detail: `Set width:100% with max-width:${imgWidth}px or reduce the image width to fit within ${parentWidth}px.`,
+          ...(loc ? { loc, locs: [loc] } : {}),
+        };
+        seen.set(key, issue);
+        issues.push(issue);
+      }
+    }
   });
 
   // 2. Long unbreakable strings in visible text: skip if the email already

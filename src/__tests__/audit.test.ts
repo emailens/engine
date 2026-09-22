@@ -26,10 +26,17 @@ describe("auditEmail", () => {
     const report = auditEmail(SIMPLE_HTML);
 
     expect(report).toHaveProperty("compatibility");
+    expect(report).toHaveProperty("targeting");
     expect(report).toHaveProperty("spam");
     expect(report).toHaveProperty("links");
     expect(report).toHaveProperty("accessibility");
     expect(report).toHaveProperty("images");
+
+    expect(report.targeting).toHaveProperty("detectedHacks");
+    expect(report.targeting).toHaveProperty("warnings");
+    expect(Array.isArray(report.targeting.detectedHacks)).toBe(true);
+    expect(Array.isArray(report.targeting.warnings)).toBe(true);
+    expect(report.targeting.deprecatedWarnings).toBe(report.targeting.warnings);
 
     expect(report.compatibility).toHaveProperty("warnings");
     expect(report.compatibility).toHaveProperty("scores");
@@ -119,4 +126,26 @@ describe("auditEmail", () => {
     expect(clientIds).toContain("outlook-windows");
     expect(clientIds).toContain("apple-mail-macos");
   });
+
+  test("targeting check runs in auditEmail and detects hacks", () => {
+    const html = `<html><head><style>u + .body .test { color: red; }</style></head><body class="body"><!--[if mso]><p>Outlook</p><![endif]--></body></html>`;
+    const report = auditEmail(html);
+    expect(report.targeting.detectedHacks.length).toBeGreaterThan(0);
+    expect(report.targeting.detectedHacks.some(h => h.foundIn === "conditional-comment")).toBe(true);
+  });
+
+  test("skip targeting works in auditEmail", () => {
+    const html = `<html><head><style>u + .body .test { color: red; }</style></head><body class="body"><!--[if mso]><p>Outlook</p><![endif]--></body></html>`;
+    const report = auditEmail(html, { skip: ["targeting"] });
+    expect(report.targeting.detectedHacks).toHaveLength(0);
+    expect(report.targeting.warnings).toHaveLength(0);
+  });
+
+  test("targeting findings stay off the compatibility list", () => {
+    const html = `<html><head><style>_:-webkit-full-screen, :root .card { background: blue; }</style></head><body><div class="card">Card</div></body></html>`;
+    const report = auditEmail(html);
+    expect(report.compatibility.warnings.some((w) => w.property === "css-hack")).toBe(false);
+    expect(report.targeting.warnings.some((w) => w.property === "css-hack")).toBe(true);
+  });
 });
+

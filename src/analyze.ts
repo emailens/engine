@@ -23,14 +23,26 @@ import { EMAIL_CLIENTS } from "./clients";
 import { checkDarkModeFromDom } from "./dark-mode-checker";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
 import { parseStyleProperties, getStyleValue, getStyleValues } from "./style-utils";
+import { extractCssVariables, resolveCssValue } from "./css-variables";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
-import { loadHtml, type ParseOptions } from "./parse-html";
+import { loadHtml, type AnalysisOptions } from "./parse-html";
 import { resolveMsoBranch } from "./vml-render";
 
 /** The one client that reads conditional comments. */
 const WORD_ENGINE_CLIENT = "outlook-windows-legacy";
 import { cssBlockAnchor, locInAttr, locInCssBlock, locOfAttr, locOfElement } from "./source-location";
-import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel } from "./types";
+import type { CSSWarning, FixType, Framework, SourceLocation, SupportLevel, TargetingPolicy } from "./types";
+import {
+  detectSelectorListTargetingScope,
+  detectAtRuleTargetingScope,
+  inlineTargetingScope,
+} from "./rules/targeting-matchers";
+import {
+  emptyTargetingReport,
+  scanCssAstForTargeting,
+  scanHtmlForTargeting,
+  type TargetingReport,
+} from "./targeting-checker";
 
 // ── Data-driven detection config ─────────────────────────────────────────────
 
@@ -199,6 +211,11 @@ function featureLabel(prop: string): string {
 
 // ── Analysis ─────────────────────────────────────────────────────────────────
 
+export interface CompatibilityPass {
+  warnings: CSSWarning[];
+  targeting: TargetingReport;
+}
+
 /**
  * Analyze a pre-parsed email DOM for CSS compatibility warnings.
  *
@@ -206,15 +223,23 @@ function featureLabel(prop: string): string {
  * COMPOUND_VALUE_FEATURES, and CSS_FUNCTION_FEATURES are iterated
  * automatically from the generated css-support.ts arrays.
  *
+ * Targeting findings are collected on the same CSS parse but returned
+ * separately; they are not mixed into `warnings`.
+ *
  * @internal
  */
 export function analyzeEmailFromDom(
   $: cheerio.CheerioAPI,
   framework?: Framework,
   source?: string,
-): CSSWarning[] {
+  targetingPolicy: TargetingPolicy = "progressive",
+  rawHtml?: string,
+): CompatibilityPass {
   const warnings: CSSWarning[] = [];
   const seenWarnings = new Map<string, CSSWarning>();
+  const targeting = emptyTargetingReport();
+  const seenHacks = new Set<string>();
+  scanHtmlForTargeting(rawHtml ?? source ?? $.html() ?? "", targeting, seenHacks, targetingPolicy);
 
   function addWarning(w: CSSWarning) {
     const key = `${w.client}:${w.property}:${w.severity}:${w.selector || ""}`;
@@ -361,6 +386,7 @@ export function analyzeEmailFromDom(
   }
 
   // 2. Parse <style> blocks with css-tree
+  const cssVariables = extractCssVariables($);
   const parsedAtRules = new Set<string>();
   const selectorLocs = new Map<string, Occurrences>();
   const parsedProperties = new Set<string>();
@@ -370,17 +396,32 @@ export function analyzeEmailFromDom(
   const detectedCssFunctions = new Set<string>();
   const detectedPseudoClasses = new Set<string>();
   const detectedPseudoElements = new Set<string>();
+  const propertyTargetClients = new Map<string, Set<string> | null>();
+
+  function recordPropertyScope(key: string, scope: readonly string[] | null) {
+    const existing = propertyTargetClients.get(key);
+    if (existing === null) return;
+    if (scope === null) {
+      propertyTargetClients.set(key, null);
+      return;
+    }
+    if (!existing) {
+      propertyTargetClients.set(key, new Set(scope));
+    } else {
+      for (const c of scope) existing.add(c);
+    }
+  }
 
   /** Set inside the per-block walk below so `recordLoc` can see the block. */
   let blockAnchor: ReturnType<typeof cssBlockAnchor>;
   /** At-rules and pseudo-selectors are keyed by name, not by property. */
-  function recordSelectorLoc(key: string, cssLoc: csstree.CssLocation | null | undefined) {
+  function recordSelectorLoc(key: string, cssLoc: csstree.CssLocation | null | undefined, scope?: readonly string[] | null) {
     if (!cssLoc) return;
     const loc = locInCssBlock(blockAnchor, cssLoc);
     if (!loc) return;
     const seen = selectorLocs.get(key);
     if (!seen) {
-      selectorLocs.set(key, { locs: [loc] });
+      selectorLocs.set(key, { locs: [loc], scopes: [scope ?? null] });
       return;
     }
     if (seen.locs.some((l) => l.offset === loc.offset)) return;
@@ -389,14 +430,19 @@ export function analyzeEmailFromDom(
       return;
     }
     seen.locs.push(loc);
+    if (seen.scopes) seen.scopes.push(scope ?? null);
   }
 
-  function recordLoc(key: string, cssLoc: csstree.CssLocation, value?: string) {
+  function recordLoc(key: string, cssLoc: csstree.CssLocation, value?: string, scope?: readonly string[] | null) {
     const loc = locInCssBlock(blockAnchor, cssLoc);
     if (!loc) return;
     const seen = propertyLocs.get(key);
     if (!seen) {
-      propertyLocs.set(key, { locs: [loc], ...(value !== undefined ? { values: [value] } : {}) });
+      propertyLocs.set(key, {
+        locs: [loc],
+        ...(value !== undefined ? { values: [value] } : {}),
+        scopes: [scope ?? null],
+      });
       return;
     }
     if (seen.locs.some((l) => l.offset === loc.offset)) return;
@@ -406,6 +452,7 @@ export function analyzeEmailFromDom(
     }
     seen.locs.push(loc);
     if (seen.values && value !== undefined) seen.values.push(value);
+    if (seen.scopes) seen.scopes.push(scope ?? null);
   }
 
   $("style").each((_, el) => {
@@ -421,53 +468,97 @@ export function analyzeEmailFromDom(
     } catch {
       return; // malformed CSS: there is nothing in this block to grade
     }
+    scanCssAstForTargeting(ast, targeting, seenHacks, targetingPolicy);
     {
+      const atRuleScopeStack: Array<readonly string[] | null> = [];
+      let currentAtRuleScope: readonly string[] | null = null;
+      let currentRuleScope: readonly string[] | null = null;
+
       csstree.walk(ast, {
         enter(node: csstree.CssNode) {
           if (node.type === "Atrule") {
             parsedAtRules.add(`@${node.name}`);
-            recordSelectorLoc(`@${node.name}`, node.loc);
-            if (node.name === "media" && node.prelude) {
-              const prelude = csstree.generate(node.prelude).toLowerCase();
-              for (const [feature, pattern] of MEDIA_FEATURE_DETECTORS) {
-                if (!pattern.test(prelude)) continue;
-                parsedAtRules.add(feature);
-                recordSelectorLoc(feature, node.loc);
+            if (node.prelude) {
+              const preludeRaw = csstree.generate(node.prelude);
+              const prelude = preludeRaw.toLowerCase();
+              const ownScope = detectAtRuleTargetingScope(preludeRaw);
+              currentAtRuleScope = ownScope ?? currentAtRuleScope;
+              if (node.name === "media") {
+                for (const [feature, pattern] of MEDIA_FEATURE_DETECTORS) {
+                  if (!pattern.test(prelude)) continue;
+                  parsedAtRules.add(feature);
+                  recordSelectorLoc(feature, node.loc, currentAtRuleScope);
+                  recordPropertyScope(feature, currentAtRuleScope);
+                }
               }
+            }
+            atRuleScopeStack.push(currentAtRuleScope);
+            recordSelectorLoc(`@${node.name}`, node.loc, currentAtRuleScope);
+            recordPropertyScope(`@${node.name}`, currentAtRuleScope);
+          }
+          if (node.type === "Rule") {
+            if (node.prelude && node.prelude.type === "SelectorList") {
+              const selectors: string[] = [];
+              node.prelude.children.forEach((child) => {
+                selectors.push(csstree.generate(child).trim());
+              });
+              const selScope = detectSelectorListTargetingScope(selectors);
+              currentRuleScope = selScope ?? currentAtRuleScope;
+            } else {
+              currentRuleScope = currentAtRuleScope;
             }
           }
           // Detect pseudo-classes and pseudo-elements in selectors
           if (node.type === "PseudoClassSelector") {
             detectedPseudoClasses.add(`:${node.name}`);
-            recordSelectorLoc(`:${node.name}`, node.loc);
+            recordSelectorLoc(`:${node.name}`, node.loc, currentRuleScope);
+            recordPropertyScope(`:${node.name}`, currentRuleScope);
           }
           if (node.type === "PseudoElementSelector") {
             detectedPseudoElements.add(`::${node.name}`);
-            recordSelectorLoc(`::${node.name}`, node.loc);
+            recordSelectorLoc(`::${node.name}`, node.loc, currentRuleScope);
+            recordPropertyScope(`::${node.name}`, currentRuleScope);
           }
           if (node.type === "Declaration") {
             const prop = node.property.toLowerCase();
+            const valueStr = csstree.generate(node.value);
+
+            // Check CSS Custom Properties (CSS variables) support
+            if (prop.startsWith("--") || valueStr.includes("var(")) {
+              parsedProperties.add("custom-properties");
+              recordPropertyScope("custom-properties", currentRuleScope);
+              if (node.loc) {
+                if (!propertyLines.has("custom-properties")) propertyLines.set("custom-properties", node.loc.start.line);
+                recordLoc("custom-properties", node.loc, undefined, currentRuleScope);
+              }
+            }
+
             parsedProperties.add(prop);
+            recordPropertyScope(prop, currentRuleScope);
 
             // Capture value(s) for value-aware support checks (a property may
-            // appear multiple times across rules).
-            const valueStr = csstree.generate(node.value);
+            // appear multiple times across rules). Resolve custom properties so
+            // value-level caveats (e.g. negative margins, font weights) see computed values.
+            const resolvedVal = cssVariables.size > 0 && valueStr.includes("var(")
+              ? resolveCssValue(valueStr, cssVariables).resolved
+              : valueStr;
             const seenValues = propertyValues.get(prop);
-            if (seenValues) seenValues.push(valueStr);
-            else propertyValues.set(prop, [valueStr]);
+            if (seenValues) seenValues.push(resolvedVal);
+            else propertyValues.set(prop, [resolvedVal]);
 
             if (node.loc) {
               if (!propertyLines.has(prop)) propertyLines.set(prop, node.loc.start.line);
-              recordLoc(prop, node.loc, valueStr);
+              recordLoc(prop, node.loc, resolvedVal, currentRuleScope);
             }
 
             // Data-driven compound value detection
             for (const det of COMPOUND_DETECTORS) {
               if (prop === det.property && valueStr.toLowerCase().includes(det.valueIncludes)) {
                 parsedProperties.add(det.key);
+                recordPropertyScope(det.key, currentRuleScope);
                 if (node.loc) {
                   if (!propertyLines.has(det.key)) propertyLines.set(det.key, node.loc.start.line);
-                  recordLoc(det.key, node.loc);
+                  recordLoc(det.key, node.loc, undefined, currentRuleScope);
                 }
               }
             }
@@ -476,22 +567,35 @@ export function analyzeEmailFromDom(
             for (const fn of CSS_FUNCTION_DETECTORS) {
               if (valueStr.includes(fn.pattern)) {
                 detectedCssFunctions.add(fn.key);
+                recordPropertyScope(fn.key, currentRuleScope);
                 if (node.loc) {
                   if (!propertyLines.has(fn.key)) propertyLines.set(fn.key, node.loc.start.line);
-                  recordLoc(fn.key, node.loc);
+                  recordLoc(fn.key, node.loc, undefined, currentRuleScope);
                 }
               }
             }
+          }
+        },
+        leave(node: csstree.CssNode) {
+          if (node.type === "Rule") {
+            currentRuleScope = currentAtRuleScope;
+          } else if (node.type === "Atrule") {
+            atRuleScopeStack.pop();
+            currentAtRuleScope = atRuleScopeStack[atRuleScopeStack.length - 1] ?? null;
+            currentRuleScope = currentAtRuleScope;
           }
         },
       });
     }
   });
 
+  const getAllowedClients = (key: string) =>
+    targetingPolicy === "strict" ? null : (propertyTargetClients.get(key) ?? null);
+
   // 3. Data-driven at-rule checking
   for (const atRule of AT_RULE_FEATURES) {
     if (!parsedAtRules.has(atRule)) continue;
-    checkPropertySupport(atRule, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(atRule));
+    checkPropertySupport(atRule, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(atRule), getAllowedClients(atRule), targetingPolicy);
   }
 
   // 4. Scan inline styles
@@ -501,6 +605,12 @@ export function analyzeEmailFromDom(
     const props = parseStyleProperties(style);
     const selector = describeSelector(el);
     const attrLoc = locOfAttr(el, "style");
+    const inlineScope = inlineTargetingScope($(el));
+
+    for (const prop of props) {
+      recordPropertyScope(prop, inlineScope);
+    }
+
     /**
      * The declaration, where the raw source lets us find it exactly, and the
      * whole `style="…"` attribute where it does not. An attribute holding six
@@ -508,33 +618,53 @@ export function analyzeEmailFromDom(
      * engine knows which one it means.
      */
     const declarationLocs = (prop: string, occurrence = 0) =>
-      elementLocs(locInAttr(attrLoc, source, prop, occurrence)) ?? elementLocs(attrLoc);
-    const locs = elementLocs(attrLoc);
+      elementLocs(locInAttr(attrLoc, source, prop, occurrence), inlineScope) ?? elementLocs(attrLoc, inlineScope);
+    const locs = elementLocs(attrLoc, inlineScope);
+
+    const inlineAllowed = inlineScope && targetingPolicy !== "strict" ? new Set(inlineScope) : null;
 
     for (const prop of props) {
+      const value = getStyleValue(style, prop);
+
+      // Check CSS Custom Properties in inline styles
+      if (prop.startsWith("--") || (value && value.includes("var("))) {
+        checkPropertySupport(
+          "custom-properties", addWarning, framework, selector, undefined, undefined,
+          declarationLocs(prop), inlineAllowed,
+        );
+      }
+
       // Data-driven compound value detection in inline styles
       for (const det of COMPOUND_DETECTORS) {
         if (prop === det.property) {
-          const value = getStyleValue(style, prop);
-          if (value?.toLowerCase().includes(det.valueIncludes)) {
+          const checkVal = (value && cssVariables.size > 0 && value.includes("var("))
+            ? resolveCssValue(value, cssVariables).resolved
+            : value;
+          if (checkVal?.toLowerCase().includes(det.valueIncludes)) {
             checkPropertySupport(
               det.key, addWarning, framework, selector, undefined, undefined,
-              declarationLocs(prop),
+              declarationLocs(prop), inlineAllowed,
             );
           }
         }
       }
 
       if (CSS_PROPERTY_SET.has(prop)) {
-        const declared = getStyleValues(style, prop);
+        const rawDeclared = getStyleValues(style, prop);
+        const declared = cssVariables.size > 0
+          ? rawDeclared.map((v) => (v.includes("var(") ? resolveCssValue(v, cssVariables).resolved : v))
+          : rawDeclared;
         // A property declared twice is two places, not one, and the value at
         // each is what decides whether a given client's caveat applies there.
         // Values and locations stay in step, so a client that only breaks on
         // the second is pointed at the second.
         const placed: Array<{ value: string; loc: SourceLocation }> = [];
-        declared.forEach((value, i) => {
+        rawDeclared.forEach((val, i) => {
           const at = locInAttr(attrLoc, source, prop, i);
-          if (at) placed.push({ value, loc: at });
+          const resolved = cssVariables.size > 0 && val.includes("var(")
+            ? resolveCssValue(val, cssVariables).resolved
+            : val;
+          if (at) placed.push({ value: resolved, loc: at });
         });
         const occurrences =
           placed.length === declared.length && placed.length > 0
@@ -543,17 +673,17 @@ export function analyzeEmailFromDom(
         checkPropertySupport(
           prop, addWarning, framework, selector, undefined,
           declared.length ? declared : undefined, occurrences,
+          inlineAllowed,
         );
       }
 
       // Data-driven CSS function detection in inline styles
-      const value = getStyleValue(style, prop);
       if (value) {
         for (const fn of CSS_FUNCTION_DETECTORS) {
           if (value.includes(fn.pattern)) {
             checkPropertySupport(
               fn.key, addWarning, framework, selector, undefined, undefined,
-              declarationLocs(prop),
+              declarationLocs(prop), inlineAllowed,
             );
           }
         }
@@ -568,32 +698,32 @@ export function analyzeEmailFromDom(
     const values = propertyValues.get(prop);
     checkPropertySupport(
       prop, addWarning, framework, undefined, propertyLines.get(prop),
-      values, propertyLocs.get(prop),
+      values, propertyLocs.get(prop), getAllowedClients(prop), targetingPolicy,
     );
   }
 
   // Data-driven compound values from <style> blocks (display:flex, display:grid, display:none)
   for (const compound of COMPOUND_VALUE_FEATURES) {
     if (parsedProperties.has(compound)) {
-      checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound), undefined, propertyLocs.get(compound));
+      checkPropertySupport(compound, addWarning, framework, undefined, propertyLines.get(compound), undefined, propertyLocs.get(compound), getAllowedClients(compound), targetingPolicy);
     }
   }
 
   // Data-driven pseudo-class/element detection from <style> blocks
   for (const pseudo of detectedPseudoClasses) {
     if (CSS_SUPPORT[pseudo]) {
-      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo));
+      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo), getAllowedClients(pseudo), targetingPolicy);
     }
   }
   for (const pseudo of detectedPseudoElements) {
     if (CSS_SUPPORT[pseudo]) {
-      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo));
+      checkPropertySupport(pseudo, addWarning, framework, undefined, undefined, undefined, selectorLocs.get(pseudo), getAllowedClients(pseudo), targetingPolicy);
     }
   }
 
   // Data-driven CSS functions from <style> blocks
   for (const fn of detectedCssFunctions) {
-    checkPropertySupport(fn, addWarning, framework, undefined, propertyLines.get(fn), undefined, propertyLocs.get(fn));
+    checkPropertySupport(fn, addWarning, framework, undefined, propertyLines.get(fn), undefined, propertyLocs.get(fn), getAllowedClients(fn), targetingPolicy);
   }
 
   // 6. Dark-mode opt-in / coverage (no-ops unless the email ships dark styles)
@@ -603,7 +733,7 @@ export function analyzeEmailFromDom(
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
   warnings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
-  return warnings;
+  return { warnings, targeting };
 }
 
 /**
@@ -619,7 +749,7 @@ export function analyzeEmailFromDom(
 export function analyzeEmail(
   html: string,
   framework?: Framework,
-  options?: ParseOptions,
+  options?: AnalysisOptions,
 ): CSSWarning[] {
   if (!html || !html.trim()) {
     return [];
@@ -629,7 +759,22 @@ export function analyzeEmail(
   }
 
   const $ = loadHtml(html, options);
-  return analyzeAllBranches($, html, framework, options?.positions ? html : undefined);
+  return analyzeAllBranches($, html, framework, options?.positions ? html : undefined, options?.targetingPolicy);
+}
+
+/** Compatibility warnings plus targeting, from one CSS parse of the live DOM. */
+export function analyzeDocument(
+  $: cheerio.CheerioAPI,
+  html: string,
+  framework?: Framework,
+  source?: string,
+  targetingPolicy?: TargetingPolicy,
+): CompatibilityPass {
+  const pass = analyzeEmailFromDom($, framework, source, targetingPolicy, html);
+  return {
+    warnings: withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+    targeting: pass.targeting,
+  };
 }
 
 /**
@@ -646,8 +791,9 @@ export function analyzeAllBranches(
   html: string,
   framework?: Framework,
   source?: string,
+  targetingPolicy?: TargetingPolicy,
 ): CSSWarning[] {
-  return withOutlookBranch(html, analyzeEmailFromDom($, framework, source), framework);
+  return analyzeDocument($, html, framework, source, targetingPolicy).warnings;
 }
 
 /**
@@ -672,6 +818,7 @@ function withOutlookBranch(
   html: string,
   warnings: CSSWarning[],
   framework?: Framework,
+  targetingPolicy?: TargetingPolicy,
 ): CSSWarning[] {
   if (!/<!--\[if/i.test(html)) return warnings;
 
@@ -679,7 +826,8 @@ function withOutlookBranch(
   try {
     const resolved = resolveMsoBranch(html);
     if (resolved === html) return warnings;
-    branchWarnings = analyzeEmailFromDom(loadHtml(resolved), framework)
+    branchWarnings = analyzeEmailFromDom(loadHtml(resolved), framework, undefined, targetingPolicy, resolved)
+      .warnings
       .filter((w) => w.client === WORD_ENGINE_CLIENT);
   } catch {
     // A malformed conditional comment must not cost the caller every other
@@ -766,6 +914,30 @@ export function ordinaryComments(node: any, out: any[] = []): any[] {
   return out;
 }
 
+function scopeOccurrencesForClient(
+  occurrences: Occurrences | undefined,
+  clientId: string,
+  policy: TargetingPolicy = "progressive",
+): Occurrences | undefined {
+  if (!occurrences?.scopes || policy === "strict") return occurrences;
+  const indices: number[] = [];
+  for (let i = 0; i < occurrences.locs.length; i++) {
+    const scope = occurrences.scopes[i];
+    if (scope === null || scope === undefined || scope.includes(clientId)) {
+      indices.push(i);
+    }
+  }
+  if (indices.length === 0) return undefined;
+  if (indices.length === occurrences.locs.length) return occurrences;
+  const values = occurrences.values;
+  return {
+    locs: indices.map((i) => occurrences.locs[i]),
+    ...(values ? { values: indices.map((i) => values[i]) } : {}),
+    scopes: indices.map((i) => occurrences.scopes![i]),
+    ...(occurrences.truncated ? { truncated: true } : {}),
+  };
+}
+
 function checkPropertySupport(
   prop: string,
   addWarning: (w: CSSWarning) => void,
@@ -774,6 +946,8 @@ function checkPropertySupport(
   line?: number,
   values?: string[],
   occurrences?: Occurrences,
+  allowedClients?: Set<string> | null,
+  policy: TargetingPolicy = "progressive",
 ) {
   const loc = occurrences?.locs[0];
   // With positions on, the legacy `line` reports the document line rather than
@@ -786,6 +960,14 @@ function checkPropertySupport(
   const fixType = getFixType(prop);
 
   for (const client of EMAIL_CLIENTS) {
+    if (allowedClients && !allowedClients.has(client.id)) continue;
+    const clientOccurrences = scopeOccurrencesForClient(occurrences, client.id, policy);
+    if (occurrences?.scopes && policy !== "strict" && !clientOccurrences) continue;
+    const effectiveOccurrences = clientOccurrences ?? occurrences;
+    const effectiveLoc = effectiveOccurrences?.locs[0];
+    const clientReportedLine = effectiveLoc?.line ?? reportedLine;
+    const clientValues = effectiveOccurrences?.values ?? values;
+
     const support: SupportLevel = supportData[client.id] || "unknown";
     const notes = CSS_SUPPORT_NOTES[prop]?.[client.id];
     if (support === "unsupported") {
@@ -804,8 +986,8 @@ function checkPropertySupport(
         fix,
         fixType,
         ...(selector ? { selector } : {}),
-        ...(reportedLine !== undefined ? { line: reportedLine } : {}),
-        ...(occurrences ? occurrenceFields(occurrences) : {}),
+        ...(clientReportedLine !== undefined ? { line: clientReportedLine } : {}),
+        ...(effectiveOccurrences ? occurrenceFields(effectiveOccurrences) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });
@@ -813,8 +995,8 @@ function checkPropertySupport(
       // Value-aware: skip when we know the values written and this client's
       // caveat doesn't apply to any of them (e.g. margin: 16px, font-size: 14px,
       // or position: relative on a client that only breaks on fixed/sticky).
-      if (!caveatApplies(prop, values, notes)) continue;
-      const hits = triggeringOccurrences(prop, occurrences, notes);
+      if (!caveatApplies(prop, clientValues, notes)) continue;
+      const hits = triggeringOccurrences(prop, effectiveOccurrences, notes);
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
       addWarning({
@@ -826,8 +1008,8 @@ function checkPropertySupport(
         fix,
         fixType,
         ...(selector ? { selector } : {}),
-        ...((hits?.locs[0]?.line ?? reportedLine) !== undefined
-          ? { line: hits?.locs[0]?.line ?? reportedLine } : {}),
+        ...((hits?.locs[0]?.line ?? clientReportedLine) !== undefined
+          ? { line: hits?.locs[0]?.line ?? clientReportedLine } : {}),
         ...(hits ? occurrenceFields(hits) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
@@ -904,11 +1086,15 @@ interface Occurrences {
    * declaration of the property.
    */
   values?: string[];
+  /**
+   * The client targeting scope behind `locs[i]`. If null, the declaration is global.
+   */
+  scopes?: Array<readonly string[] | null>;
 }
 
 /** Wrap a single optional location as the occurrence list a warning carries. */
-function elementLocs(loc: SourceLocation | undefined): Occurrences | undefined {
-  return loc ? { locs: [loc] } : undefined;
+function elementLocs(loc: SourceLocation | undefined, scope?: readonly string[] | null): Occurrences | undefined {
+  return loc ? { locs: [loc], ...(scope !== undefined ? { scopes: [scope] } : {}) } : undefined;
 }
 
 /** Filter warnings for a specific client. */

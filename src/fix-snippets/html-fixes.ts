@@ -674,4 +674,40 @@ h1 {
 </a>
 <!--<![endif]-->`,
   },
+
+  // ── css-hack (replace deprecated hack with clean modern targeting) ───────
+  "css-hack": {
+    language: "html",
+    description: "Remove deprecated/brittle CSS hack and use standard conditional or wrapper targeting",
+    before: `<style>
+  _:-webkit-full-screen, :root .card { background: #333; }
+</style>`,
+    after: `<style>
+  /* Use modern @supports or client wrapper targeting */
+  @supports (-webkit-overflow-scrolling: touch) {
+    .card { background: #333; }
+  }
+</style>`,
+  },
+
+  // ── [data-ogsc] (Outlook Web dark mode text color fix) ───────────────────
+  "[data-ogsc]": {
+    language: "css",
+    description: "Use [data-ogsc] to override automated dark mode colors in Outlook Web",
+    before: `.dark-text { color: #111827; }`,
+    after: `[data-ogsc] .dark-text {
+  color: #f9fafb !important;
+}`,
+  },
+
+  // ── [data-ogsb] (Outlook Web dark mode background fix) ───────────────────
+  "[data-ogsb]": {
+    language: "css",
+    description: "Use [data-ogsb] to override automated dark mode backgrounds in Outlook Web",
+    before: `.dark-bg { background-color: #ffffff; }`,
+    after: `[data-ogsb] .dark-bg {
+  background-color: #1f2937 !important;
+}`,
+  },
 };
+

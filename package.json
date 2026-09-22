@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "Email compatibility engine for HTML, MJML, Maizzle and React Email: transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link and image quality analysis.",
   "type": "module",
   "exports": {
@@ -34,6 +34,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "sync:caniemail": "bun run scripts/sync-caniemail.ts",
+    "sync:howtotarget": "bun run scripts/sync-howtotarget.ts",
     "sync:feature-urls": "bun run scripts/sync-feature-urls.ts",
     "check:freshness": "bun run scripts/check-data-freshness.ts",
     "bench:positions": "bun run scripts/bench-positions.ts",
