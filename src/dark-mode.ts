@@ -71,18 +71,18 @@ export function simulateDarkMode(
 
     case "gmail-ios":
       // Gmail iOS applies full color inversion
-      applyColorInversion($, "full");
+      applyColorInversion($, "full", clientId);
       break;
 
     case "gmail-android":
       // Gmail Android applies partial color inversion
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       break;
 
     case "outlook-web":
       // Outlook.com applies its own dark mode with partial inversion
       // Also injects [data-ogsc] and [data-ogsb] attributes to store original colors
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
           severity: "info",
@@ -98,7 +98,7 @@ export function simulateDarkMode(
 
     case "outlook-windows":
       // New Outlook (web engine) applies partial inversion like Outlook.com
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
           severity: "info",
@@ -115,7 +115,7 @@ export function simulateDarkMode(
     case "outlook-ios":
     case "outlook-android":
       // Litmus 2025-02: partial invert; [data-ogsc] is partial (light BGs darkened).
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
           severity: "info",
@@ -131,7 +131,7 @@ export function simulateDarkMode(
 
     case "outlook-windows-legacy":
       // Classic Outlook (Word engine) applies full color inversion in dark mode
-      applyColorInversion($, "full");
+      applyColorInversion($, "full", clientId);
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
           severity: "info",
@@ -170,7 +170,7 @@ export function simulateDarkMode(
     case "samsung-mail":
       // Samsung Mail supports prefers-color-scheme; apply partial inversion only if absent
       if (!html.includes("prefers-color-scheme")) {
-        applyColorInversion($, "partial");
+        applyColorInversion($, "partial", clientId);
         warnings.push({
           severity: "info",
           client: clientId,
@@ -186,7 +186,7 @@ export function simulateDarkMode(
     case "thunderbird":
       // Dark Message Mode rewrites colours itself. caniemail and later writeups
       // (Buttondown 2025) treat prefers-color-scheme as unsupported here.
-      applyColorInversion($, "full");
+      applyColorInversion($, "full", clientId);
       warnings.push({
         severity: "info",
         client: clientId,
@@ -200,7 +200,7 @@ export function simulateDarkMode(
 
     case "hey-mail":
       // caniemail: prefers-color-scheme:dark is rewritten to @media (false).
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       warnings.push({
         severity: "info",
         client: clientId,
@@ -214,7 +214,7 @@ export function simulateDarkMode(
 
     case "superhuman":
       // Carbon/Snow is a client theme overlay, not authored prefers-color-scheme.
-      applyColorInversion($, "partial");
+      applyColorInversion($, "partial", clientId);
       warnings.push({
         severity: "info",
         client: clientId,
@@ -227,8 +227,10 @@ export function simulateDarkMode(
       break;
   }
 
-  // Add dark mode wrapper styling
-  $("body").css("background-color", "#1a1a1a");
+  const bodyStyle = ($("body").attr("style") || "").toLowerCase();
+  if (!Object.values(SAMPLED_DARK[clientId] ?? {}).some((c) => bodyStyle.includes(c.slice(1)))) {
+    $("body").css("background-color", "#1a1a1a");
+  }
   $("body").css("color", "#e0e0e0");
 
   return { html: $.html(), warnings };
@@ -238,7 +240,15 @@ export function simulateDarkMode(
  * Invert a color value for dark mode.
  * Returns null if the color can't be parsed or shouldn't be inverted.
  */
-function invertColor(value: string, mode: "full" | "partial"): string | null {
+// ponytail: exact 6-digit hex only. Expand #rgb when a sample arrives that way.
+const SAMPLED_DARK: Record<string, Record<string, string>> = {
+  "outlook-web": { eeeae4: "#595651" },
+  "gmail-ios": { eeeae4: "#4a4438" },
+};
+
+function invertColor(value: string, mode: "full" | "partial", clientId?: string): string | null {
+  const pinned = clientId && SAMPLED_DARK[clientId]?.[value.trim().replace("#", "").toLowerCase()];
+  if (pinned) return pinned;
   const parsed = parseColor(value);
   if (!parsed || parsed.a === 0) return null;
 
@@ -287,7 +297,8 @@ function extractBackgroundColor(value: string): string | null {
 
 function applyColorInversion(
   $: cheerio.CheerioAPI,
-  mode: "full" | "partial"
+  mode: "full" | "partial",
+  clientId?: string,
 ): void {
   // Process inline styles using parseColor for accurate detection
   $("[style]").each((_, el) => {
@@ -297,7 +308,7 @@ function applyColorInversion(
 
     props.forEach((value, prop) => {
       if (COLOR_PROPS.has(prop)) {
-        const inverted = invertColor(value, mode);
+        const inverted = invertColor(value, mode, clientId);
         if (inverted) {
           props.set(prop, inverted);
           changed = true;
@@ -307,7 +318,7 @@ function applyColorInversion(
       if (prop === "background") {
         const bgColor = extractBackgroundColor(value);
         if (bgColor) {
-          const inverted = invertColor(bgColor, mode);
+          const inverted = invertColor(bgColor, mode, clientId);
           if (inverted) {
             props.set(prop, value.replace(bgColor, inverted));
             changed = true;
@@ -338,7 +349,7 @@ function applyColorInversion(
           if (prop === "background") {
             const bgColor = extractBackgroundColor(valueStr);
             if (bgColor) {
-              const inverted = invertColor(bgColor, mode);
+              const inverted = invertColor(bgColor, mode, clientId);
               if (inverted) {
                 const newValue = valueStr.replace(bgColor, inverted);
                 node.value = csstree.parse(newValue, { context: "value" }) as csstree.Value;
@@ -346,7 +357,7 @@ function applyColorInversion(
               }
             }
           } else {
-            const inverted = invertColor(valueStr, mode);
+            const inverted = invertColor(valueStr, mode, clientId);
             if (inverted) {
               node.value = csstree.parse(inverted, { context: "value" }) as csstree.Value;
               modified = true;
@@ -366,7 +377,7 @@ function applyColorInversion(
   // Also handle bgcolor attributes on table elements
   $("[bgcolor]").each((_, el) => {
     const bgcolor = $(el).attr("bgcolor") || "";
-    const inverted = invertColor(bgcolor, mode);
+    const inverted = invertColor(bgcolor, mode, clientId);
     if (inverted) {
       $(el).attr("bgcolor", inverted);
     }

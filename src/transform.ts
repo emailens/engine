@@ -8,7 +8,7 @@ import {
   STRUCTURAL_FIX_PROPERTIES,
 } from "./rules/css-support";
 import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snippets";
-import { parseInlineStyle, serializeStyle } from "./style-utils";
+import { parseInlineStyle, serializeStyle, splitStyleDeclarations } from "./style-utils";
 import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
@@ -47,6 +47,21 @@ function addImportantToDeclarations(node: csstree.CssNode): void {
 }
 
 /** Inline <style> blocks into elements using css-tree. Returns non-inlinable CSS. */
+// Existing inline property wins. A later !important from a stylesheet replaces it.
+function mergeInline(existing: string, declText: string): string {
+  if (!existing.trim()) return declText;
+  const map = new Map<string, string>();
+  for (const part of splitStyleDeclarations(`${existing};${declText}`)) {
+    const i = part.indexOf(":");
+    if (i < 0) continue;
+    const prop = part.slice(0, i).trim().toLowerCase();
+    const value = part.slice(i + 1).trim();
+    const kept = map.get(prop);
+    if (prop && (!kept || (/!important/i.test(value) && !/!important/i.test(kept)))) map.set(prop, value);
+  }
+  return serializeStyle(map);
+}
+
 function inlineStyles($: cheerio.CheerioAPI): string {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
@@ -77,6 +92,9 @@ function inlineStyles($: cheerio.CheerioAPI): string {
             addImportantToDeclarations(node);
           }
           preserved.push(csstree.generate(node));
+          // The second walk visits every Rule, including ones inside this at-rule.
+          // Drop the block after preserving it so @media heroes are not inlined.
+          node.block = null;
           return this.skip;
         }
       },
@@ -104,7 +122,7 @@ function inlineStyles($: cheerio.CheerioAPI): string {
         try {
           $(selectorText).each((_, el) => {
             const existing = $(el).attr("style") || "";
-            $(el).attr("style", existing ? `${existing}; ${declText}` : declText);
+            $(el).attr("style", mergeInline(existing, declText));
           });
         } catch {
           // Invalid selector for cheerio, skip

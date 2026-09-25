@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.13.1 - 2026-09-26
+
+`^0.13.0` picks this up.
+
+### Fixed
+
+- **Gmail no longer inlines both heroes.** The inliner kept `@media`,
+  `@supports`, `@keyframes`, and `@font-face`, then walked the rules inside
+  them and copied those declarations onto the element. A desktop
+  `display:block!important` and a mobile one both landed inline, so both
+  heroes showed. The at-rule stays in the style block. Its inner rules are
+  not inlined.
+
+- **An authored inline property wins over a later stylesheet rule.**
+  `* { margin: 0 }` was appended after `margin: 10px`, so the card gap
+  disappeared. The first declaration stays unless the later one is
+  `!important`.
+
+- **Dark mode keeps two sampled beige fills.** `#EEEAE4` becomes `#595651`
+  on Outlook.com and `#4a4438` on Gmail iOS, instead of the generic invert.
+  The body chrome colour `#1a1a1a` no longer paints over a fill that was
+  already sampled. Other light colours still use the old invert. The lookup
+  is exact 6-digit hex.
+
 ## 0.13.0 - 2026-09-22
 
 `^0.12.3` will not pick this up. npm's caret on `0.12.x` stops before `0.13.0`.
