@@ -8,7 +8,7 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
   // ── display:flex (Outlook Maizzle) ──────────────────────────────────
   "display:flex::outlook::maizzle": {
     language: "maizzle",
-    description: "Replace Tailwind flex classes with HTML table + MSO conditional comments",
+    description: "v5: an HTML table inside MSO comments. v6: <Outlook> and <NotOutlook>, because Vue drops HTML comments when NODE_ENV is production.",
     before: `<div class="flex gap-4">
   <div class="flex-1">Column 1</div>
   <div class="flex-1">Column 2</div>
@@ -16,38 +16,58 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
     after: `<!--[if mso]>
 <table role="presentation" width="100%" cellpadding="0"
   cellspacing="0" border="0"><tr>
-  <td class="w-1/2" valign="top">Column 1</td>
-  <td class="w-1/2" valign="top">Column 2</td>
+  <td width="50%" valign="top">Column 1</td>
+  <td width="50%" valign="top">Column 2</td>
 </tr></table>
 <![endif]-->
-<!--[if !mso]><!-->
+<!--[if !mso]><! -->
 <div class="flex gap-4">
   <div class="flex-1">Column 1</div>
   <div class="flex-1">Column 2</div>
 </div>
-<!--<![endif]-->`,
+<!-- <![endif]-->
+
+<!-- v6 -->
+<Outlook>
+  <table role="presentation" width="100%" cellpadding="0"
+    cellspacing="0" border="0"><tr>
+    <td width="50%" valign="top">Column 1</td>
+    <td width="50%" valign="top">Column 2</td>
+  </tr></table>
+</Outlook>
+<NotOutlook>
+  <div class="flex gap-4">
+    <div class="flex-1">Column 1</div>
+    <div class="flex-1">Column 2</div>
+  </div>
+</NotOutlook>`,
   },
 
   // ── @font-face (Maizzle) ────────────────────────────────────────────
   "@font-face::maizzle": {
     language: "maizzle",
     description:
-      'Add fonts via the googleFonts key in config.js; Maizzle injects the Google Fonts link tag automatically. Set googleFonts: "Inter:ital,wght@0,400;0,700" in your environment config, then reference the font family in your template.',
+      "v5: put the stylesheet link in the layout head. v6: put a <Font> component in the Vue file. @maizzle/framework 5 does not read a googleFonts config key.",
     before: `<style>
   @font-face {
     font-family: 'Inter';
     src: url('https://fonts.gstatic.com/...') format('woff2');
   }
 </style>`,
-    after: `<!-- config.js: googleFonts: "Inter:ital,wght@0,400;0,700" -->
-<p class="font-['Inter',Arial,sans-serif]">Hello</p>`,
+    after: `<!-- v5, in the layout <head> -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700&display=swap">
+<p style="font-family: Inter, Arial, sans-serif;">Hello</p>
+
+<!-- v6, in the .vue file -->
+<Font family="Inter" :weights="[400, 700]" />
+<p class="font-inter">Hello</p>`,
   },
 
   // ── <style> (Gmail Maizzle) ─────────────────────────────────────────
   "<style>::gmail::maizzle": {
     language: "maizzle",
     description:
-      "Maizzle automatically inlines CSS via juice during build (inlineCSS: true in config.js). Manual <style> blocks bypass juice and will be stripped by Gmail; prefer Tailwind utility classes instead.",
+      "Prefer Tailwind classes. v5 inlines them when css.inline is set in config.js. v6 inlines them with the css.inline transformer, on by default. A hand-written <style> is still stripped by Gmail.",
     before: `<style>
   .custom { color: #6d28d9; }
 </style>
@@ -59,7 +79,7 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
   // ── max-width (Outlook Maizzle) ─────────────────────────────────────
   "max-width::outlook::maizzle": {
     language: "maizzle",
-    description: "Wrap max-width containers with MSO conditional table for Outlook",
+    description: "v5: an MSO table around the container. v6: <Outlook open close>, because Vue drops HTML comments when NODE_ENV is production.",
     before: `<div class="max-w-[600px] mx-auto">
   Content here
 </div>`,
@@ -72,13 +92,21 @@ export const MAIZZLE_FIX_DATABASE: Record<string, CodeFix> = {
 </div>
 <!--[if mso]>
 </td></tr></table>
-<![endif]-->`,
+<![endif]-->
+
+<!-- v6 -->
+<Outlook
+  open='<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td>'
+  close="</td></tr></table>"
+>
+  <div class="max-w-[600px] mx-auto">Content here</div>
+</Outlook>`,
   },
 
   // ── gap (Maizzle) ──────────────────────────────────────────────────
   "gap::maizzle": {
     language: "maizzle",
-    description: "Use padding Tailwind classes on child elements instead of gap",
+    description: "Use padding classes on the children instead of gap. Same markup in a v5 HTML file and inside a v6 <template>.",
     before: `<div class="flex gap-4">
   <div>Item 1</div>
   <div>Item 2</div>

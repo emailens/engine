@@ -5,7 +5,7 @@
 export const MJML_SUGGESTION_DATABASE: Record<string, string> = {
   // ── <style> ───────────────────────────────────────────────────────────
   "<style>::mjml":
-    'Use mj-style inline="inline" to force MJML to inline styles for Gmail compatibility.',
+    'Set color and background on the component. mj-style inline="inline" writes the rule onto the td, and mj-text\'s inner div overrides color.',
   "<style>:partial::mjml":
     'Use mj-style inline="inline" for critical styles; plain mj-style for progressive enhancement.',
 
@@ -79,5 +79,5 @@ export const MJML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── word-break ────────────────────────────────────────────────────────
   "word-break::mjml":
-    "mj-text renders inside a <td>, which helps. Add word-wrap: break-word to the td via mj-style.",
+    "Outlook Windows does not wrap a URL on word-break. Insert &#8203; in the mj-text.",
 };

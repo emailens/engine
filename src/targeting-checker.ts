@@ -20,13 +20,10 @@ export interface TargetingReport {
   detectedHacks: DetectedHack[];
   /** Policy-flagged targeting findings (deprecated warnings and strict-mode info). */
   warnings: CSSWarning[];
-  /** @deprecated Use `warnings`. Same array. */
-  deprecatedWarnings: CSSWarning[];
 }
 
 export function emptyTargetingReport(): TargetingReport {
-  const warnings: CSSWarning[] = [];
-  return { detectedHacks: [], warnings, deprecatedWarnings: warnings };
+  return { detectedHacks: [], warnings: [] };
 }
 
 function applyLint(

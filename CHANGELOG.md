@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.13.1 - 2026-09-26
+## 0.14.0 - 2026-09-26
 
-`^0.13.0` picks this up.
+`^0.13.0` will not pick this up. npm's caret on `0.13.x` stops before `0.14.0`.
 
 ### Fixed
 
@@ -23,6 +23,19 @@
   The body chrome colour `#1a1a1a` no longer paints over a fill that was
   already sampled. Other light colours still use the old invert. The lookup
   is exact 6-digit hex.
+
+### Added
+
+- **Maizzle 6 Vue templates.** `compileMaizzle` compiles a `.vue` single-file component when `@maizzle/framework` 6 is installed. HTML templates still need version 5. A pasted file may not import, re-export, or point `<script>`, `<template>`, or `<style src>` at another file. Component lookup uses an empty directory, not the process working directory.
+
+### Removed
+
+- **`quickjs` sandbox.** It validated, then executed in `node:vm`. Use `"vm"` or `"isolated-vm"`.
+- **Session methods that ignored the cached DOM:** `score`, `transformForClient`, `transformForAllClients`, `simulateDarkMode`. Call `generateCompatibilityScore`, `transformForClient`, `transformForAllClients`, and `simulateDarkMode` directly.
+- **`warningsForClient`, `errorWarnings`, `structuralWarnings`.** Filter the array.
+- **`PreviewResult`.** Nothing constructed it.
+- **`TargetingReport.deprecatedWarnings`.** Read `warnings`.
+- **`unwrapModernMsoBranch` and `removeAllMsoConditionals`.** Nothing called them.
 
 ## 0.13.0 - 2026-09-22
 

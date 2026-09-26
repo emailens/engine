@@ -8,19 +8,13 @@ export const MJML_FIX_DATABASE: Record<string, CodeFix> = {
   // ── word-break (MJML) ────────────────────────────────────────────────
   "word-break::mjml": {
     language: "mjml",
-    description: "MJML renders text in table cells by default; word-break works via mj-text",
+    description: "Outlook Windows does not wrap a URL on word-break. Insert &#8203; in the text. A css-class on mj-text does not reach it",
     before: `<mj-text>
   <span style="word-break: break-all;">Long URL here</span>
 </mj-text>`,
-    after: `<!-- mj-text already renders inside a <td>, so add word-break
-     to the mj-text css-class or inline style -->
-<mj-text css-class="break-words"
-  padding="0">
-  Long URL here
-</mj-text>
-<mj-style>
-  .break-words td { word-break: break-all; word-wrap: break-word; }
-</mj-style>`,
+    after: `<mj-text padding="0">
+  https://example.com/&#8203;very/&#8203;long
+</mj-text>`,
   },
 
   // ── @font-face (MJML) ───────────────────────────────────────────────
@@ -47,19 +41,13 @@ export const MJML_FIX_DATABASE: Record<string, CodeFix> = {
   // ── <style> (Gmail MJML) ────────────────────────────────────────────
   "<style>::gmail::mjml": {
     language: "mjml",
-    description: "Use mj-style inline='inline' to force style inlining for Gmail",
+    description: "Gmail strips the class. inline=\"inline\" writes color on the td, and mj-text's inner div resets it to black. Set color on mj-text",
     before: `<mj-head>
   <mj-style>
     .custom { color: #6d28d9; }
   </mj-style>
 </mj-head>`,
-    after: `<mj-head>
-  <!-- Use inline="inline" to force MJML to inline these styles.
-       Class-based styles in a plain mj-style block will be stripped by Gmail. -->
-  <mj-style inline="inline">
-    .custom { color: #6d28d9; }
-  </mj-style>
-</mj-head>`,
+    after: `<mj-text color="#6d28d9">Hello</mj-text>`,
   },
 
   // ── border-radius (Outlook MJML) ────────────────────────────────────

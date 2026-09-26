@@ -1,5 +1,14 @@
 import type { CodeFix } from "../types";
 
+const breakLongUrl = `<table width="100%" cellPadding={0} cellSpacing={0}
+  role="presentation" style={{ borderCollapse: "collapse" }}>
+  <tr>
+    <td width="100%">
+      {"https://example.com/\\u200Bvery/\\u200Blong"}
+    </td>
+  </tr>
+</table>`;
+
 /**
  * JSX (React Email) framework-specific code fix snippets.
  * All keys have a ::jsx suffix in the original FIX_DATABASE.
@@ -8,40 +17,17 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── word-break (JSX) ─────────────────────────────────────────────────
   "word-break::jsx": {
     language: "jsx",
-    description: "Wrap long text in a table cell for Outlook-safe word breaking",
+    description: "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width",
     before: `<span style={{ wordBreak: "break-all" }}>{url}</span>`,
-    after: `{/* Table cells force text wrapping in Outlook and Yahoo */}
-<table width="100%" cellPadding={0} cellSpacing={0}
-  role="presentation" style={{ borderCollapse: "collapse" }}>
-  <tr>
-    <td style={{
-      wordBreak: "break-all" as const,
-      overflowWrap: "break-word" as const,
-      wordWrap: "break-word" as const,
-    }}>
-      {url}
-    </td>
-  </tr>
-</table>`,
+    after: breakLongUrl,
   },
 
   // ── overflow-wrap (JSX) ──────────────────────────────────────────────
   "overflow-wrap::jsx": {
     language: "jsx",
-    description: "Wrap text in a table cell for Outlook-safe overflow wrapping",
+    description: "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width",
     before: `<p style={{ overflowWrap: "break-word" }}>{longText}</p>`,
-    after: `<table width="100%" cellPadding={0} cellSpacing={0}
-  role="presentation" style={{ borderCollapse: "collapse" }}>
-  <tr>
-    <td style={{
-      overflowWrap: "break-word" as const,
-      wordWrap: "break-word" as const,
-      wordBreak: "break-all" as const,
-    }}>
-      {longText}
-    </td>
-  </tr>
-</table>`,
+    after: breakLongUrl,
   },
 
   // ── display:flex (Outlook JSX) ───────────────────────────────────────
@@ -87,15 +73,21 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   // ── max-width (Outlook JSX) ─────────────────────────────────────────
   "max-width::outlook::jsx": {
     language: "jsx",
-    description: "Use React Email Container component for Outlook-safe max-width centering",
+    description: "Outlook ignores max-width, including on Container. A conditional table with width 600 is what constrains it",
     before: `<div style={{ maxWidth: "600px", margin: "0 auto" }}>
   Content here
 </div>`,
-    after: `import { Container } from "@react-email/components";
-
-<Container style={{ maxWidth: "600px" }}>
-  Content here
-</Container>`,
+    after: `<div
+  dangerouslySetInnerHTML={{
+    __html: \`<!--[if mso]>
+<table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td>
+<![endif]-->
+<div style="max-width:600px;margin:0 auto;">Content here</div>
+<!--[if mso]>
+</td></tr></table>
+<![endif]-->\`,
+  }}
+/>`,
   },
 
   // ── @font-face (JSX) ────────────────────────────────────────────────
@@ -177,7 +169,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   Click Here
 </a>`,
     after:
-      '{/* Use dangerouslySetInnerHTML to inject VML for Outlook rounded corners */}\n<div\n  dangerouslySetInnerHTML={{\n    __html: `\n<!--[if mso]>\n<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"\n  href="https://example.com"\n  style="height:44px; v-text-anchor:middle; width:200px;"\n  arcsize="14%" strokecolor="#6d28d9" fillcolor="#6d28d9">\n  <w:anchorlock/>\n  <center style="color:#fff; font-family:Arial,sans-serif;\n    font-size:14px; font-weight:bold;">Click Here</center>\n</v:roundrect>\n<![endif]-->\n<!--[if !mso]><!-->\n<a href="https://example.com"\n  style="background-color:#6d28d9; color:#fff; padding:12px 32px;\n         border-radius:6px; text-decoration:none; display:inline-block;">\n  Click Here\n</a>\n<!--<![endif]-->\n`,\n  }}\n/>',
+      '{/* Use dangerouslySetInnerHTML to inject VML for Outlook rounded corners */}\n<div\n  dangerouslySetInnerHTML={{\n    __html: `\n<!--[if mso]>\n<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"\n  href="https://example.com"\n  style="height:44px; v-text-anchor:middle; width:200px;"\n  arcsize="14%" strokecolor="#6d28d9" fillcolor="#6d28d9">\n  <w:anchorlock/>\n  <center style="color:#fff; font-family:Arial,sans-serif;\n    font-size:14px; font-weight:bold;">Click Here</center>\n</v:roundrect>\n<![endif]-->\n<!--[if !mso]><! -->\n<a href="https://example.com"\n  style="background-color:#6d28d9; color:#fff; padding:12px 32px;\n         border-radius:6px; text-decoration:none; display:inline-block;">\n  Click Here\n</a>\n<!-- <![endif]-->\n`,\n  }}\n/>',
   },
 
   // ── gap (JSX) ───────────────────────────────────────────────────────
@@ -344,8 +336,26 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
               backgroundSize: "cover", padding: "40px" }}>
   <h1 style={{ color: "#fff" }}>Hello World</h1>
 </td>`,
-    after:
-      '<div\n  dangerouslySetInnerHTML={{\n    __html: `\n<!--[if gte mso 9]>\n<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"\n  stroke="false" style="width:600px; height:300px;">\n  <v:fill type="frame" src="hero.jpg" />\n  <v:textbox inset="0,0,0,0">\n<![endif]-->\n<div style="background-image:url(\'hero.jpg\'); background-size:cover; padding:40px;">\n  <h1 style="color:#fff;">Hello World</h1>\n</div>\n<!--[if gte mso 9]>\n  </v:textbox>\n</v:rect>\n<![endif]-->\n`,\n  }}\n/>',
+    after: `<td
+  background="hero.jpg"
+  bgcolor="#333333"
+  width="600"
+  height="300"
+  valign="top"
+  style={{ backgroundImage: "url('hero.jpg')", backgroundSize: "cover" }}
+  dangerouslySetInnerHTML={{
+    __html: \`<!--[if gte mso 9]>
+<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:300px;">
+<v:fill type="frame" src="hero.jpg" color="#333333" />
+<v:textbox inset="0,0,0,0">
+<![endif]-->
+<div style="padding:40px;"><h1 style="color:#fff;">Hello World</h1></div>
+<!--[if gte mso 9]>
+</v:textbox>
+</v:rect>
+<![endif]-->\`,
+  }}
+/>`,
   },
 
   // ── opacity (JSX) ──────────────────────────────────────────────────
@@ -398,9 +408,8 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   Content here
 </div>`,
     after: `<div style={{
-  /* Solid fallback for clients that strip gradients */
   backgroundColor: "#667eea",
-  background: "linear-gradient(135deg, #667eea, #764ba2)",
+  backgroundImage: "linear-gradient(135deg, #667eea, #764ba2)",
   padding: "40px",
   color: "#fff",
 }}>
@@ -498,15 +507,12 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
     before: `<div style={{ visibility: "hidden" }}>
   Hidden preheader text
 </div>`,
-    after: `{/* visibility:hidden is stripped by most clients; use the preheader trick.
-    msoHide is non-standard but needed to hide content in Outlook. */}
-<div
+    after: `<div
   style={{
     fontSize: "0px",
     lineHeight: "0px",
     maxHeight: "0px",
     overflow: "hidden",
-    display: "none",
     msoHide: "all",
   } as React.CSSProperties}
   aria-hidden="true"

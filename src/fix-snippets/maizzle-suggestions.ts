@@ -5,7 +5,7 @@
 export const MAIZZLE_SUGGESTION_DATABASE: Record<string, string> = {
   // ── <style> ───────────────────────────────────────────────────────────
   "<style>::maizzle":
-    "Prefer Tailwind utility classes; Maizzle inlines CSS via juice during build (inlineCSS: true in config.js).",
+    "Prefer Tailwind utility classes. Maizzle 5 inlines them when css.inline is set in config.js. Maizzle 6 inlines them with the css.inline transformer, on by default.",
   "<style>:partial::maizzle":
     "Use Tailwind utility classes for critical styles. Maizzle automatically inlines them at build time.",
 
@@ -27,7 +27,7 @@ export const MAIZZLE_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── @font-face ────────────────────────────────────────────────────────
   "@font-face::maizzle":
-    "Use the googleFonts key in config.js; Maizzle injects the Google Fonts link tag automatically.",
+    "Maizzle 5: add the font stylesheet link in the layout head. Maizzle 6: add a <Font> component in the Vue file.",
 
   // ── @media ────────────────────────────────────────────────────────────
   "@media::maizzle":

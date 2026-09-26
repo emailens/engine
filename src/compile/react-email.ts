@@ -21,14 +21,8 @@ const EXECUTION_TIMEOUT_MS = 5_000;
  * - `"isolated-vm"` (default): Separate V8 isolate via the `isolated-vm`
  *   npm package. True heap isolation; escapes require a V8 engine bug.
  *   Requires `isolated-vm` to be installed (native addon).
- *
- * - `"quickjs"`: Validates code structure in a QuickJS WASM sandbox, then
- *   executes in `node:vm` for React rendering. Security is equivalent to
- *   `node:vm`: the QuickJS phase validates import restrictions only.
- *   No native addons needed, but only supports ES2020 and is slower.
- *   For true isolation on servers, use `isolated-vm`.
  */
-export type SandboxStrategy = "vm" | "isolated-vm" | "quickjs";
+export type SandboxStrategy = "vm" | "isolated-vm";
 
 export interface CompileReactEmailOptions {
   /**
@@ -50,7 +44,6 @@ export interface CompileReactEmailOptions {
  * Requires peer dependencies: sucrase, react, @react-email/components,
  * @react-email/render. Additionally:
  *  - sandbox "isolated-vm" requires `isolated-vm`
- *  - sandbox "quickjs" requires `quickjs-emscripten`
  */
 export async function compileReactEmail(
   source: string,
@@ -138,15 +131,12 @@ export async function compileReactEmail(
     case "isolated-vm":
       moduleExports = await executeInIsolatedVm(transpiledCode, React, ReactEmailComponents);
       break;
-    case "quickjs":
-      moduleExports = await executeInQuickJs(transpiledCode, React, ReactEmailComponents);
-      break;
     case "vm":
       moduleExports = await executeInVm(transpiledCode, React, ReactEmailComponents);
       break;
     default:
       throw new CompileError(
-        `Unknown sandbox strategy: "${strategy}". Use "vm", "isolated-vm", or "quickjs".`,
+        `Unknown sandbox strategy: "${strategy}". Use "vm" or "isolated-vm".`,
         "jsx",
         "execution",
       );
@@ -188,7 +178,7 @@ export async function compileReactEmail(
  *
  * NOT a security boundary, see node:vm documentation. Suitable for CLI
  * use where the user runs their own code. For server use, prefer
- * "isolated-vm" or "quickjs".
+ * "isolated-vm".
  */
 async function executeInVm(
   code: string,
@@ -368,121 +358,4 @@ async function executeInIsolatedVm(
 
   // ── Phase 2: Execute validated code in node:vm with real React ──────────
   return executeInVm(code, React, ReactEmailComponents);
-}
-
-// ─── Sandbox: QuickJS (WASM) ──────────────────────────────────────────────
-
-/**
- * Validate code structure in QuickJS WASM, then execute in `node:vm`.
- *
- * Two-phase approach:
- *  1. Validate that the code doesn't access disallowed modules by running it
- *     in a QuickJS WASM sandbox with stub implementations.
- *  2. Execute in `node:vm` for actual React rendering (React objects can't
- *     cross the WASM boundary).
- *
- * **Security note:** The actual execution happens in `node:vm`, so runtime
- * security is equivalent to the `"vm"` strategy. The QuickJS phase only
- * validates import restrictions. For true isolation on servers, use
- * `"isolated-vm"`.
- */
-async function executeInQuickJs(
-  code: string,
-  React: typeof import("react"),
-  ReactEmailComponents: typeof import("@react-email/components"),
-): Promise<Record<string, unknown>> {
-  let getQuickJS: typeof import("quickjs-emscripten").getQuickJS;
-  try {
-    ({ getQuickJS } = await import("quickjs-emscripten"));
-  } catch {
-    throw new CompileError(
-      'Sandbox strategy "quickjs" requires the "quickjs-emscripten" package. Install it:\n' +
-        "  npm install quickjs-emscripten\n" +
-        'Or pass sandbox: "vm", which needs no native addon and is NOT a security' +
-        ' boundary: code you compile can reach the host process and its environment.' +
-        ' Only choose it for templates you already trust.',
-      "jsx",
-      "execution",
-    );
-  }
-
-  const QuickJS = await getQuickJS();
-  const vm = QuickJS.newContext();
-
-  try {
-    // Phase 1: Validate code safety in the WASM sandbox.
-    // We provide stub implementations of React and the module system so
-    // the code can execute without errors, but we only care that it
-    // doesn't try to access anything dangerous.
-    // QuickJS (ES2020) does not support Proxy, so we enumerate known
-    // React Email component names as stub functions instead.
-    const validationCode = `
-      (function() {
-        var module = { exports: {} };
-        var exports = module.exports;
-        var noop = function() { return {}; };
-        var React = {
-          createElement: noop,
-          forwardRef: function(fn) { return fn; },
-          Fragment: "Fragment",
-          createContext: function() { return { Provider: noop, Consumer: noop }; },
-          useState: function(v) { return [v, noop]; },
-          useRef: function() { return { current: null }; },
-          useEffect: noop,
-          useMemo: function(fn) { return fn(); },
-          useCallback: function(fn) { return fn; },
-          Children: { map: noop, forEach: noop, toArray: function() { return []; } },
-        };
-        var components = {};
-        var names = [
-          "Html","Head","Body","Container","Section","Row","Column","Text",
-          "Link","Button","Img","Hr","Preview","Heading","Font","Style",
-          "CodeBlock","CodeInline","Markdown","Tailwind","Responsive",
-        ];
-        for (var i = 0; i < names.length; i++) components[names[i]] = noop;
-        function require(name) {
-          if (name === "react") return React;
-          if (name === "@react-email/components") return components;
-          throw new Error('Import of "' + name + '" is not allowed.');
-        }
-        try {
-          ${code}
-          return JSON.stringify({ ok: true });
-        } catch(e) {
-          return JSON.stringify({ ok: false, error: e.message || "Unknown error" });
-        }
-      })()
-    `;
-
-    const result = vm.evalCode(validationCode);
-    if (result.error) {
-      const errorVal = vm.dump(result.error);
-      result.error.dispose();
-      throw new CompileError(
-        `JSX execution error: ${typeof errorVal === "string" ? errorVal : "QuickJS execution failed"}`,
-        "jsx",
-        "execution",
-      );
-    }
-
-    const resultStr = vm.dump(result.value);
-    result.value.dispose();
-
-    if (typeof resultStr === "string") {
-      const parsed = JSON.parse(resultStr) as { ok: boolean; error?: string };
-      if (!parsed.ok) {
-        throw new CompileError(
-          `JSX execution error: ${parsed.error ?? "Unknown error"}`,
-          "jsx",
-          "execution",
-        );
-      }
-    }
-
-    // Phase 2: Code validated as safe; execute in node:vm for actual
-    // React rendering (React objects can't cross the WASM boundary)
-    return executeInVm(code, React, ReactEmailComponents);
-  } finally {
-    vm.dispose();
-  }
 }

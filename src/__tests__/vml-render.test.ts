@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeToRadius, transformForClient, transformForAllClients, createSession } from "../index";
+import { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeToRadius, transformForClient, transformForAllClients } from "../index";
 
 const mso = (vml: string) => `<!--[if gte mso 9]>${vml}<![endif]-->`;
 
@@ -142,8 +142,8 @@ describe("transformForClient: only the Word engine gets the Outlook branch", () 
 // generator actually call, and it does not route through transformForClient:
 // it downlevels once and maps applyTransform over every client. Wiring only
 // the singular function left the whole product on the old behaviour while the
-// tests passed, so both paths are asserted here and in createSession.
-describe("transformForAllClients and createSession take the same branch", () => {
+// tests passed, so both paths are asserted here.
+describe("transformForAllClients takes the same branch", () => {
   const html = `<html><body>
     ${mso(`<v:roundrect style="width:200px;height:40px;" arcsize="50%" fillcolor="#336699" stroke="f"><center>OUTLOOK</center></v:roundrect>`)}
     <!--[if !mso]><!--><a id="fb">FALLBACK</a><!--<![endif]-->
@@ -159,15 +159,6 @@ describe("transformForAllClients and createSession take the same branch", () => 
       expect([t.clientId, /data-vml/.test(t.html)]).toEqual([t.clientId, false]);
       expect([t.clientId, t.html.includes("FALLBACK")]).toEqual([t.clientId, true]);
     }
-  });
-
-  test("createSession().transformForAllClients agrees with the standalone function", () => {
-    const viaSession = createSession(html).transformForAllClients()
-      .find((t) => t.clientId === "outlook-windows-legacy")!;
-    const viaDirect = transformForAllClients(html)
-      .find((t) => t.clientId === "outlook-windows-legacy")!;
-    expect(viaSession.html).toBe(viaDirect.html);
-    expect(viaSession.html).toContain('data-vml="roundrect"');
   });
 
   // Translating before applyTransform hands the Word strip set its own output:
@@ -197,7 +188,7 @@ describe("transformForAllClients and createSession take the same branch", () => 
   });
 });
 
-describe("resolveMsoBranch: the two spellings of a revealed block", () => {
+describe("resolveMsoBranch: the spellings of a revealed block", () => {
   // Found by looking at our own landing-page demo: the Outlook Classic panel
   // drew the VML button *and* the HTML fallback stacked underneath it. The
   // template opens its fallback `<!--[if !mso]><!-- -->`, and the resolver
@@ -209,6 +200,7 @@ describe("resolveMsoBranch: the two spellings of a revealed block", () => {
   const both = [
     ["<!-->", `<!--[if !mso]><!-->${FALLBACK}<!--<![endif]-->`],
     ["<!-- -->", `<!--[if !mso]><!-- -->${FALLBACK}<!--<![endif]-->`],
+    ["<! -->", `<!--[if !mso]><! -->${FALLBACK}<!-- <![endif]-->`],
   ] as const;
 
   for (const [spelling, html] of both) {

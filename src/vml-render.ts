@@ -84,24 +84,25 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
 }
 
 /**
- * The opener of a downlevel-revealed block. It has two spellings in the wild
+ * The opener of a downlevel-revealed block. It has three spellings in the wild
  * and no canonical one:
  *
  *   <!--[if !mso]><!-->       the shorthand, `<!--` closed by a bare `>`
  *   <!--[if !mso]><!-- -->    an ordinary empty comment
+ *   <!--[if !mso]><! -->      howtotarget's form. Without the space, t-online.de hides the block too
  *
  * Matching only the first left the fallback in place for the Word engine, so
  * a preview drew both the VML button and the HTML button written to replace
  * it: two stacked CTAs in a render whose whole job is to be trusted. Outlook
  * sees `[if !mso]`, evaluates it false and skips to `[endif]` whichever
- * spelling closed the opener, so both must resolve the same way here.
+ * spelling closed the opener, so each must resolve the same way here.
  *
  * The condition is matched by *containing* a negated mso/vml term rather than
  * starting with one, because `[if (!mso)&(!IE)]` is as common in real email as
  * the bare `[if !mso]`.
  */
 const DOWNLEVEL_REVEALED =
-  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<!--(?:>|\s*-->)([\s\S]*?)<!--\s*<!\[endif\]-->/gi;
+  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)<!--\s*<!\[endif\]-->/gi;
 
 /**
  * A downlevel-hidden block: the markup only Outlook reads.
@@ -143,28 +144,6 @@ export function resolveMsoBranch(html: string): string {
     .replace(DOWNLEVEL_HIDDEN, "$1")
     // After the unwrap, never before: the settings block is inside the
     // conditional we just opened.
-    .replace(OFFICE_SETTINGS, "");
-}
-
-/**
- * Unwrap downlevel-revealed blocks (progressive/modern content) and delete
- * the Outlook-only MSO branch, producing clean modern HTML.
- */
-export function unwrapModernMsoBranch(html: string): string {
-  return html
-    .replace(DOWNLEVEL_HIDDEN, "")
-    .replace(DOWNLEVEL_REVEALED, "$1")
-    .replace(OFFICE_SETTINGS, "");
-}
-
-/**
- * Remove all conditional comment blocks completely.
- */
-export function removeAllMsoConditionals(html: string): string {
-  return html
-    .replace(DOWNLEVEL_REVEALED, "")
-    .replace(DOWNLEVEL_HIDDEN, "")
-    .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, "")
     .replace(OFFICE_SETTINGS, "");
 }
 

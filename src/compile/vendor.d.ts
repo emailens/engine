@@ -14,20 +14,3 @@ declare module "isolated-vm" {
   }
 }
 
-declare module "quickjs-emscripten" {
-  export function getQuickJS(): Promise<QuickJSRuntime>;
-
-  interface QuickJSRuntime {
-    newContext(): QuickJSContext;
-  }
-
-  interface QuickJSContext {
-    evalCode(code: string): { value: QuickJSHandle; error?: undefined } | { value?: undefined; error: QuickJSHandle };
-    dump(handle: QuickJSHandle): unknown;
-    dispose(): void;
-  }
-
-  interface QuickJSHandle {
-    dispose(): void;
-  }
-}

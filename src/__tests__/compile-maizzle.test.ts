@@ -1,10 +1,11 @@
 import { describe, test, expect } from "bun:test";
-import { compileMaizzle, CompileError } from "../compile/index";
+import { compileMaizzle, CompileError, detectFormat } from "../compile/index";
 import { isMaizzle6 } from "../compile/maizzle";
 
-// Maizzle's first call initialises PostCSS + Tailwind CSS, which can take
-// several seconds on a cold start. Each compilation test uses a 30s timeout.
-const MAIZZLE_TIMEOUT = 30_000;
+// Maizzle's first call initialises PostCSS + Tailwind CSS. A cold start on
+// Windows has taken ~40s before the compile itself begins. Later calls are
+// cached and finish in about a second.
+const MAIZZLE_TIMEOUT = 60_000;
 
 // ============================================================================
 // Basic compilation tests
@@ -338,6 +339,89 @@ describe("CompileError contract (Maizzle)", () => {
         expect(true).toBe(false);
       } catch (err) {
         expect((err as CompileError).message).toContain(directive);
+      }
+    }
+  });
+});
+
+describe("Vue single-file components", () => {
+  const sfc = (body: string) => `<template>${body}</template>`;
+
+  test("detectFormat treats .vue as maizzle", () => {
+    expect(detectFormat("emails/welcome.vue")).toBe("maizzle");
+    expect(detectFormat("emails/Welcome.VUE")).toBe("maizzle");
+  });
+
+  test("a Vue SFC on Maizzle 5 asks for v6", async () => {
+    await expect(compileMaizzle(sfc("<p>Hi</p>"))).rejects.toThrow(/@maizzle\/framework@6/);
+  });
+
+  test("a <template> with attributes still counts as Vue", async () => {
+    await expect(compileMaizzle('<template lang="html"><p>Hi</p></template>')).rejects.toThrow(
+      /@maizzle\/framework@6/,
+    );
+  });
+
+  test("defineConfig without an import is not treated as a file import", async () => {
+    const source = `<script setup>\ndefineConfig({ minify: true })\n</script>\n<template><p>Hi</p></template>`;
+    await expect(compileMaizzle(source)).rejects.toThrow(/@maizzle\/framework@6/);
+  });
+
+  test("a Vue SFC may not import another file", async () => {
+    const source = `<script setup>\nimport Secret from "./secret.vue"\n</script>\n<template><p>Hi</p></template>`;
+    await expect(compileMaizzle(source)).rejects.toThrow(/may not import/);
+  });
+
+  test("import forms without a space, re-exports, src, and inlined stylesheets are refused", async () => {
+    const bodies = [
+      `<script setup>\nimport{x}from"./secret.vue"\n</script>\n<template><p>Hi</p></template>`,
+      `<script setup>\nimport"./secret.vue"\n</script>\n<template><p>Hi</p></template>`,
+      `<script setup>\nimport*as x from"./secret.vue"\n</script>\n<template><p>Hi</p></template>`,
+      `<script setup>\nimport.meta.glob("./**/*.vue")\n</script>\n<template><p>Hi</p></template>`,
+      `<script setup>\nexport { Secret } from "./secret.vue"\n</script>\n<template><p>Hi</p></template>`,
+      `<script setup>\nexport * from "./secret.vue"\n</script>\n<template><p>Hi</p></template>`,
+      `<script src="./local.js"></script>\n<template><p>Hi</p></template>`,
+      `<template src="./Button.vue"></template>`,
+      `<style src="./x.css"></style>\n<template><p>Hi</p></template>`,
+      `<template><link rel="stylesheet" inline href="http://169.254.169.254/"></template>`,
+      `<template><style>@import "./secret.css";</style></template>`,
+    ];
+    for (const source of bodies) {
+      await expect(compileMaizzle(source)).rejects.toThrow(/may not import/);
+    }
+  });
+
+  test("a font stylesheet link without inline is not the file-load block", async () => {
+    const source = `<template><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter"></template>`;
+    try {
+      await compileMaizzle(source);
+      expect(true).toBe(false);
+    } catch (err) {
+      expect((err as CompileError).message).not.toContain("may not import");
+      expect((err as CompileError).message).toContain("@maizzle/framework@6");
+    }
+  });
+
+  test("require() and import() are refused before Maizzle runs", async () => {
+    await expect(compileMaizzle(`${sfc("<p>Hi</p>")}\n<script>require("./x")</script>`)).rejects.toThrow(
+      /may not import/,
+    );
+    await expect(compileMaizzle(`${sfc("<p>Hi</p>")}\n<script>import("./x")</script>`)).rejects.toThrow(
+      /may not import/,
+    );
+  });
+
+  test("a Vue <slot> or <component> is not the PostHTML file-read block", async () => {
+    for (const source of [
+      sfc("<slot />"),
+      sfc('<component :is="Button" />'),
+    ]) {
+      try {
+        await compileMaizzle(source);
+        expect(true).toBe(false);
+      } catch (err) {
+        expect((err as CompileError).message).not.toContain("directives");
+        expect((err as CompileError).message).toContain("@maizzle/framework@6");
       }
     }
   });

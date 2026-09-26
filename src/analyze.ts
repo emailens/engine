@@ -1097,17 +1097,3 @@ function elementLocs(loc: SourceLocation | undefined, scope?: readonly string[] 
   return loc ? { locs: [loc], ...(scope !== undefined ? { scopes: [scope] } : {}) } : undefined;
 }
 
-/** Filter warnings for a specific client. */
-export function warningsForClient(warnings: CSSWarning[], clientId: string): CSSWarning[] {
-  return warnings.filter(w => w.client === clientId);
-}
-
-/** Get only error-severity warnings. */
-export function errorWarnings(warnings: CSSWarning[]): CSSWarning[] {
-  return warnings.filter(w => w.severity === "error");
-}
-
-/** Get only structural fix warnings. */
-export function structuralWarnings(warnings: CSSWarning[]): CSSWarning[] {
-  return warnings.filter(w => w.fixType === "structural");
-}

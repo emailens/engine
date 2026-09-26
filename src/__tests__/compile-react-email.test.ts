@@ -2,7 +2,7 @@ import { describe, test, expect } from "bun:test";
 import { compileReactEmail, CompileError } from "../compile/index";
 
 // All tests use sandbox: "vm" since the test environment doesn't require
-// isolated-vm or quickjs-emscripten to be installed.
+// isolated-vm to be installed.
 const VM_OPTS = { sandbox: "vm" as const };
 
 // ============================================================================

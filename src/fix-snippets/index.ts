@@ -61,48 +61,40 @@ export function getStyleSurvivalNote(
 }
 
 /**
- * Look up a code fix for a given property, client, and optional framework.
- * Returns undefined if no fix snippet exists.
- *
- * Resolution order (most specific to least specific):
- * 1. property::clientPrefix::framework  (e.g. "display:flex::outlook::jsx")
- * 2. property::framework                (e.g. "display:grid::jsx")
- * 3. property::clientPrefix             (e.g. "border-radius::outlook")
- * 4. property                           (generic fix)
+ * Most specific entry wins:
+ * property::clientPrefix::framework, property::framework,
+ * property::clientPrefix, property.
+ * `generic` is true when a framework was asked for and only tier 3 or 4 hit.
  */
+function lookup<T>(
+  db: Record<string, T>,
+  property: string,
+  clientId: string,
+  framework?: Framework,
+): { value: T; generic: boolean } | undefined {
+  const clientPrefix = getClientPrefix(clientId);
+  const tier1 = framework && clientPrefix ? db[`${property}::${clientPrefix}::${framework}`] : undefined;
+  if (tier1) return { value: tier1, generic: false };
+  const tier2 = framework ? db[`${property}::${framework}`] : undefined;
+  if (tier2) return { value: tier2, generic: false };
+  const tier3 = clientPrefix ? db[`${property}::${clientPrefix}`] : undefined;
+  if (tier3) return { value: tier3, generic: !!framework };
+  const tier4 = db[property];
+  return tier4 ? { value: tier4, generic: !!framework } : undefined;
+}
+
+/** Code fix for a property, client, and optional framework. Undefined if none exists. */
 export function getCodeFix(
   property: string,
   clientId: string,
   framework?: Framework
 ): CodeFix | undefined {
-  const clientPrefix = getClientPrefix(clientId);
-
-  // Tier 1: property::clientPrefix::framework
-  if (framework && clientPrefix) {
-    const tier1 = FIX_DATABASE[`${property}::${clientPrefix}::${framework}`];
-    if (tier1) return tier1;
-  }
-
-  // Tier 2: property::framework
-  if (framework) {
-    const tier2 = FIX_DATABASE[`${property}::${framework}`];
-    if (tier2) return tier2;
-  }
-
-  // Tier 3: property::clientPrefix (existing behavior)
-  if (clientPrefix) {
-    const tier3 = FIX_DATABASE[`${property}::${clientPrefix}`];
-    if (tier3) return tier3;
-  }
-
-  // Tier 4: generic fix (existing behavior)
-  return FIX_DATABASE[property];
+  return lookup(FIX_DATABASE, property, clientId, framework)?.value;
 }
 
 /**
- * Returns true if a framework was specified but the code fix resolved to
- * a client-specific or fully generic entry (tiers 3–4) rather than a
- * framework-aware entry (tiers 1–2).
+ * True when a framework was specified but the fix is a client-specific or
+ * generic entry, or there is no fix at all.
  */
 export function isCodeFixGenericFallback(
   property: string,
@@ -110,10 +102,8 @@ export function isCodeFixGenericFallback(
   framework?: Framework
 ): boolean {
   if (!framework) return false;
-  const clientPrefix = getClientPrefix(clientId);
-  if (clientPrefix && FIX_DATABASE[`${property}::${clientPrefix}::${framework}`]) return false;
-  if (FIX_DATABASE[`${property}::${framework}`]) return false;
-  return true;
+  const hit = lookup(FIX_DATABASE, property, clientId, framework);
+  return !hit || hit.generic;
 }
 
 function getClientPrefix(clientId: string): string | null {
@@ -127,18 +117,6 @@ function getClientPrefix(clientId: string): string | null {
   return null;
 }
 
-/**
- * Look up a suggestion string for a given property, client, and optional framework.
- *
- * Resolution order mirrors `getCodeFix()`:
- * 1. property::clientPrefix::framework
- * 2. property::framework
- * 3. property::clientPrefix
- * 4. property (generic)
- *
- * `isGenericFallback` is true when a framework was specified but no
- * framework-specific entry was found (resolution fell through to tiers 3–4).
- */
 /**
  * How a feature key reads mid-sentence. Kept in step with analyze.ts's
  * `featureLabel`, so a warning's message and its suggestion do not describe the
@@ -155,31 +133,8 @@ export function getSuggestion(
   clientId: string,
   framework?: Framework
 ): { text: string; isGenericFallback: boolean } {
-  const clientPrefix = getClientPrefix(clientId);
-
-  // Tier 1: property::clientPrefix::framework
-  if (framework && clientPrefix) {
-    const tier1 = SUGGESTION_DATABASE[`${property}::${clientPrefix}::${framework}`];
-    if (tier1) return { text: tier1, isGenericFallback: false };
-  }
-
-  // Tier 2: property::framework
-  if (framework) {
-    const tier2 = SUGGESTION_DATABASE[`${property}::${framework}`];
-    if (tier2) return { text: tier2, isGenericFallback: false };
-  }
-
-  // Tier 3: property::clientPrefix
-  if (clientPrefix) {
-    const tier3 = SUGGESTION_DATABASE[`${property}::${clientPrefix}`];
-    if (tier3) return { text: tier3, isGenericFallback: !!framework };
-  }
-
-  // Tier 4: generic
-  const tier4 = SUGGESTION_DATABASE[property];
-  if (tier4) return { text: tier4, isGenericFallback: !!framework };
-
-  // No entry; return a default
+  const hit = lookup(SUGGESTION_DATABASE, property, clientId, framework);
+  if (hit) return { text: hit.value, isGenericFallback: hit.generic };
   return {
     text: `${describeFeature(property)} is not supported in this email client.`,
     isGenericFallback: !!framework,

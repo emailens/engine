@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { createSession } from "../session";
 import { auditEmail } from "../audit";
-import { analyzeEmail, generateCompatibilityScore } from "../analyze";
+import { analyzeEmail } from "../analyze";
 import { analyzeSpam } from "../spam-scorer";
 import { validateLinks } from "../link-validator";
 import { checkAccessibility } from "../accessibility-checker";
@@ -9,8 +9,6 @@ import { analyzeImages } from "../image-analyzer";
 import { extractInboxPreview } from "../inbox-preview";
 import { checkSize } from "../size-checker";
 import { checkTemplateVariables } from "../template-checker";
-import { transformForAllClients } from "../transform";
-import { simulateDarkMode } from "../dark-mode";
 import { checkTargetingHacks } from "../targeting-checker";
 
 const SAMPLE_HTML = `
@@ -66,15 +64,6 @@ describe("createSession", () => {
     const standaloneWarnings = analyzeEmail(SAMPLE_HTML, "jsx");
 
     expect(sessionWarnings).toEqual(standaloneWarnings);
-  });
-
-  test("session.score() matches standalone generateCompatibilityScore()", () => {
-    const session = createSession(SAMPLE_HTML);
-    const warnings = session.analyze();
-    const sessionScores = session.score(warnings);
-    const standaloneScores = generateCompatibilityScore(warnings);
-
-    expect(sessionScores).toEqual(standaloneScores);
   });
 
   test("session.analyzeSpam() matches standalone analyzeSpam()", () => {
@@ -141,37 +130,6 @@ describe("createSession", () => {
     expect(sessionResult).toEqual(standaloneResult);
   });
 
-  test("session.transformForAllClients() matches standalone", () => {
-    const session = createSession(SAMPLE_HTML, { framework: "jsx" });
-    const sessionResult = session.transformForAllClients();
-    const standaloneResult = transformForAllClients(SAMPLE_HTML, "jsx");
-
-    expect(sessionResult.length).toBe(standaloneResult.length);
-    for (let i = 0; i < sessionResult.length; i++) {
-      expect(sessionResult[i].clientId).toBe(standaloneResult[i].clientId);
-      expect(sessionResult[i].html).toBe(standaloneResult[i].html);
-      expect(sessionResult[i].warnings).toEqual(standaloneResult[i].warnings);
-    }
-  });
-
-  test("session.transformForClient() matches standalone", () => {
-    const session = createSession(SAMPLE_HTML);
-    const sessionResult = session.transformForClient("gmail-web");
-    const standaloneResult = createSession(SAMPLE_HTML).transformForClient("gmail-web");
-
-    expect(sessionResult.clientId).toBe("gmail-web");
-    expect(sessionResult.html).toBe(standaloneResult.html);
-  });
-
-  test("session.simulateDarkMode() matches standalone", () => {
-    const session = createSession(SAMPLE_HTML);
-    const sessionResult = session.simulateDarkMode("gmail-web");
-    const standaloneResult = simulateDarkMode(SAMPLE_HTML, "gmail-web");
-
-    expect(sessionResult.html).toBe(standaloneResult.html);
-    expect(sessionResult.warnings).toEqual(standaloneResult.warnings);
-  });
-
   test("session.audit() skip option works", () => {
     const session = createSession(SAMPLE_HTML);
     const report = session.audit({ skip: ["spam", "links", "images", "inboxPreview", "size", "templateVariables"] });
@@ -202,7 +160,6 @@ describe("createSession", () => {
     expect(session.extractInboxPreview().subject).toBeNull();
     expect(session.checkSize().htmlBytes).toBe(0);
     expect(session.checkTemplateVariables().unresolvedCount).toBe(0);
-    expect(session.transformForAllClients()).toEqual([]);
     expect(session.audit().spam.score).toBe(100);
   });
 

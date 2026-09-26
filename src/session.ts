@@ -1,4 +1,4 @@
-import { analyzeDocument, generateCompatibilityScore, type CompatibilityPass } from "./analyze";
+import { analyzeDocument, type CompatibilityPass } from "./analyze";
 import { analyzeSpamFromDom } from "./spam-scorer";
 import { validateLinksFromDom } from "./link-validator";
 import { checkAccessibilityFromDom } from "./accessibility-checker";
@@ -9,8 +9,6 @@ import { checkTemplateVariablesFromDom } from "./template-checker";
 import { checkOverflowFromDom } from "./overflow-checker";
 import { checkVisualFromDom } from "./visual-checker";
 import { type TargetingReport } from "./targeting-checker";
-import { transformForClient, transformForAllClients } from "./transform";
-import { simulateDarkMode } from "./dark-mode";
 import {
   MAX_HTML_SIZE,
   EMPTY_SPAM, EMPTY_LINKS, EMPTY_ACCESSIBILITY, EMPTY_IMAGES,
@@ -30,7 +28,6 @@ import type {
   TemplateReport,
   OverflowReport,
   VisualReport,
-  TransformResult,
 } from "./types";
 import { loadHtml, type AnalysisOptions } from "./parse-html";
 import { runAudit, EMPTY_AUDIT } from "./audit";
@@ -44,14 +41,9 @@ export interface CreateSessionOptions extends AnalysisOptions {
 /**
  * A pre-parsed email session.
  *
- * Analysis methods (`analyze`, `audit`, `analyzeSpam`, `validateLinks`,
- * `checkAccessibility`, `analyzeImages`) share a single Cheerio DOM
- * parse, eliminating redundant parsing overhead.
- *
- * Transformation methods (`transformForClient`, `transformForAllClients`,
- * `simulateDarkMode`) parse internally since they mutate the DOM per
- * client. They still benefit from having the session hold the HTML and
- * framework so you don't need to pass them repeatedly.
+ * Analysis methods share a single Cheerio DOM parse.
+ * Transforms and dark mode are standalone functions: they mutate a DOM
+ * per client, so the cached parse cannot help them.
  */
 export interface EmailSession {
   /** The original HTML string. */
@@ -77,11 +69,6 @@ export interface EmailSession {
    * Equivalent to `analyzeEmail()` but avoids re-parsing the HTML.
    */
   analyze(): CSSWarning[];
-
-  /** Generate per-client compatibility scores from warnings. */
-  score(
-    warnings: CSSWarning[],
-  ): Record<string, { score: number; errors: number; warnings: number; info: number }>;
 
   /** Analyze spam indicators (shares pre-parsed DOM). */
   analyzeSpam(options?: SpamAnalysisOptions): SpamReport;
@@ -112,30 +99,6 @@ export interface EmailSession {
 
   /** Scan for email client targeting hacks and deprecated techniques (shares pre-parsed DOM). */
   checkTargeting(): TargetingReport;
-
-  /**
-   * Transform HTML for a specific client.
-   *
-   * Creates an isolated DOM copy per call (transforms mutate the DOM).
-   */
-  transformForClient(clientId: string): TransformResult;
-
-  /**
-   * Transform HTML for all email clients.
-   *
-   * Creates an isolated DOM copy per client (transforms mutate the DOM).
-   */
-  transformForAllClients(): TransformResult[];
-
-  /**
-   * Simulate dark mode for a specific client.
-   *
-   * Creates an isolated DOM copy per call (simulation mutates the DOM).
-   * Operates on the **original** HTML, if you need dark mode on
-   * already-transformed HTML, use the standalone `simulateDarkMode()` instead.
-   */
-  simulateDarkMode(clientId: string): { html: string; warnings: CSSWarning[] };
-
 }
 
 /**
@@ -153,7 +116,6 @@ export interface EmailSession {
  *
  * // These all share a single DOM parse:
  * const warnings = session.analyze();
- * const scores = session.score(warnings);
  * const spam = session.analyzeSpam();
  * const links = session.validateLinks();
  * const a11y = session.checkAccessibility();
@@ -161,9 +123,6 @@ export interface EmailSession {
  *
  * // Or run everything at once:
  * const report = session.audit();
- *
- * // Transforms still work (parse internally per client):
- * const transforms = session.transformForAllClients();
  * ```
  */
 export function createSession(
@@ -178,7 +137,6 @@ export function createSession(
       framework: fw,
       audit: () => EMPTY_AUDIT,
       analyze: () => [],
-      score: () => ({}),
       analyzeSpam: () => EMPTY_SPAM,
       validateLinks: () => EMPTY_LINKS,
       checkAccessibility: () => EMPTY_ACCESSIBILITY,
@@ -189,9 +147,6 @@ export function createSession(
       checkOverflow: () => EMPTY_OVERFLOW,
       checkVisual: () => EMPTY_VISUAL,
       checkTargeting: () => EMPTY_TARGETING,
-      transformForClient: (clientId) => ({ clientId, html: html || "", warnings: [] }),
-      transformForAllClients: () => [],
-      simulateDarkMode: (clientId) => ({ html: html || "", warnings: [] }),
     };
   }
 
@@ -234,10 +189,6 @@ export function createSession(
       return documentPass().warnings;
     },
 
-    score(warnings) {
-      return generateCompatibilityScore(warnings);
-    },
-
     analyzeSpam(opts) {
       return analyzeSpamFromDom($, opts);
     },
@@ -276,19 +227,6 @@ export function createSession(
 
     checkTargeting() {
       return documentPass().targeting;
-    },
-
-    // Transforms create isolated copies since they mutate the DOM
-    transformForClient(clientId) {
-      return transformForClient(html, clientId, framework);
-    },
-
-    transformForAllClients() {
-      return transformForAllClients(html, framework);
-    },
-
-    simulateDarkMode(clientId) {
-      return simulateDarkMode(html, clientId);
     },
   };
 }

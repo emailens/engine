@@ -6,11 +6,8 @@ import pkg from "../../package.json";
  * declare which versions we work with. Two things can drift apart without
  * anything failing, and both did.
  *
- * A peer range can grow past what the code supports. `@maizzle/framework` was
- * declared `>=5.0.0` when Maizzle 6 moved to Vue single-file components,
- * `render()` takes an SFC source or a file path where `compileMaizzle()`
- * passes template text, so a consumer could install 6, satisfy the range, and
- * get `Failed to load url <their whole template>` at runtime.
+ * A peer range can grow past what the code supports. Maizzle 6 compiles a Vue
+ * SFC string; Maizzle 5 compiles HTML. The range covers both and stops before 7.
  *
  * And the version CI exercises can fall behind the version consumers install.
  * All three of the others were a major behind: mjml pinned to 4.x while 5.4
@@ -76,22 +73,14 @@ describe("optional peer compilers", () => {
     }
   });
 
-  it("stops the Maizzle range short of 6, which does not work", () => {
-    // The specific thing this file exists for. Maizzle 6's render() takes a
-    // Vue SFC source or a path; compileMaizzle() passes template text. Six of
-    // the compile-maizzle tests fail against it, two of them the ones
-    // asserting `{{ process.env.SECRET }}` cannot leak; they fail because
-    // nothing compiles rather than because anything leaked, but the guarantee
-    // is unverified there either way.
-    //
-    // Widening this range is not a version bump. It means teaching
-    // compileMaizzle to hand Maizzle an SFC, and deciding whether rendering
-    // one raises the same execute-the-user's-code question as React Email.
+  it("accepts Maizzle 5 and 6, and stops before 7", () => {
+    // v5 compiles HTML. v6 compiles a Vue SFC string. v7 is untested.
     const range = peers["@maizzle/framework"];
     expect(Bun.semver.satisfies("5.5.0", range)).toBe(true);
     expect(Bun.semver.satisfies("5.0.0", range)).toBe(true);
-    expect(Bun.semver.satisfies("6.0.0", range)).toBe(false);
-    expect(Bun.semver.satisfies("6.1.0", range)).toBe(false);
+    expect(Bun.semver.satisfies("6.0.0", range)).toBe(true);
+    expect(Bun.semver.satisfies("6.1.7", range)).toBe(true);
+    expect(Bun.semver.satisfies("7.0.0", range)).toBe(false);
   });
 
   it("keeps the type packages on the same major as what they describe", () => {

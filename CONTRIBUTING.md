@@ -190,22 +190,14 @@ a compatibility claim we make to users. Verified 2026-09-02:
 | Package | Peer range | Latest | Note |
 |---|---|---|---|
 | `mjml` | `>=4.0.0` | 5.4.0 | v4 returns synchronously and v5 returns a promise; `compileMjml` awaits either. Checked against 4.18.0 and 5.4.0. |
-| `@maizzle/framework` | `>=5.0.0 <6.0.0` | 6.1.2 | **The cap is deliberate.** See below. |
+| `@maizzle/framework` | `>=5.0.0 <7.0.0` | 6.1.7 | v5 compiles HTML. v6 compiles a Vue SFC string. |
 | `@react-email/components` | `>=0.0.36` | 1.0.12 | |
 | `@react-email/render` | `>=1.0.0` | 2.1.0 | |
 
-**Do not widen the Maizzle range to allow 6.** Maizzle 6 replaced the HTML
-template with a Vue single-file component. `render()` there resolves a string
-argument as a path rather than as source, so handing it a template produces
-`Failed to load url <!DOCTYPE html>…` rather than HTML. `compileMaizzle` takes
-an HTML string, so the two are not compatible, and `isMaizzle6` detects the
-wrong major and says so rather than letting that error reach the user.
-
-Supporting Maizzle 6 is a feature, not a version bump: it means accepting a Vue
-SFC as the source, which is a different input language with its own questions
-(props, slots, what "lint the compiled output" means for a component that takes
-data). `render()` does accept a raw SFC *string*, so it is tractable when
-somebody wants it.
+Maizzle 6 `render()` accepts a Vue SFC string and runs the full pipeline.
+`compileMaizzle` sends that string through when it has a `<template>` element
+and the installed module exports `createRenderer`. HTML templates stay on v5.
+A single line ending in `.vue` or `.md` is rejected: v6 would open it.
 
 ## How to Add a New Email Client
 

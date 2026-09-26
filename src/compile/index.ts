@@ -52,6 +52,8 @@ export function detectFormat(filePath: string): InputFormat {
       return "jsx";
     case ".mjml":
       return "mjml";
+    case ".vue":
+      return "maizzle";
     case ".html":
     case ".htm":
       return "html";

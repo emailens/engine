@@ -36,7 +36,6 @@ describe("auditEmail", () => {
     expect(report.targeting).toHaveProperty("warnings");
     expect(Array.isArray(report.targeting.detectedHacks)).toBe(true);
     expect(Array.isArray(report.targeting.warnings)).toBe(true);
-    expect(report.targeting.deprecatedWarnings).toBe(report.targeting.warnings);
 
     expect(report.compatibility).toHaveProperty("warnings");
     expect(report.compatibility).toHaveProperty("scores");

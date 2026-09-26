@@ -4,7 +4,6 @@ import { join } from "node:path";
 import {
   transformForClient,
   transformForAllClients,
-  createSession,
   checkVml,
   EMAIL_CLIENTS,
 } from "../index";
@@ -22,7 +21,7 @@ import {
  * Neither was a missing unit test. Both were tests that asserted on the
  * function under change rather than on the bytes a client finally receives, so
  * everything here works on the final `.html` of the real pipeline, and every
- * assertion runs against all three entry points rather than a chosen one.
+ * assertion runs against both transform entry points rather than a chosen one.
  */
 
 const FIX = join(import.meta.dir, "fixtures");
@@ -35,7 +34,6 @@ const WORD = "outlook-windows-legacy";
 const ENTRY_POINTS: Array<[string, (html: string, client: string) => string]> = [
   ["transformForClient", (h, c) => transformForClient(h, c).html],
   ["transformForAllClients", (h, c) => transformForAllClients(h).find((t) => t.clientId === c)!.html],
-  ["createSession", (h, c) => createSession(h).transformForAllClients().find((t) => t.clientId === c)!.html],
 ];
 
 const style = (html: string, kind: "rect" | "roundrect"): string | null => {
@@ -46,7 +44,7 @@ const style = (html: string, kind: "rect" | "roundrect"): string | null => {
 describe("every entry point agrees", () => {
   // The invariant that would have caught 0.11.2 on its own, for any future
   // change: it does not name a behaviour, it says the paths cannot diverge.
-  test("all three produce byte-identical output, for every client", () => {
+  test("both produce byte-identical output, for every client", () => {
     for (const client of EMAIL_CLIENTS.map((c) => c.id)) {
       const outputs = ENTRY_POINTS.map(([name, fn]) => [name, fn(BROKEN, client)] as const);
       const [, first] = outputs[0];
@@ -56,8 +54,6 @@ describe("every entry point agrees", () => {
     }
   }, 20000);
 
-  // Blank input is excluded deliberately: the session short-circuits it to an
-  // inert stub. That divergence is pinned in its own test below.
   test("they agree on a clean email too", () => {
     for (const client of [WORD, "gmail-web", "apple-mail-macos"]) {
       const outputs = ENTRY_POINTS.map(([, fn]) => fn(CLEAN, client));
@@ -207,19 +203,7 @@ describe("safety: nothing here may throw or corrupt an ordinary email", () => {
     for (const src of ["", "   "]) {
       expect(() => transformForClient(src, WORD)).not.toThrow();
       expect(() => transformForAllClients(src)).not.toThrow();
-      expect(() => createSession(src).transformForAllClients()).not.toThrow();
     }
-  });
-
-  test("PRE-EXISTING: the session and the standalone function disagree on empty input", () => {
-    // Not introduced by the Outlook branch work, and caught by the
-    // entry-points-agree invariant above. createSession returns an inert stub
-    // for blank input whose transformForAllClients yields nothing, while the
-    // standalone function yields one empty result per client. A caller
-    // iterating the session's result gets zero rows where the other gives 21.
-    // Pinned here rather than silently changed, since callers may rely on it.
-    expect(createSession("").transformForAllClients()).toEqual([]);
-    expect(transformForAllClients("")).toHaveLength(EMAIL_CLIENTS.length);
   });
 
   test("the visible copy is preserved through translation", () => {

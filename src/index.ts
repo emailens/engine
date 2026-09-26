@@ -1,6 +1,6 @@
 export { EMAIL_CLIENTS, getClient } from "./clients";
 export { transformForClient, transformForAllClients } from "./transform";
-export { analyzeEmail, generateCompatibilityScore, warningsForClient, errorWarnings, structuralWarnings } from "./analyze";
+export { analyzeEmail, generateCompatibilityScore } from "./analyze";
 export { simulateDarkMode } from "./dark-mode";
 export { getCodeFix, getSuggestion } from "./fix-snippets";
 export { diffResults } from "./diff";
@@ -70,7 +70,6 @@ export type {
   Framework,
   InputFormat,
   TransformResult,
-  PreviewResult,
   DiffResult,
   SupportLevel,
   AiProvider,

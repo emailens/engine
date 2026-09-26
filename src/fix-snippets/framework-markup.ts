@@ -20,7 +20,7 @@ export const FRAMEWORK_MARKUP_SUGGESTIONS: Record<string, string> = {
   "doctype::mjml":
     "MJML writes the doctype itself, and the clients that replace it do so without changing how the email renders. Nothing to change in your MJML.",
   "doctype::maizzle":
-    "Your Maizzle layout writes the doctype, and the clients that replace it do so without changing how the email renders. Nothing to change.",
+    "Maizzle 5 writes the doctype from the layout. Maizzle 6 writes it from <Html>. Clients that replace it do not change rendering. Nothing to change.",
   "doctype::jsx":
     "React Email's <Html> renders the doctype, and the clients that replace it do so without changing how the email renders. Nothing to change.",
 
@@ -29,13 +29,13 @@ export const FRAMEWORK_MARKUP_SUGGESTIONS: Record<string, string> = {
   "[lang]::mjml":
     "MJML sets lang on <html> from the lang attribute on <mjml>. Where a client drops it only assistive technology notices, so leave it: removing it helps nobody.",
   "[lang]::maizzle":
-    "Your Maizzle layout sets lang on <html>. Where a client drops it only assistive technology notices, so leave it.",
+    "Maizzle 5 sets lang from the layout. Maizzle 6 sets it from <Html lang>. Where a client drops it only assistive technology notices, so leave it.",
   "[lang]::jsx":
     "React Email renders this from <Html lang=…>. Where a client drops it only assistive technology notices, so leave it.",
   "[dir]::mjml":
     "MJML sets dir from the dir attribute on <mjml>. For a right-to-left email, also set align on mj-text and mj-section, which those clients do honour.",
   "[dir]::maizzle":
-    "Your Maizzle layout sets dir. For a right-to-left email, also set align on the cells, which these clients do honour.",
+    "Maizzle 5 sets dir from the layout. Maizzle 6 sets it from <Html dir>. For a right-to-left email, also set align on the cells, which these clients do honour.",
   "[dir]::jsx":
     "React Email renders this from <Html dir=…>. For a right-to-left email, also set textAlign on the components, which these clients do honour.",
 
@@ -75,7 +75,7 @@ export const FRAMEWORK_MARKUP_SUGGESTIONS: Record<string, string> = {
   "<body>::mjml":
     "MJML styles <body> from mj-body's background-color. Clients that replace <body> with a <div> lose it, so set background-color on mj-section too and the page still fills.",
   "<body>::maizzle":
-    "Your layout styles <body>. Clients that replace it with a <div> lose those styles, so put the background on a full-width wrapper table as well.",
+    "Maizzle 5 styles <body> from the layout. Maizzle 6 styles it from <Body>. Clients that replace it with a <div> lose those styles, so put the background on a full-width wrapper table as well.",
   "<body>::jsx":
     "React Email's <Body> carries your style prop. Clients that replace <body> with a <div> lose it, so put the background on a wrapping <Section> too.",
 };

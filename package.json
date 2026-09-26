@@ -1,6 +1,6 @@
 {
   "name": "@emailens/engine",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Email compatibility engine for HTML, MJML, Maizzle and React Email: transforms CSS per email client, scores compatibility, simulates dark mode, suggests fixes, and runs spam, accessibility, link and image quality analysis.",
   "type": "module",
   "exports": {
@@ -47,12 +47,11 @@
     "css-tree": "^3.1.0"
   },
   "peerDependencies": {
-    "@maizzle/framework": ">=5.0.0 <6.0.0",
+    "@maizzle/framework": ">=5.0.0 <7.0.0",
     "@react-email/components": ">=0.0.36",
     "@react-email/render": ">=1.0.0",
     "isolated-vm": ">=5.0.0",
     "mjml": ">=4.0.0",
-    "quickjs-emscripten": ">=0.29.0",
     "react": "^18.0.0 || ^19.0.0",
     "sucrase": "^3.35.0"
   },
@@ -76,9 +75,6 @@
       "optional": true
     },
     "isolated-vm": {
-      "optional": true
-    },
-    "quickjs-emscripten": {
       "optional": true
     }
   },

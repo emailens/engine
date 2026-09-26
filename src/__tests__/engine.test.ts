@@ -155,14 +155,15 @@ describe("getCodeFix: framework-aware resolution", () => {
     const fix = getCodeFix("display:flex", "outlook-windows-legacy", "maizzle");
     expect(fix).toBeDefined();
     expect(fix!.after).toContain("<!--[if mso]>");
+    expect(fix!.after).toContain("<Outlook>");
     expect(fix!.after).toContain("class=");
   });
 
-  test("maizzle: @font-face returns googleFonts config guidance (tier 2)", () => {
+  test("maizzle: @font-face returns a v5 link and a v6 Font (tier 2)", () => {
     const fix = getCodeFix("@font-face", "gmail-web", "maizzle");
     expect(fix).toBeDefined();
-    expect(fix!.after).toContain("googleFonts");
-    expect(fix!.after).toContain("config.js");
+    expect(fix!.after).toContain("fonts.googleapis.com");
+    expect(fix!.after).toContain("<Font");
   });
 
   test("unknown framework falls back gracefully to html fix", () => {
@@ -224,11 +225,12 @@ describe("analyzeEmail: framework-aware fixes", () => {
     expect(undefinedFix?.after).toEqual(noneFix?.after);
   });
 
-  test("maizzle: @font-face warning contains googleFonts config guidance", () => {
+  test("maizzle: @font-face warning contains a v5 link and a v6 Font", () => {
     const warnings = analyzeEmail(fontHtml, "maizzle");
     const fontWarn = warnings.find((w) => w.property === "@font-face");
     expect(fontWarn).toBeDefined();
-    expect(fontWarn!.fix!.after).toContain("googleFonts");
+    expect(fontWarn!.fix!.after).toContain("fonts.googleapis.com");
+    expect(fontWarn!.fix!.after).toContain("<Font");
   });
 
   test("jsx: linear-gradient in inline style gets framework-specific fix (regression: missing framework arg)", () => {

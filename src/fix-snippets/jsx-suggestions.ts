@@ -55,7 +55,7 @@ export const JSX_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── max-width ─────────────────────────────────────────────────────────
   "max-width::jsx":
-    "Use the React Email <Container> component which handles max-width across clients.",
+    "Outlook ignores max-width, including on <Container>. Wrap it in <!--[if mso]><table width=\"600\">.",
 
   // ── gap ───────────────────────────────────────────────────────────────
   "gap::jsx":
@@ -79,11 +79,11 @@ export const JSX_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── word-break ────────────────────────────────────────────────────────
   "word-break::jsx":
-    "Wrap long text in a <table><tr><td> element. Outlook ignores wordBreak but respects table cell widths.",
+    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert \\u200B in the string.",
 
   // ── overflow-wrap ─────────────────────────────────────────────────────
   "overflow-wrap::jsx":
-    "Wrap text in a <table><tr><td> element. Outlook ignores overflowWrap but respects table cell widths.",
+    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert \\u200B in the string.",
 
   // ── padding ─────────────────────────────────────────────────────────────
   "padding::outlook::jsx":

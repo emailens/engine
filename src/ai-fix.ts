@@ -122,11 +122,12 @@ Rules:
 - Preserve all existing content, text, links, and visual design.
 - For structural issues (fixType: "structural"), you MUST restructure the HTML; CSS-only changes will not work.
 - Common structural patterns:
-  - word-break/overflow-wrap unsupported → wrap text in <table><tr><td> with constrained width
-  - display:flex/grid → convert to <table> layout (match the original column count and proportions)
+  - word-break/overflow-wrap unsupported → insert &#8203; in long tokens, inside a width-constrained <td>. A cell alone does not wrap a URL
+  - display:flex/grid → convert to <table> layout (match the original column count and proportions). Outlook needs width attributes, not classes
   - border-radius in Outlook → use VML <v:roundrect> with <!--[if mso]> conditionals
-  - background-image in Outlook → use VML <v:rect> with <v:fill>
-  - max-width in Outlook → wrap in <!--[if mso]><table width="N"> conditional
+  - background-image in Outlook → <v:rect> inside the <td>, content in a <div> inside <v:textbox>. Do not put the <td> inside the textbox
+  - gradients → background-color plus background-image. The background shorthand resets the fallback
+  - max-width in Outlook → wrap in <!--[if mso]><table width="N"> conditional. React Email Container does not do this
   - position:absolute → use <table> cells for layout
   - <svg> → replace with <img> pointing to a hosted PNG
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.

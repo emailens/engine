@@ -11,9 +11,6 @@
 - [Standalone Analysis](#standalone-analysis)
   - [`analyzeEmail`](#analyzeemailhtml-string-framework-framework-csswarning)
   - [`generateCompatibilityScore`](#generatecompatibilityscorewarnings-recordstring-clientscore)
-  - [`warningsForClient`](#warningsforclientwarnings-clientid-csswarning)
-  - [`errorWarnings`](#errorwarningswarnings-csswarning)
-  - [`structuralWarnings`](#structuralwarningswarnings-csswarning)
 - [Spam & Deliverability](#spam--deliverability)
   - [`analyzeSpam`](#analyzespamhtml-string-options-spamanalysisoptions-spamreport)
   - [`checkDeliverability`](#checkdeliverabilitydomain-options-promisedeliverabilityreport)
@@ -104,7 +101,6 @@ const session = createSession(html, { framework: "jsx" });
 
 // All analysis methods share a single DOM parse:
 const warnings = session.analyze();
-const scores = session.score(warnings);
 const spam = session.analyzeSpam();
 const links = session.validateLinks();
 const a11y = session.checkAccessibility();
@@ -117,10 +113,6 @@ const visual = session.checkVisual();
 
 // Or run everything at once:
 const report = session.audit();
-
-// Transforms and dark mode still work (parse internally per client):
-const transforms = session.transformForAllClients();
-const darkMode = session.simulateDarkMode("gmail-web");
 ```
 
 **`CreateSessionOptions`:**
@@ -133,7 +125,6 @@ const darkMode = session.simulateDarkMode("gmail-web");
 |---|---|---|
 | `audit(options?)` | Yes | Run all checks (equivalent to `auditEmail`) |
 | `analyze()` | Yes | CSS compatibility warnings |
-| `score(warnings)` |; | Generate per-client scores |
 | `analyzeSpam(options?)` | Yes | Spam indicator analysis |
 | `validateLinks()` | Yes | Link validation |
 | `checkAccessibility()` | Yes | Accessibility audit |
@@ -144,10 +135,6 @@ const darkMode = session.simulateDarkMode("gmail-web");
 | `checkOverflow()` | Yes | Content overflow (fixed widths, unbreakable strings) |
 | `checkVml()` | Yes | Structural faults in Outlook-only VML |
 | `checkVisual()` | Yes | Visual bugs in stylized emails (background/font fallbacks) |
-| `checkDeliverability(domain)` |: | DNS deliverability check (async, SPF/DKIM/DMARC/MX/BIMI) |
-| `transformForClient(clientId)` | No | Transform for one client |
-| `transformForAllClients()` | No | Transform for all 21 clients |
-| `simulateDarkMode(clientId)` | No | Dark mode simulation |
 
 **When to use sessions vs standalone functions:**
 
@@ -286,18 +273,6 @@ costs what it costs once.
 Partial support (`info`) is not scored. It is counted and returned in
 `ClientScore.info`, but it does not move the number; a property that mostly
 works is not a defect.
-
-### `warningsForClient(warnings, clientId): CSSWarning[]`
-
-Filter warnings for a specific client.
-
-### `errorWarnings(warnings): CSSWarning[]`
-
-Get only error-severity warnings.
-
-### `structuralWarnings(warnings): CSSWarning[]`
-
-Get only warnings that require HTML restructuring (`fixType: "structural"`).
 
 ---
 
@@ -609,12 +584,13 @@ The versions these are tested against:
 |---|---|---|
 | `mjml` | `mjml` | `>=4.0.0`, tested on 5.x |
 | `jsx` | `@react-email/render`, `@react-email/components`, `react` | `>=1.0.0` / `>=0.0.36`, tested on 2.x / 1.x |
-| `maizzle` | `@maizzle/framework` | `>=5.0.0 <6.0.0` |
+| `maizzle` | `@maizzle/framework` | `>=5.0.0 <7.0.0` |
 
-Maizzle 6 is deliberately excluded: it moved to Vue single-file components, so
-`render()` takes an SFC source or a file path where `compileMaizzle()` passes
-template text. Installing it would satisfy the peer range and then fail at
-runtime, so the range says so instead.
+Maizzle 5 compiles an HTML string. Maizzle 6 compiles a Vue single-file
+component: pass the `.vue` file contents, including `<template>`. `detectFormat`
+maps `.vue` to `maizzle`. A Vue `<script>` runs during compile, the same way
+the Maizzle CLI does. The source may not import, re-export, or point an SFC
+`src` at another file, and component lookup does not use the working directory.
 
 ```typescript
 import { compile, detectFormat, CompileError } from "@emailens/engine/compile";
@@ -639,16 +615,15 @@ Compile React Email JSX/TSX to HTML. Pipeline: validate → transpile (sucrase) 
 import { compileReactEmail } from "@emailens/engine/compile";
 
 const html = await compileReactEmail(jsxSource, {
-  sandbox: "isolated-vm",  // "vm" | "isolated-vm" | "quickjs"
+  sandbox: "isolated-vm",  // "vm" | "isolated-vm"
 });
 ```
 
 **Sandbox strategies:**
 - `"isolated-vm"` (default): Separate V8 isolate. True heap isolation. Requires `isolated-vm` native addon.
 - `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency, but NOT a true security boundary. Suitable for CLI/local use.
-- `"quickjs"`: Validates code in WASM sandbox, then executes in `node:vm`. Security is equivalent to `"vm"`. No native addons needed.
 
-**Peer dependencies:** `sucrase`, `react`, `@react-email/components`, `@react-email/render`. Plus `isolated-vm` or `quickjs-emscripten` depending on sandbox strategy.
+**Peer dependencies:** `sucrase`, `react`, `@react-email/components`, `@react-email/render`. Plus `isolated-vm` for the default sandbox.
 
 ### `compileMjml(source): Promise<string>`
 
@@ -662,7 +637,7 @@ Compile Maizzle template to HTML. **Peer dependency:** `@maizzle/framework`.
 
 ### `detectFormat(filePath): InputFormat`
 
-Auto-detect input format from file extension (`.tsx`/`.jsx` → `"jsx"`, `.mjml` → `"mjml"`, `.html` → `"html"`).
+Auto-detect input format from file extension (`.tsx`/`.jsx` → `"jsx"`, `.mjml` → `"mjml"`, `.vue` → `"maizzle"`, `.html` → `"html"`).
 
 ### `CompileError`
 
@@ -759,7 +734,6 @@ const report = auditEmail(html, { framework: "jsx" });
 // Or for selective analysis (1 HTML parse):
 const session = createSession(html, { framework: "jsx" });
 const warnings = session.analyze();
-const scores = session.score(warnings);
 const spam = session.analyzeSpam();
 // ... pick only what you need
 ```
@@ -781,7 +755,7 @@ if (html.length > MAX_HTML_SIZE) {
 
 ### Compile Module Security
 
-- **React Email JSX**: User code runs in a sandboxed environment. The `"isolated-vm"` strategy provides true heap isolation. The `"vm"` and `"quickjs"` strategies use `node:vm` which is NOT a security boundary; suitable for CLI use where users run their own code. For server deployments accepting untrusted input, use `"isolated-vm"`.
+- **React Email JSX**: User code runs in a sandboxed environment. The `"isolated-vm"` strategy provides true heap isolation. The `"vm"` strategy uses `node:vm`, which is NOT a security boundary; suitable for CLI use where users run their own code. For server deployments accepting untrusted input, use `"isolated-vm"`.
 - **Maizzle**: PostHTML directives that access the filesystem (`<extends>`, `<fetch>`, `<include>`, `<raw>`, `<block>`, `<yield>`, etc.) are rejected at validation time.
 - **MJML**: Compiled through the `mjml` package with default settings.
 
@@ -845,7 +819,6 @@ interface EmailSession {
   readonly framework: Framework | undefined;
   audit(options?): AuditReport;
   analyze(): CSSWarning[];
-  score(warnings): Record<string, ClientScore>;
   analyzeSpam(options?): SpamReport;
   validateLinks(): LinkReport;
   checkAccessibility(): AccessibilityReport;
@@ -853,9 +826,6 @@ interface EmailSession {
   extractInboxPreview(): InboxPreview;
   checkSize(): SizeReport;
   checkTemplateVariables(): TemplateReport;
-  transformForClient(clientId): TransformResult;
-  transformForAllClients(): TransformResult[];
-  simulateDarkMode(clientId): { html; warnings };
 }
 
 interface InboxPreview {

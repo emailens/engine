@@ -92,13 +92,13 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── word-break ────────────────────────────────────────────────────────
   "word-break":
-    "Wrap long text in a <table><td> to force wrapping in clients that don't support word-break.",
+    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
   "word-break::outlook":
-    "Outlook's Word engine ignores word-break. Place text inside a <td> with a constrained width; tables always wrap.",
+    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
 
   // ── overflow-wrap ─────────────────────────────────────────────────────
   "overflow-wrap":
-    "Wrap text in a <table><td> to force wrapping. overflow-wrap is ignored by Outlook and unreliable in Yahoo.",
+    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
 
   // ── white-space ───────────────────────────────────────────────────────
   "white-space":

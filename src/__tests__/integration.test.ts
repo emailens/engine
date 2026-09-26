@@ -121,39 +121,3 @@ describe("Full pipeline integration", () => {
   });
 });
 
-describe("Warning helpers", () => {
-  const {
-    warningsForClient,
-    errorWarnings,
-    structuralWarnings,
-  } = require("../analyze");
-
-  const STYLED_HTML = `
-<html><head><style>.x { display: flex; }</style></head>
-<body>
-  <div style="display: flex; gap: 10px;">
-    <svg><circle r="10" /></svg>
-    <form><input type="text" /></form>
-  </div>
-</body>
-</html>`;
-
-  test("warningsForClient filters by client", () => {
-    const allWarnings = analyzeEmail(STYLED_HTML);
-    const gmailOnly = warningsForClient(allWarnings, "gmail-web");
-    expect(gmailOnly.length).toBeGreaterThan(0);
-    expect(gmailOnly.every((w: any) => w.client === "gmail-web")).toBe(true);
-  });
-
-  test("errorWarnings filters by severity", () => {
-    const allWarnings = analyzeEmail(STYLED_HTML);
-    const errors = errorWarnings(allWarnings);
-    expect(errors.every((w: any) => w.severity === "error")).toBe(true);
-  });
-
-  test("structuralWarnings filters by fixType", () => {
-    const allWarnings = analyzeEmail(STYLED_HTML);
-    const structural = structuralWarnings(allWarnings);
-    expect(structural.every((w: any) => w.fixType === "structural")).toBe(true);
-  });
-});

@@ -127,14 +127,6 @@ export interface TransformResult {
   warnings: CSSWarning[];
 }
 
-export interface PreviewResult {
-  id: string;
-  originalHtml: string;
-  transforms: TransformResult[];
-  cssReport: CSSWarning[];
-  createdAt: string;
-}
-
 export interface DiffResult {
   clientId: string;
   scoreBefore: number;

@@ -97,10 +97,10 @@ export const EMPTY_TEMPLATE: TemplateReport = { unresolvedCount: 0, issues: [] }
 export const EMPTY_OVERFLOW: OverflowReport = { hasOverflow: false, issues: [] };
 export const EMPTY_VML: VmlReport = { hasVml: false, issues: [] };
 export const EMPTY_VISUAL: VisualReport = { issues: [] };
-export const EMPTY_TARGETING: import("./targeting-checker").TargetingReport = (() => {
-  const warnings: import("./types").CSSWarning[] = [];
-  return { detectedHacks: [], warnings, deprecatedWarnings: warnings };
-})();
+export const EMPTY_TARGETING: import("./targeting-checker").TargetingReport = {
+  detectedHacks: [],
+  warnings: [],
+};
 
 // ─── Content overflow thresholds (calibration knobs) ────────────────────────
 /** Standard email body width. Fixed px widths beyond this overflow the frame. */

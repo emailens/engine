@@ -176,11 +176,14 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
       `Do not remove any content; only modify the MJML structure and attributes needed to fix the issues.`,
     maizzle:
       `Apply all the fixes listed above to the original email code. ` +
-      `Return the complete fixed Maizzle template. ` +
-      `Use Tailwind CSS utility classes and Maizzle config settings as indicated in the fixes. ` +
+      `Return the complete fixed Maizzle template, in the dialect it was written in: ` +
+      `an HTML file for Maizzle 5, or a Vue single-file component for Maizzle 6. ` +
+      `Use Tailwind utility classes in either. ` +
+      `For fonts, v5 uses a stylesheet <link> in the layout head and v6 uses a <Font> component. ` +
+      `For inlining, v5 uses css.inline in config.js and v6 uses the css.inline transformer. ` +
       `Add MSO conditional comment table wrappers where needed for Outlook compatibility. ` +
       `Ensure the result is compatible with ${clientLabel}. ` +
-      `Do not remove any content; only modify the Tailwind classes and HTML structure needed to fix the issues.`,
+      `Do not remove any content; only modify the classes and markup needed to fix the issues.`,
     html:
       `Apply all the fixes listed above to the original email code. ` +
       `Return the complete fixed HTML code. ` +

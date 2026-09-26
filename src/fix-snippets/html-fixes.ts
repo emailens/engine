@@ -1,5 +1,14 @@
 import type { CodeFix } from "../types";
 
+const breakLongUrl = `<table role="presentation" width="100%" cellpadding="0"
+  cellspacing="0" border="0">
+  <tr>
+    <td width="100%">
+      https://example.com/&#8203;very/&#8203;long/&#8203;url?token=&#8203;abc123def456
+    </td>
+  </tr>
+</table>`;
+
 /**
  * HTML/generic code fix snippets: entries that do NOT have a
  * ::jsx, ::mjml, or ::maizzle suffix in their key.
@@ -25,14 +34,14 @@ export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
     font-size:14px; font-weight:bold;">Click Here</center>
 </v:roundrect>
 <![endif]-->
-<!--[if !mso]><!-->
+<!--[if !mso]><! -->
 <a href="https://example.com"
   style="background-color: #6d28d9; color: #fff;
          padding: 12px 32px; border-radius: 6px;
          text-decoration: none; display: inline-block;">
   Click Here
 </a>
-<!--<![endif]-->`,
+<!-- <![endif]-->`,
   },
 
   // ── background-image (Outlook VML) ────────────────────────────────────
@@ -43,20 +52,22 @@ export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
             background-size: cover; padding: 40px;">
   <h1 style="color: #fff;">Hello World</h1>
 </td>`,
-    after: `<!--[if gte mso 9]>
-<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
-  stroke="false" style="width:600px; height:300px;">
-  <v:fill type="frame" src="hero.jpg" />
-  <v:textbox inset="0,0,0,0">
-<![endif]-->
-<td style="background-image: url('hero.jpg');
-            background-size: cover; padding: 40px;">
-  <h1 style="color: #fff;">Hello World</h1>
-</td>
-<!--[if gte mso 9]>
-  </v:textbox>
-</v:rect>
-<![endif]-->`,
+    after: `<td background="hero.jpg" bgcolor="#333333" width="600" height="300" valign="top"
+    style="background-image: url('hero.jpg'); background-size: cover;">
+  <!--[if gte mso 9]>
+  <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
+    stroke="false" style="width:600px; height:300px;">
+    <v:fill type="frame" src="hero.jpg" color="#333333" />
+    <v:textbox inset="0,0,0,0">
+  <![endif]-->
+  <div style="padding: 40px;">
+    <h1 style="color: #fff;">Hello World</h1>
+  </div>
+  <!--[if gte mso 9]>
+    </v:textbox>
+  </v:rect>
+  <![endif]-->
+</td>`,
   },
 
   // ── display:flex → table layout ───────────────────────────────────────
@@ -74,12 +85,12 @@ export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
   <td width="50%" valign="top">Column 2</td>
 </tr></table>
 <![endif]-->
-<!--[if !mso]><!-->
+<!--[if !mso]><! -->
 <div style="display: flex; gap: 16px;">
   <div style="flex: 1;">Column 1</div>
   <div style="flex: 1;">Column 2</div>
 </div>
-<!--<![endif]-->`,
+<!-- <![endif]-->`,
   },
 
   // ── display:grid → table layout ───────────────────────────────────────
@@ -112,10 +123,8 @@ export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
             padding: 40px; color: #fff;">
   Content here
 </td>`,
-    after: `<!-- Always declare a solid background-color before the gradient.
-     Clients that strip gradients will show the fallback color. -->
-<td style="background-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+    after: `<td style="background-color: #667eea;
+            background-image: linear-gradient(135deg, #667eea, #764ba2);
             padding: 40px; color: #fff;">
   Content here
 </td>`,
@@ -128,22 +137,21 @@ export const HTML_FIX_DATABASE: Record<string, CodeFix> = {
             padding: 40px; color: #fff;">
   Content here
 </td>`,
-    after: `<!--[if gte mso 9]>
-<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
-  stroke="false" style="width:600px;">
-  <v:fill type="gradient" color="#667eea" color2="#764ba2"
-    angle="135" />
-  <v:textbox inset="0,0,0,0">
-<![endif]-->
-<td style="background-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            padding: 40px; color: #fff;">
-  Content here
-</td>
-<!--[if gte mso 9]>
-  </v:textbox>
-</v:rect>
-<![endif]-->`,
+    after: `<td bgcolor="#667eea" width="600" height="200"
+    style="background-color: #667eea;
+           background-image: linear-gradient(135deg, #667eea, #764ba2);">
+  <!--[if gte mso 9]>
+  <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
+    stroke="false" style="width:600px;height:200px;">
+    <v:fill type="gradient" color="#667eea" color2="#764ba2" angle="135" />
+    <v:textbox inset="0,0,0,0">
+  <![endif]-->
+  <div style="padding: 40px; color: #fff;">Content here</div>
+  <!--[if gte mso 9]>
+    </v:textbox>
+  </v:rect>
+  <![endif]-->
+</td>`,
   },
 
   // ── <style> stripped by Gmail ──────────────────────────────────────────
@@ -377,8 +385,7 @@ h1 {
             box-sizing: border-box;">
   Content; total width stays 300px
 </div>`,
-    after: `<!-- Set width to content-width (300 - 40 = 260px) -->
-<div style="width: 300px;">
+    after: `<div style="width: 300px;">
   <div style="padding: 20px;">
     Content; padding on inner element
   </div>
@@ -392,14 +399,9 @@ h1 {
     before: `<head>
   <link rel="stylesheet" href="styles.css" />
 </head>`,
-    after: `<head>
-  <style>
-    /* Paste your CSS here, or use a build tool like
-       juice/inline-css to inline automatically */
-    .container { max-width: 600px; margin: 0 auto; }
-    .header { background-color: #6d28d9; padding: 32px; }
-  </style>
-</head>`,
+    after: `<div style="max-width: 600px; margin: 0 auto;">
+  <div style="background-color: #6d28d9; padding: 32px;"></div>
+</div>`,
   },
 
   // ── dark-mode (Apple Mail) ────────────────────────────────────────────
@@ -410,7 +412,10 @@ h1 {
   .header { background-color: #6d28d9; }
   .content { background-color: #ffffff; color: #333; }
 </style>`,
-    after: `<style>
+    after: `<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
   .header { background-color: #6d28d9; }
   .content { background-color: #ffffff; color: #333; }
 
@@ -419,8 +424,6 @@ h1 {
       background-color: #1a1a2e !important;
       color: #e0e0e0 !important;
     }
-    /* Force images to stay visible */
-    img { opacity: 1 !important; }
   }
 </style>`,
   },
@@ -492,20 +495,21 @@ h1 {
     before: `<td style="background: url('bg.jpg') center/cover no-repeat;">
   Content
 </td>`,
-    after: `<!--[if gte mso 9]>
-<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
-  stroke="false" style="width:600px; height:400px;">
-  <v:fill type="frame" src="bg.jpg" />
-  <v:textbox inset="0,0,0,0">
-<![endif]-->
-<td style="background: url('bg.jpg') center/cover no-repeat;
-            background-color: #333;">
-  Content
-</td>
-<!--[if gte mso 9]>
-  </v:textbox>
-</v:rect>
-<![endif]-->`,
+    after: `<td background="bg.jpg" bgcolor="#333333" width="600" height="400" valign="top"
+    style="background-color: #333; background-image: url('bg.jpg');
+           background-size: cover; background-position: center; background-repeat: no-repeat;">
+  <!--[if gte mso 9]>
+  <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true"
+    stroke="false" style="width:600px; height:400px;">
+    <v:fill type="frame" size="100%,100%" src="bg.jpg" color="#333333" />
+    <v:textbox inset="0,0,0,0">
+  <![endif]-->
+  <div>Content</div>
+  <!--[if gte mso 9]>
+    </v:textbox>
+  </v:rect>
+  <![endif]-->
+</td>`,
   },
 
   // ── overflow (Gmail strips it) ────────────────────────────────────────
@@ -539,38 +543,21 @@ h1 {
   // ── word-break → table cell wrapping ──────────────────────────────────
   "word-break": {
     language: "html",
-    description: "Wrap long text in a table cell to force line breaks without word-break",
+    description: "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width",
     before: `<span style="word-break: break-all;">
   https://example.com/very/long/url?token=abc123def456
 </span>`,
-    after: `<!-- Table cells force text wrapping in all clients including Outlook -->
-<table role="presentation" width="100%" cellpadding="0"
-  cellspacing="0" border="0">
-  <tr>
-    <td style="word-break: break-all; overflow-wrap: break-word;
-               word-wrap: break-word;">
-      https://example.com/very/long/url?token=abc123def456
-    </td>
-  </tr>
-</table>`,
+    after: breakLongUrl,
   },
 
   // ── overflow-wrap → table cell wrapping ───────────────────────────────
   "overflow-wrap": {
     language: "html",
-    description: "Use a table cell to force word wrapping without overflow-wrap",
+    description: "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width",
     before: `<p style="overflow-wrap: break-word;">
   https://example.com/very/long/url?token=abc123def456
 </p>`,
-    after: `<table role="presentation" width="100%" cellpadding="0"
-  cellspacing="0" border="0">
-  <tr>
-    <td style="overflow-wrap: break-word; word-wrap: break-word;
-               word-break: break-all;">
-      https://example.com/very/long/url?token=abc123def456
-    </td>
-  </tr>
-</table>`,
+    after: breakLongUrl,
   },
 
   // ── text-shadow → border/font-weight alternative ──────────────────────
@@ -665,26 +652,25 @@ h1 {
   </tr>
 </table>
 <![endif]-->
-<!--[if !mso]><!-->
+<!--[if !mso]><! -->
 <a href="https://example.com"
   style="background-color: #6d28d9; color: #fff;
          padding: 12px 32px; display: inline-block;
          text-decoration: none;">
   Click Here
 </a>
-<!--<![endif]-->`,
+<!-- <![endif]-->`,
   },
 
   // ── css-hack (replace deprecated hack with clean modern targeting) ───────
   "css-hack": {
     language: "html",
-    description: "Remove deprecated/brittle CSS hack and use standard conditional or wrapper targeting",
+    description: "Remove this deprecated selector hack. How to Target's working iOS Mail rule is @supports (-webkit-overflow-scrolling:touch) and (color:#ffff)",
     before: `<style>
   _:-webkit-full-screen, :root .card { background: #333; }
 </style>`,
     after: `<style>
-  /* Use modern @supports or client wrapper targeting */
-  @supports (-webkit-overflow-scrolling: touch) {
+  @supports (-webkit-overflow-scrolling:touch) and (color:#ffff) {
     .card { background: #333; }
   }
 </style>`,
@@ -695,7 +681,8 @@ h1 {
     language: "css",
     description: "Use [data-ogsc] to override automated dark mode colors in Outlook Web",
     before: `.dark-text { color: #111827; }`,
-    after: `[data-ogsc] .dark-text {
+    after: `.dark-text { color: #111827; }
+[data-ogsc] .dark-text {
   color: #f9fafb !important;
 }`,
   },
@@ -705,7 +692,8 @@ h1 {
     language: "css",
     description: "Use [data-ogsb] to override automated dark mode backgrounds in Outlook Web",
     before: `.dark-bg { background-color: #ffffff; }`,
-    after: `[data-ogsb] .dark-bg {
+    after: `.dark-bg { background-color: #ffffff; }
+[data-ogsb] .dark-bg {
   background-color: #1f2937 !important;
 }`,
   },

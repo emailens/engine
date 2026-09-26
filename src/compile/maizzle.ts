@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { extname, join } from "node:path";
 import { CompileError } from "./errors.js";
 
 /** Maximum Maizzle source size: 512KB */
@@ -21,43 +24,41 @@ const COMPILE_TIMEOUT_MS = 15_000;
 const DANGEROUS_DIRECTIVE_RE =
   /<\s*(?:extends|component|fetch|include|module|slot|fill|raw|block|yield)\b/i;
 
-/**
- * Compile a Maizzle template string into an HTML email string.
- *
- * Pipeline:
- *  1. Validate input (size, basic structure check)
- *  2. Reject inputs containing PostHTML file-access directives
- *  3. Compile using @maizzle/framework
- *
- * Security:
- *  - PostHTML file-system directives are rejected at validation time
- *    to prevent server-side file reads and SSRF.
- *  - Template expressions ({{ expr }}) are evaluated by posthtml-expressions
- *    with empty `locals`, so unknown identifiers like `process` or `require`
- *    return the literal string '{local}' rather than accessing Node.js globals.
- *  - A hard timeout prevents pathological PostCSS/Tailwind inputs from
- *    hanging indefinitely.
- *
- * Requires peer dependency: @maizzle/framework
- */
+/** A Maizzle 6 template is a Vue SFC. Anything else is a v5 HTML string. */
+function isVueSfc(source: string): boolean {
+  return /<template[\s>]/i.test(source) && /<\/template>/i.test(source);
+}
+
+/** Maizzle 6 opens a single line whose extension is .vue or .md. */
+function isSingleLinePath(source: string): boolean {
+  const ext = extname(source);
+  return !source.includes("\n") && (ext === ".vue" || ext === ".md");
+}
+
+// ponytail: one empty directory for the process. Maizzle 6 scans root/components
+// and defaults root to cwd. A renderer the host already started keeps its dirs.
+const pastedRoot = mkdtempSync(join(tmpdir(), "emailens-maizzle-"));
+
+/** Imports, re-exports, SFC src, inlined stylesheets, and CSS file loads. */
+const VUE_LOADS_FILE_RE =
+  /\bimport\s*(?:[\s"'*{.(]|\/\*)|\brequire\s*\(|\bexport\s+(?:\*|\{)[\s\S]{0,400}?\bfrom\s*['"]|<\s*(?:script|template|style)\b[^>]*\bsrc\s*=|<\s*link\b[^>]*\binline\b|@(?:import|plugin|config)\b/i;
+
 /**
  * Is this the Maizzle 6 module?
  *
- * Maizzle 6 replaced the HTML template with a Vue single-file component, and
- * its `render` resolves a string argument as a path rather than as source.
- * Handed a template it reports `Failed to load url <!DOCTYPE html>…`, which
- * describes nothing an author can act on, so the caller checks first and says
- * what actually happened.
- *
- * `createRenderer` is the discriminator: exported by every v6 release and by
- * no v5 one. The module carries no version to read, so a capability probe is
- * what there is.
+ * `createRenderer` is exported by every v6 release and by no v5 one. The
+ * module carries no version to read, so a capability probe is what there is.
  */
 export function isMaizzle6(mod: object): boolean {
   return "createRenderer" in mod;
 }
 
-export async function compileMaizzle(source: string): Promise<string> {
+export async function compileMaizzle(
+  source: string,
+  // Test seam. Production always loads the installed package.
+  loadFramework: () => Promise<Record<string, unknown>> = () =>
+    import("@maizzle/framework") as Promise<Record<string, unknown>>,
+): Promise<string> {
   // ── 1. Validate ──────────────────────────────────────────────────────
   if (!source || !source.trim()) {
     throw new CompileError("Maizzle source must not be empty.", "maizzle", "validation");
@@ -71,8 +72,12 @@ export async function compileMaizzle(source: string): Promise<string> {
     );
   }
 
-  // ── 2. Block file-system and network PostHTML directives ─────────────
-  if (DANGEROUS_DIRECTIVE_RE.test(source)) {
+  const vue = isVueSfc(source);
+
+  // ── 2. Block file-system access ──────────────────────────────────────
+  // v5 PostHTML directives read files at compile time. A Vue SFC may use
+  // <slot> and <component>, so those two names are only blocked in HTML.
+  if (!vue && DANGEROUS_DIRECTIVE_RE.test(source)) {
     throw new CompileError(
       "Maizzle templates may not use <extends>, <component>, <fetch>, <include>, " +
         "<module>, <slot>, <fill>, <raw>, <block>, or <yield> directives. These directives " +
@@ -81,50 +86,85 @@ export async function compileMaizzle(source: string): Promise<string> {
       "validation",
     );
   }
+  // ponytail: a Vue <script> runs in Maizzle's SSR, same as the Maizzle CLI.
+  // Not a sandbox. This regex is the file-load shapes, not a JS parser.
+  // Isolated-vm if untrusted SFCs ever matter.
+  if (vue && VUE_LOADS_FILE_RE.test(source)) {
+    throw new CompileError(
+      "Maizzle Vue templates may not import or require other files. Paste one self-contained .vue component.",
+      "maizzle",
+      "validation",
+    );
+  }
 
   // ── 3. Load peer dependency ──────────────────────────────────────────
   let maizzleRender: (
     input: string,
-    options: Record<string, unknown>,
+    options?: Record<string, unknown>,
   ) => Promise<{ html: string }>;
 
   let maizzle: Record<string, unknown>;
   try {
-    maizzle = (await import("@maizzle/framework")) as unknown as Record<string, unknown>;
+    maizzle = await loadFramework();
   } catch {
     throw new CompileError(
       'Maizzle compilation requires "@maizzle/framework". Install it:\n' +
-        "  npm install @maizzle/framework@5",
+        "  npm install @maizzle/framework@5   # HTML templates\n" +
+        "  npm install @maizzle/framework@6   # Vue single-file components",
       "maizzle",
       "compile",
     );
   }
 
-  if (isMaizzle6(maizzle)) {
+  const v6 = isMaizzle6(maizzle);
+  if (vue && !v6) {
     throw new CompileError(
-      "Maizzle 6 is installed, and this engine compiles Maizzle 5 templates.\n" +
-        "Maizzle 6 renders Vue single-file components rather than HTML, so an\n" +
-        "HTML template is not something it can read. Install the supported major:\n" +
-        "  npm install @maizzle/framework@5",
+      "This is a Vue single-file component, and the installed Maizzle is v5, which compiles HTML.\n" +
+        "Install the Vue compiler:\n" +
+        "  npm install @maizzle/framework@6",
       "maizzle",
       "compile",
+    );
+  }
+  if (!vue && v6) {
+    throw new CompileError(
+      "Maizzle 6 compiles Vue single-file components, not HTML templates.\n" +
+        "Pass the contents of the .vue file, including its <template> block.\n" +
+        "HTML templates need @maizzle/framework@5.",
+      "maizzle",
+      "compile",
+    );
+  }
+  if (vue && v6 && isSingleLinePath(source)) {
+    throw new CompileError(
+      "Maizzle 6 would open this string as a file path. Paste the .vue contents, including a newline.",
+      "maizzle",
+      "validation",
     );
   }
   maizzleRender = maizzle.render as typeof maizzleRender;
 
+  // v6 render() takes the SFC string and runs SSR plus the transformer
+  // pipeline. Defaults already inline CSS. root is an empty directory so a
+  // pasted <Secret /> cannot load cwd/components. v5 still needs the explicit
+  // options, and empty locals so {{ process }} cannot see Node globals.
+  const options = v6
+    ? { root: pastedRoot }
+    : {
+        css: {
+          inline: {
+            removeInlinedSelectors: true,
+            applyWidthAttributes: true,
+            applyHeightAttributes: true,
+          },
+          shorthand: true,
+          sixHex: true,
+        },
+        locals: {},
+      };
+
   // ── 4. Compile with timeout ──────────────────────────────────────────
-  const compilePromise = maizzleRender(source, {
-    css: {
-      inline: {
-        removeInlinedSelectors: true,
-        applyWidthAttributes: true,
-        applyHeightAttributes: true,
-      },
-      shorthand: true,
-      sixHex: true,
-    },
-    locals: {},
-  });
+  const compilePromise = maizzleRender(source, options);
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     const t = setTimeout(() => {
