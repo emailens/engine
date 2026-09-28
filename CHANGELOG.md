@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.2 - 2026-09-28
+
+### Fixed
+
+- **The AI fix prompt names which Outlook a fallback covers.** A
+  `v:roundrect`, a `v:fill`, a matching table width, and `mso-padding-alt`
+  clear Outlook Classic. They do not clear New Outlook.
+
 ## 0.14.1 - 2026-09-28
 
 A patch. `generateCompatibilityScore` keeps the same arguments, the same return
@@ -51,10 +59,6 @@ the number.
 
   `background-color: transparent` on `<body>` can still count as a lost
   background.
-
-- **The AI fix prompt names which Outlook a fallback covers.** A
-  `v:roundrect`, a `v:fill`, a matching table width, and `mso-padding-alt`
-  clear Outlook Classic. They do not clear New Outlook.
 
 ## 0.14.0 - 2026-09-26
 
