@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.14.1 - 2026-09-28
+
+A patch. `generateCompatibilityScore` keeps the same arguments, the same return
+shape, and the same formula. `^0.14.0` picks this up. What changes is which
+findings stay warnings: a loss that a fallback still carries no longer moves
+the number.
+
+### Fixed
+
+- **The compatibility score counts a lost layout.** The formula is still
+  `100 - (errors × 10) - (warnings × 3)`, info is still free, and one property
+  still costs one point however many times it appears. `analyzeEmail`,
+  `auditEmail`, and `createSession` share that list. A remediated occurrence
+  becomes info and stays on the report. An unfixed one stays a warning.
+
+  Outlook Classic is graded on the branch it reads. CSS that exists only
+  inside `<!--[if !mso]>` stays info, because Word never applied it. New
+  Outlook is graded on the live document. VML and `mso-padding-alt` do not
+  clear a New Outlook finding.
+
+  - **border-radius** clears when a `v:roundrect` wraps that control, or the
+    control's only content is the roundrect. A card that also holds other
+    content still counts.
+  - **background-image, background-position, background-repeat,
+    background-origin, and linear-gradient** clear when a shape with `v:fill`
+    or `v:background` paints that container. A bare `v:rect` does not.
+    `background: url(...)` counts as a lost image, and position, repeat, and
+    origin written in that shorthand count on their own. A bare `url()` is one
+    point. `box-shadow` and `text-shadow` still count.
+  - **max-width** clears when the element is a table, or an ancestor table's
+    width matches, including `600` and `600px`. A 600 shell does not clear
+    `max-width: 280px`.
+  - **padding** clears on `td` and `th`. On Outlook Classic it also clears
+    when an ancestor cell has `mso-padding-alt`. A row whose cells disagree
+    on vertical padding still counts.
+  - **margin** counts when it is negative, when it is `auto` without
+    centering, and when it sits on `span` or `body` without a padded cell.
+  - **float, display:flex, and display:grid** clear when that box is only on
+    the branch Word does not read.
+  - **A body background** is a warning when it exists only on `<body>` for a
+    client that replaces `<body>`, unless a full-width wrapper repeats it. It
+    is not charged again when `<body>` is already a non-info finding.
+
+  Negative margin, an elliptical `border-radius`, `float: inline-start`,
+  `float: inline-end`, and `display: inline-flex` stay warnings for the
+  clients whose notes name them. Style-survival issues and a broken VML shape
+  fold into the same score. The Gmail 16 KB ceiling stays an error. One broken
+  shape does not uncover every other radius or fill in the document.
+
+  `background-color: transparent` on `<body>` can still count as a lost
+  background.
+
 ## 0.14.0 - 2026-09-26
 
 `^0.13.0` will not pick this up. npm's caret on `0.13.x` stops before `0.14.0`.

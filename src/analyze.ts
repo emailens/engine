@@ -27,6 +27,7 @@ import { extractCssVariables, resolveCssValue } from "./css-variables";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, type AnalysisOptions } from "./parse-html";
 import { resolveMsoBranch } from "./vml-render";
+import { applyIntent } from "./intent-score";
 
 /** The one client that reads conditional comments. */
 const WORD_ENGINE_CLIENT = "outlook-windows-legacy";
@@ -772,7 +773,11 @@ export function analyzeDocument(
 ): CompatibilityPass {
   const pass = analyzeEmailFromDom($, framework, source, targetingPolicy, html);
   return {
-    warnings: withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+    warnings: applyIntent(
+      html,
+      withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+      framework,
+    ),
     targeting: pass.targeting,
   };
 }
@@ -808,7 +813,9 @@ export function analyzeAllBranches(
  *
  * The renderer already resolves this branch. Analysing a different branch from
  * the one we draw would leave the preview and the findings describing two
- * different emails, which is the state this repairs.
+ * different emails, which is the state this repairs. A property that survives
+ * only inside `<!--[if !mso]>` is kept as info: Word never applied it, so it
+ * cannot cost Outlook Classic a point.
  *
  * ponytail: a second parse, not a second analyzer. The existing rules run
  * unchanged against resolved markup, and only Word-engine findings are taken
@@ -836,16 +843,17 @@ function withOutlookBranch(
   }
 
   // Locations come from the first pass, which is the only one anchored to the
-  // source the caller holds. Findings unique to the branch carry none rather
-  // than a position into rewritten markup.
+  // source the caller holds. A finding that exists only inside `<!--[if !mso]>`
+  // is markup Word never reads: keep it as info so it does not score.
   const kept = warnings.filter((w) => w.client !== WORD_ENGINE_CLIENT);
   const firstPassWord = warnings.filter((w) => w.client === WORD_ENGINE_CLIENT);
+  const branchProps = new Set(branchWarnings.map((w) => w.property));
   const byKey = new Map(firstPassWord.map((w) => [`${w.property}:${w.severity}`, w]));
   const merged = branchWarnings.map((w) => byKey.get(`${w.property}:${w.severity}`) ?? w);
-  for (const w of firstPassWord) {
-    if (!merged.some((m) => m.property === w.property && m.severity === w.severity)) merged.push(w);
-  }
-  return [...kept, ...merged];
+  const onlyFallback = firstPassWord
+    .filter((w) => !branchProps.has(w.property))
+    .map((w) => ({ ...w, severity: "info" as const }));
+  return [...kept, ...merged, ...onlyFallback];
 }
 
 function getFixType(prop: string): FixType {

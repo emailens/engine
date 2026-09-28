@@ -103,14 +103,15 @@ export type {
   TargetingPolicy,
 } from "./types";
 
+export { TARGETING_HACKS } from "./rules/targeting-hacks.generated";
+export type { TargetingHack, HackStatus } from "./rules/targeting-hacks.generated";
 export {
-  TARGETING_HACKS,
   getTargetingHacksForClient,
   getWorkingTargetingHacks,
   TARGETING_MATCHERS,
   detectSelectorListTargetingScope,
-} from "./rules/targeting-hacks";
-export type { TargetingHack, HackStatus, TargetingMatcher, TargetingSimulate } from "./rules/targeting-hacks";
+} from "./rules/targeting-matchers";
+export type { TargetingMatcher, TargetingSimulate } from "./rules/targeting-matchers";
 export { checkTargetingHacks } from "./targeting-checker";
 export type { DetectedHack, TargetingReport } from "./targeting-checker";
 

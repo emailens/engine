@@ -375,7 +375,15 @@ describe("robustness", () => {
     }
   });
 
-  test.each(["cerberus-newsletter.html", "leemunroe-responsive.html", "receipt-notification.html"])(
+  test.each([
+    "cerberus-newsletter.html",
+    "leemunroe-responsive.html",
+    "receipt-notification.html",
+    "client-campaign.html",
+    "abandoned-cart-warm.html",
+    "shipping-luxe.html",
+    "mjml-newsletter.html",
+  ])(
     "every loc in %s is well formed",
     (name) => {
       const html = readFileSync(join(import.meta.dir, "fixtures", name), "utf8");
@@ -969,7 +977,15 @@ describe("accuracy: ground truth by construction", () => {
 });
 
 describe("accuracy: ordering invariant", () => {
-  test.each(["cerberus-newsletter.html", "leemunroe-responsive.html", "receipt-notification.html"])(
+  test.each([
+    "cerberus-newsletter.html",
+    "leemunroe-responsive.html",
+    "receipt-notification.html",
+    "client-campaign.html",
+    "abandoned-cart-warm.html",
+    "shipping-luxe.html",
+    "mjml-newsletter.html",
+  ])(
     "%s: every warning's occurrences are in document order, without duplicates",
     (name) => {
       const html = readFileSync(join(import.meta.dir, "fixtures", name), "utf8");

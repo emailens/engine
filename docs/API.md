@@ -272,7 +272,8 @@ costs what it costs once.
 
 Partial support (`info`) is not scored. It is counted and returned in
 `ClientScore.info`, but it does not move the number; a property that mostly
-works is not a defect.
+works is not a defect. A finding also becomes `info` when a fallback this
+client can see still carries that layout. The finding stays on the report.
 
 ---
 

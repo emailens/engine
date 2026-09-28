@@ -24,13 +24,18 @@ const inline = (decl: string): CSSWarning[] =>
   analyzeEmail(`<html><body><div style="${decl}">x</div></body></html>`);
 
 /** Clients reporting `decl`'s property at info (partial) severity. */
-const partialClients = (decl: string): string[] => {
+const partialClients = (decl: string): string[] => clientsAt(decl, "info");
+
+/** Clients for whom the intent pass turned that partial into a score. */
+const warnedClients = (decl: string): string[] => clientsAt(decl, "warning");
+
+function clientsAt(decl: string, severity: "info" | "warning"): string[] {
   const prop = decl.split(":")[0].trim().toLowerCase();
   return inline(decl)
-    .filter((w) => w.property === prop && w.severity === "info")
+    .filter((w) => w.property === prop && w.severity === severity)
     .map((w) => w.client)
     .sort();
-};
+}
 
 const OUTLOOK_WORD = ["outlook-windows", "outlook-windows-legacy"];
 const YAHOO_AOL = ["aol", "yahoo-mail", "yahoo-mail-android", "yahoo-mail-ios"];
@@ -111,8 +116,8 @@ describe("value-aware partial support: the value the note is about", () => {
   });
 
   it("border-radius: only the elliptical `/` shorthand", () => {
-    expect(partialClients("border-radius: 27% 73% 70% 30% / 30% 34% 66% 70%")).toEqual(
-      YAHOO_AOL.sort(),
+    expect(warnedClients("border-radius: 27% 73% 70% 30% / 30% 34% 66% 70%")).toEqual(
+      sorted(OUTLOOK_WORD, YAHOO_AOL),
     );
   });
 
@@ -453,9 +458,11 @@ describe("value-aware partial support: the three inherited properties", () => {
     // The minus of `calc(100% - 10px)` is an operator. Requiring the sign to be
     // glued to its digits is the whole difference.
     expect(partialClients("margin: calc(100% - 10px)")).toEqual([]);
+    expect(warnedClients("margin: calc(100% - 10px)")).toEqual([]);
     expect(partialClients("margin: 0 calc(50% - 10px)")).toEqual([]);
+    expect(warnedClients("margin: 0 calc(50% - 10px)")).toEqual([]);
     expect(partialClients("letter-spacing: calc(1px - 2px)")).toEqual([]);
-    expect(partialClients("margin: -8px")).not.toEqual([]);
+    expect(warnedClients("margin: -8px")).not.toEqual([]);
   });
 
   it("margin: reads its own note rather than assuming what it says", () => {
