@@ -52,6 +52,10 @@ the number.
   `background-color: transparent` on `<body>` can still count as a lost
   background.
 
+- **The AI fix prompt names which Outlook a fallback covers.** A
+  `v:roundrect`, a `v:fill`, a matching table width, and `mso-padding-alt`
+  clear Outlook Classic. They do not clear New Outlook.
+
 ## 0.14.0 - 2026-09-26
 
 `^0.13.0` will not pick this up. npm's caret on `0.13.x` stops before `0.14.0`.

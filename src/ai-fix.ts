@@ -124,10 +124,11 @@ Rules:
 - Common structural patterns:
   - word-break/overflow-wrap unsupported → insert &#8203; in long tokens, inside a width-constrained <td>. A cell alone does not wrap a URL
   - display:flex/grid → convert to <table> layout (match the original column count and proportions). Outlook needs width attributes, not classes
-  - border-radius in Outlook → use VML <v:roundrect> with <!--[if mso]> conditionals
-  - background-image in Outlook → <v:rect> inside the <td>, content in a <div> inside <v:textbox>. Do not put the <td> inside the textbox
+  - border-radius on Outlook Classic → a <v:roundrect> that wraps that control, inside <!--[if mso]>. A card that also holds other content still counts. New Outlook does not read VML, so a roundrect does not clear it
+  - background-image on Outlook Classic → a shape with <v:fill> or <v:background> that paints that container. A bare <v:rect> does not. New Outlook does not read VML
   - gradients → background-color plus background-image. The background shorthand resets the fallback
-  - max-width in Outlook → wrap in <!--[if mso]><table width="N"> conditional. React Email Container does not do this
+  - max-width on Outlook Classic → an ancestor table whose width matches, including the px. A 600 shell does not clear 280px
+  - padding on Outlook Classic → put it on a td or th, or on an ancestor cell as mso-padding-alt. New Outlook does not treat mso-padding-alt as a fallback
   - position:absolute → use <table> cells for layout
   - <svg> → replace with <img> pointing to a hosted PNG
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.

@@ -881,6 +881,8 @@ describe("AI_FIX_SYSTEM_PROMPT", () => {
     expect(AI_FIX_SYSTEM_PROMPT).toContain("table");
     expect(AI_FIX_SYSTEM_PROMPT).toContain("VML");
     expect(AI_FIX_SYSTEM_PROMPT).toContain("mso");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("Outlook Classic");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("New Outlook");
   });
 
   test("mentions framework formats", () => {
