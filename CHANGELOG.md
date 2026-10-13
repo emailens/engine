@@ -42,8 +42,13 @@ Apple Mail and Thunderbird. Each rule in the source names the case it rests on.
 - **A font declared with `@font-face` becomes Times New Roman in Outlook
   Classic.** Outlook 2007 to 2016 skip the rest of the stack. Outlook 2019
   uses the next family; the single Classic client shows the majority.
-- **A table inside a hidden `div` is drawn in Outlook Classic**, under an
-  inline `mso-hide: all` and under `display: none` from a class.
+- **`display: none` in Outlook Classic follows the element.** A `div` or a
+  `table` carrying it is drawn in full. A cell, a row and a span stay hidden.
+  A table inside a hidden `div`, cell or row is still drawn, as it is under
+  `mso-hide: all`.
+- **Lists in Outlook Classic** have no space above and one line of space
+  below that `margin: 0` does not remove. A `<br>` straight before a list adds
+  a line.
 - **VML is translated whatever prefix the email binds to the VML namespace**,
   and lengths in points are read.
 - **Stylesheet rules merge into inline styles in cascade order.** The last

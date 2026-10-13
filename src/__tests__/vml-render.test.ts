@@ -497,9 +497,17 @@ describe("applyMsoHide", () => {
       expect(styleOf(out, 'id="b"')).toMatch(hiddenDecl);
     });
 
-    test("a hidden td or span around a table is left hidden: only a div wrapper was observed", () => {
-      const cell = `<table><tr><td id="c" style="mso-hide:all">${TABLE}</td></tr></table>`;
-      expect(styleOf(applyMsoHide(cell), 'id="c"')).toMatch(hiddenDecl);
+    test("a table inside a hidden cell or row is drawn too; a hidden span is left hidden", () => {
+      // Probe sheet 09-follow-ups c21, c22: every Outlook version drew the table.
+      const cell = `<table><tr><td id="c" style="mso-hide:all"><b id="b">x</b>${TABLE}</td></tr></table>`;
+      const cellOut = applyMsoHide(cell);
+      expect(styleOf(cellOut, 'id="c"')).not.toMatch(hiddenDecl);
+      expect(styleOf(cellOut, 'id="b"')).toMatch(hiddenDecl);
+      const row = `<table><tr id="r" style="mso-hide:all"><td id="c">${TABLE}</td></tr></table>`;
+      expect(styleOf(applyMsoHide(row), 'id="r"')).not.toMatch(hiddenDecl);
+      // Not tested on a real client, so unchanged.
+      const span = `<span id="s" style="mso-hide:all">${TABLE}</span>`;
+      expect(styleOf(applyMsoHide(span), 'id="s"')).toMatch(hiddenDecl);
     });
 
     test("an email with no hidden div keeps its exact bytes", () => {

@@ -213,10 +213,45 @@ describe("Word box model", () => {
     expect(tag(out, 'id="t"')).not.toMatch(/#00AA00|rgb\(0,\s*170,\s*0\)/i);
   });
 
-  test("display:none from a class does not hide a table inside a div (07 c19)", () => {
-    const out = word(`<div id="t" class="h"><span id="s">gone</span>${TABLE}</div>`, `<style>.h{display:none !important}</style>`);
-    expect(tag(out, 'id="t"')).toContain("display:block!important");
-    expect(tag(out, 'id="s"')).toContain("display:none!important");
+  test("display:none hides neither a div nor a table, inline or by class (07 c19; 09 c23-c25)", () => {
+    const out = word(
+      `<div id="a" class="h">text</div><div id="b" style="display:none">text</div><table id="c" style="display:none"><tr><td>x</td></tr></table>`,
+      `<style>.h{display:none !important}</style>`,
+    );
+    expect(tag(out, 'id="a"')).toContain("display:block!important");
+    expect(tag(out, 'id="b"')).not.toMatch(/display:\s*none/);
+    expect(tag(out, 'id="c"')).not.toMatch(/display:\s*none/);
+    // With mso-hide:all the block is hidden, as before.
+    expect(tag(word(`<div id="d" style="display:none;mso-hide:all">text</div>`), 'id="d"')).toContain("display:none");
+  });
+
+  test("a hidden cell or row stays hidden, but a table inside it is drawn (09 c21, c22)", () => {
+    const cell = word(`<table><tr><td id="c" style="display:none"><img id="i" src="x.png">${TABLE}</td></tr></table>`);
+    expect(tag(cell, 'id="c"')).not.toMatch(/display:\s*none/);
+    expect(tag(cell, 'id="i"')).toMatch(/display:\s*none/);
+    // No table inside: the cell is simply hidden.
+    expect(tag(word(`<table><tr><td id="c" style="display:none">text</td></tr></table>`), 'id="c"')).toMatch(/display:\s*none/);
+    // A hidden span is hidden (09 c26).
+    expect(tag(word(`<p>a<span id="s" style="display:none">b</span>c</p>`), 'id="s"')).toMatch(/display:\s*none/);
+    const row = word(`<table><tr id="r" style="display:none"><td id="c">${TABLE}</td></tr></table>`);
+    expect(tag(row, 'id="r"')).not.toMatch(/display:\s*none/);
+  });
+
+  test("a div of nothing but invisible characters becomes one blank line; one with text is left alone", () => {
+    const run = "&zwnj;&nbsp;".repeat(60);
+    const out = word(`<div id="t" style="display:none">${run}</div><div id="u">sssssssssssssssssssssssss</div>`);
+    expect(out).not.toContain("&zwnj;");
+    expect(out).toContain("sssssssssssssssssssssssss");
+  });
+
+  test("a list has no space above and one line below, whatever its margin (09 c16, c17, c20)", () => {
+    const plain = tag(word(`<p>x</p><ul id="t" style="margin:0;padding:0"><li>a</li></ul>`), 'id="t"');
+    expect(plain).toMatch(/margin-top:\s*0/);
+    expect(plain).toMatch(/margin-bottom:\s*18px/);
+    expect(plain).not.toContain("margin-left");
+    const bare = tag(word(`<ul id="t"><li>a</li></ul>`), 'id="t"');
+    expect(bare).toMatch(/margin-left:\s*24px/);
+    expect(tag(word(`<div>x<br><ul id="t"><li>a</li></ul></div>`), 'id="t"')).toMatch(/margin-top:\s*1lh/);
   });
 
   test("no other client is touched", () => {

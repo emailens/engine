@@ -193,14 +193,16 @@ export function applyMsoHide(html: string): string {
  * `<div style="display:none;mso-hide:all">` wrapping a table rendered the
  * table at full size, with or without a stylesheet rule on the wrapper.
  *
- * The evidence is for a `<div>` wrapper. A hidden `<td>` or `<span>` around a
- * table was not tested, so those are left hidden as before.
+ * The same holds for a hidden cell and a hidden row: a table inside
+ * `<td style="display:none">` or under `<tr style="display:none">` was drawn
+ * on every version (probe sheet 09-follow-ups c21, c22). A hidden `<span>`
+ * around a table was not tested and is left hidden.
  *
  * A browser cannot show a child of a `display:none` parent, so the wrapper is
  * un-hidden and everything in it except the escaping tables is hidden instead.
  */
 function releaseNestedTables(html: string): string {
-  if (!/<table/i.test(html) || !/<div/i.test(html)) return html;
+  if (!/<table/i.test(html) || !/<(?:div|td|th|tr)\b/i.test(html)) return html;
   const $ = cheerio.load(html, null, /<html[\s>]/i.test(html));
   const isHidden = (el: AnyNode) =>
     MSO_HIDE.test($(el).attr("style") ?? "");
@@ -239,7 +241,21 @@ function releaseNestedTables(html: string): string {
   };
 
   let changed = false;
-  $("div[style]").each((_, div) => {
+  // A hidden row hands its hiding to its cells, which are then wrappers like
+  // any other; the row itself is only a container.
+  $("tr[style]").each((_, row) => {
+    if (!isHidden(row) || escaping(row).length === 0) return;
+    const el = $(row);
+    const rowStyle = el.attr("style") ?? "";
+    el.attr("style", withoutDisplayNone(rowStyle).replace(/(?:^|;)\s*mso-hide\s*:[^;]*/gi, "").replace(/^;/, ""));
+    el.children("td,th").each((_i, cell) => {
+      if (isHidden(cell)) return;
+      const style = $(cell).attr("style") ?? "";
+      $(cell).attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}mso-hide:all;${HIDE}`);
+    });
+    changed = true;
+  });
+  $("div[style], td[style], th[style]").each((_, div) => {
     if (!isHidden(div)) return;
     // Only the outermost hidden wrapper; anything nested is reached from it.
     if ($(div).parents().toArray().some((el) => isHidden(el))) return;

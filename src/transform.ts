@@ -12,7 +12,7 @@ import { parseInlineStyle, serializeStyle, splitStyleDeclarations } from "./styl
 import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
-import { applyWordBoxModel, dropWordUnknownColors } from "./word-layout";
+import { applyWordBoxModel, prepareWordSource } from "./word-layout";
 import { MAX_HTML_SIZE } from "./constants";
 import { shouldPreserveSelector, applyTargetingSimulation } from "./rules/targeting-matchers";
 
@@ -982,7 +982,7 @@ export function transformForClient(
   const wordEngine = isWordEngineClient(clientId) && /<!--\[if/i.test(html);
   const branch = wordEngine ? resolveMsoBranch(html) : html;
   // Before the downlevel pass, which would turn these into colours Word reads.
-  const source = isWordEngineClient(clientId) ? dropWordUnknownColors(branch) : branch;
+  const source = isWordEngineClient(clientId) ? prepareWordSource(branch) : branch;
 
   // Downlevel once per transformForClient call
   const downleveled = downlevelCSS(source);
@@ -1021,7 +1021,7 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   const hasOutlookBranch = /<!--\[if/i.test(html);
   // It also loses the colour formats Word cannot parse before the downlevel
   // pass rewrites them, which gives it its own source even with no branch.
-  const wordRaw = dropWordUnknownColors(hasOutlookBranch ? resolveMsoBranch(html) : html);
+  const wordRaw = prepareWordSource(hasOutlookBranch ? resolveMsoBranch(html) : html);
   const ownWordSource = wordRaw !== html;
   const outlookSource = ownWordSource ? downlevelCSS(wordRaw) : downleveled;
   // Parse each source once; clients clone the tree instead of reparsing it.

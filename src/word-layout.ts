@@ -44,6 +44,14 @@ const NATURAL_LINE = 1.15;
 /** Space on each side of a table floated with the align attribute (03-columns c02). */
 const TABLE_GUTTER = 3.5;
 
+/** Whitespace, non-breaking and zero-width characters, and soft hyphens: nothing a reader can see. */
+const INVISIBLE_ONLY = /^[\s\u00a0\u00ad\u034f\u200b-\u200d\u2007\ufeff]+$/;
+
+/** The line of space Word leaves under a list (09-follow-ups c16, c17). */
+const LIST_TRAILING_PX = 18;
+/** Where a list's box starts when the email sets no indent (09-follow-ups c16). */
+const LIST_INDENT_PX = 24;
+
 /** Word draws no border wider than 6pt, which is 8px. A 10px border measured 8px (01 c21, c22; 05 c20). */
 const MAX_BORDER_PX = 8;
 const capBorder = (value: string) =>
@@ -130,16 +138,11 @@ function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
           // An inline family is the more specific one and was handled above.
           if (timesFamily && !/font-family/i.test($(el).attr("style") ?? ""))
             override(el, `font-family:${TIMES}!important`);
-          // `display:none` from a class does not reach a table inside a div:
-          // the table was drawn at full size (07-style-delivery c19), the same
-          // escape as under an inline mso-hide. The div's other children stay
-          // hidden. ponytail: bare text directly in the div would show; wrap
-          // it the way releaseNestedTables does if that turns up.
-          if (hides && tag === "div" && $(el).find("table").length) {
-            override(el, "display:block!important");
-            for (const child of $(el).children().toArray()) {
-              if ((child as Element).tagName?.toLowerCase() !== "table") override(child as Element, "display:none!important");
-            }
+          // `display:none` from a class hides neither a div nor a table: a
+          // div holding a table and a div holding only text were both drawn
+          // (07-style-delivery c19; 09-follow-ups c25).
+          if (hides && (tag === "div" || tag === "table") && !/mso-hide/i.test($(el).attr("style") ?? "")) {
+            override(el, tag === "div" ? "display:block!important" : "display:table!important");
           }
           if (hasPadding && (tag === "div" || tag === "p" || tag === "span" || tag === "a"))
             override(el, "padding:0!important");
@@ -187,6 +190,34 @@ export function dropWordUnknownColors(html: string): string {
       // Per block, so a dropped declaration never eats the selector before it.
       `${open}${css.replace(/\{([^{}]*)\}/g, (_block, body: string) => `{${dropUnknown(body)}}`)}${close}`,
     );
+}
+
+/**
+ * `display:none` is honoured on a cell and a row, and nowhere else that was
+ * tried (09-follow-ups c21 to c25, Outlook 2007 to 2016; 2019 does hide a
+ * text-only div). The strip pass already removes `display` for Word, which is
+ * right for a div or a table: both are drawn in full, and that is why a hidden
+ * block needs `mso-hide:all` as well. A cell or a row is different: it stays
+ * hidden, with any table inside it still drawn, and so does a span (c26). So
+ * those are marked here,
+ * before the strip pass, for the mso-hide pass to act on.
+ */
+function markHiddenCells(html: string): string {
+  if (!/display\s*:\s*none/i.test(html)) return html;
+  return html.replace(
+    /(<(?:td|th|tr|span)\b[^>]*?\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
+    (whole, lead: string, dq?: string, sq?: string) => {
+      const style = dq ?? sq ?? "";
+      if (!/display\s*:\s*none/i.test(style) || /mso-hide\s*:/i.test(style)) return whole;
+      const quote = dq === undefined ? "'" : '"';
+      return `${lead}${quote}${style}${/;\s*$/.test(style) ? "" : ";"}mso-hide:all${quote}`;
+    },
+  );
+}
+
+/** Everything done to the source string for Word, before the downlevel and strip passes. */
+export function prepareWordSource(html: string): string {
+  return markHiddenCells(dropWordUnknownColors(html));
 }
 
 /** Families the email declares with @font-face. */
@@ -353,6 +384,43 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const after = serializeStyle(props);
     if (after) $(el).attr("style", after);
     else $(el).removeAttr("style");
+  });
+
+  // The run of invisible characters an email puts after its preheader is in a
+  // div hidden with `display:none`, which Word does not honour on a div, so
+  // the run is laid out. It is hundreds of non-breaking characters that a
+  // browser will not wrap, which pushed the whole preview wider than the
+  // email. Kept as the single blank line it amounts to.
+  // ponytail: one line is the least it can be; how many lines Word really
+  // gives it was not measured.
+  $("div").each((_, node) => {
+    const el = $(node);
+    if (el.children().length > 0) return;
+    const text = el.text();
+    if (text.length > 20 && INVISIBLE_ONLY.test(text)) el.text(String.fromCharCode(160));
+  });
+
+  // A list has no space above it and one line of space below that
+  // `margin:0` does not remove: two 20px items measured 59px with default
+  // margins and 58px with `margin:0;padding:0`, on every version
+  // (09-follow-ups c16, c17, c19). A `<br>` straight before the list adds a
+  // line of its own, where a browser swallows it (c20). The list's box starts
+  // 24px in when the email sets no indent (c16).
+  $("ul,ol").each((_, node) => {
+    const el = node as Element;
+    const props = parseInlineStyle($(el).attr("style") || "");
+    const margin = (props.get("margin") ?? "").trim().split(/\s+/).filter(Boolean);
+    const indented = props.has("margin-left") || props.has("padding-left") || props.has("padding") || margin.length > 0;
+    let previous = el.prev;
+    while (previous && previous.type === "text" && !previous.data.trim()) previous = previous.prev;
+    const afterBreak = previous?.type === "tag" && previous.name === "br";
+    props.set("margin-top", afterBreak ? "1lh!important" : "0!important");
+    props.set("margin-bottom", `${LIST_TRAILING_PX}px!important`);
+    if (!indented) {
+      props.set("margin-left", `${LIST_INDENT_PX}px`);
+      props.set("padding-left", `${40 - LIST_INDENT_PX}px`);
+    }
+    $(el).attr("style", serializeStyle(props));
   });
 
   // <picture> falls back to its <img>: a WebP <source> was passed over for
