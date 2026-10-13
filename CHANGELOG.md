@@ -3,8 +3,8 @@
 ## 0.14.4 - 2026-10-13
 
 A patch. No API changes. `^0.14.0` picks this up. Transformed HTML changes
-for Outlook Classic and for the desktop webmail clients, so previews and
-screenshots built on it will move.
+for Outlook Classic, and for every client that inlines stylesheet rules, so
+previews and screenshots built on it will move.
 
 Every change below was measured, not recalled: probe emails that isolate one
 declaration per case between colour markers, and four real campaigns, rendered
@@ -55,16 +55,15 @@ Apple Mail and Thunderbird. Each rule in the source names the case it rests on.
   declaration wins and the style attribute beats a rule, unless only the rule
   is `!important`. Before, the first value was kept, so
   `font-size:16px;font-size:10px` rendered at 16px.
-- **Desktop webmail keeps properties it was measured to apply.** Gmail:
-  `position`, `box-shadow`, `gap`, `display: grid`, `linear-gradient`.
-  Outlook.com and New Outlook: `position`. Yahoo: `position`, `box-shadow`,
-  `opacity`. AOL: `box-shadow`, `opacity`. The mobile apps are unchanged.
 
 ### Not changed
 
-- The support tables. Warnings and scores still follow caniemail, which lists
-  several of the webmail properties above as unsupported. The preview and the
-  warning can therefore disagree for those properties until that is settled.
+- The support tables, and what is stripped for webmail. The same measurements
+  showed Gmail, Outlook.com, Yahoo and AOL applying properties the tables list
+  as dropped (`position`, `box-shadow`, `gap`, `display: grid`,
+  `linear-gradient`, `opacity`, per client). That rests on one provider's
+  accounts, so it is held on the `fix/webmail-measured-strips` branch until a
+  second source confirms it.
 
 ## 0.14.3 - 2026-10-13
 
