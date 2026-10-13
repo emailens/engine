@@ -48,19 +48,55 @@ function addImportantToDeclarations(node: csstree.CssNode): void {
 }
 
 /** Inline <style> blocks into elements using css-tree. Returns non-inlinable CSS. */
-// Existing inline property wins. A later !important from a stylesheet replaces it.
-function mergeInline(existing: string, declText: string): string {
-  if (!existing.trim()) return declText;
-  const map = new Map<string, string>();
-  for (const part of splitStyleDeclarations(`${existing};${declText}`)) {
+const isImportant = (value: string) => /!important/i.test(value);
+
+/** Declarations as a map where a later one replaces an earlier one, unless only the earlier is !important. */
+function cascade(into: Map<string, string>, declText: string): Map<string, string> {
+  for (const part of splitStyleDeclarations(declText)) {
     const i = part.indexOf(":");
     if (i < 0) continue;
     const prop = part.slice(0, i).trim().toLowerCase();
     const value = part.slice(i + 1).trim();
-    const kept = map.get(prop);
-    if (prop && (!kept || (/!important/i.test(value) && !/!important/i.test(kept)))) map.set(prop, value);
+    if (!prop) continue;
+    const kept = into.get(prop);
+    if (kept !== undefined && isImportant(kept) && !isImportant(value)) continue;
+    // Re-inserted, so the property moves to the end: order decides between a
+    // shorthand and its longhands.
+    into.delete(prop);
+    into.set(prop, value);
   }
-  return serializeStyle(map);
+  return into;
+}
+
+/**
+ * What an element was given: by its own style attribute and by stylesheet
+ * rules. Kept apart because the two do not cascade as one list. Within each,
+ * the last declaration wins, which is what every client measured does with a
+ * property written twice (Emailens probe sheet 04-typography c14-c18, Gmail
+ * included). Between them the attribute wins, unless only the rule is
+ * !important.
+ *
+ * Merging them as one list, first value kept, got both halves wrong: an
+ * author's `font-size:16px;font-size:10px` rendered at 16px, and the first
+ * matching rule beat every later one.
+ * ponytail: rules apply in source order, not by specificity. Add specificity
+ * if an email turns up where it changes the result.
+ */
+interface Inlined {
+  author: Map<string, string>;
+  sheet: Map<string, string>;
+}
+
+function mergeInline(state: Inlined, declText: string): string {
+  cascade(state.sheet, declText);
+  const out = new Map(state.sheet);
+  for (const [prop, value] of state.author) {
+    const fromSheet = out.get(prop);
+    if (fromSheet !== undefined && isImportant(fromSheet) && !isImportant(value)) continue;
+    out.delete(prop);
+    out.set(prop, value);
+  }
+  return serializeStyle(out);
 }
 
 function inlineStyles($: cheerio.CheerioAPI): string {
@@ -72,6 +108,7 @@ function inlineStyles($: cheerio.CheerioAPI): string {
   if (styleBlocks.length === 0) return "";
 
   const preserved: string[] = [];
+  const inlined = new WeakMap<object, Inlined>();
 
   for (const block of styleBlocks) {
     let ast: csstree.CssNode;
@@ -122,8 +159,12 @@ function inlineStyles($: cheerio.CheerioAPI): string {
 
         try {
           $(selectorText).each((_, el) => {
-            const existing = $(el).attr("style") || "";
-            $(el).attr("style", mergeInline(existing, declText));
+            let state = inlined.get(el);
+            if (!state) {
+              state = { author: cascade(new Map(), $(el).attr("style") || ""), sheet: new Map() };
+              inlined.set(el, state);
+            }
+            $(el).attr("style", mergeInline(state, declText));
           });
         } catch {
           // Invalid selector for cheerio, skip
