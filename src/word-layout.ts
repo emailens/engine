@@ -53,12 +53,16 @@ const flattenMargin = (value: string) =>
     .map((part) => (part === "auto" || /^-/.test(part) ? "0" : part))
     .join(" ");
 
-/** True when the element has no text of its own, only other elements. */
+/**
+ * True when the element has no line of text for a background to sit behind.
+ * Text inside a nested table belongs to that table's cells, not to this
+ * element, so it does not count; text in an inline child such as a span does
+ * (04-typography c25, c26: a div holding only a span kept its background).
+ */
 function holdsNoText($: CheerioAPI, el: Element): boolean {
-  return $(el)
-    .contents()
-    .toArray()
-    .every((node) => node.type !== "text" || !node.data.replace(/ /g, " ").trim());
+  const own = $(el).clone();
+  own.find("table").remove();
+  return !own.text().replace(/ /g, " ").trim();
 }
 
 /** Top-level rules of a stylesheet. At-rule blocks are skipped: Word ignores @media and @supports. */
