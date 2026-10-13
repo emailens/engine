@@ -133,6 +133,59 @@ describe("Word box model", () => {
     expect(out).toContain("#171717");
   });
 
+  test("a div holding only a non-breaking space keeps its background (02 c27)", () => {
+    expect(tag(word(`<div id="t" style="background-color:#FF8800">&nbsp;</div>`), 'id="t"')).toContain("background");
+  });
+
+  test("a line-height below the font's own height is raised to it, unless the rule is exactly (02 c27; 04 c08)", () => {
+    expect(tag(word(`<div id="t" style="font-size:30px;line-height:30px">x</div>`), 'id="t"')).toMatch(/line-height:\s*35px/);
+    expect(tag(word(`<div id="t" style="font-size:16px;line-height:24px">x</div>`), 'id="t"')).toMatch(/line-height:\s*24px/);
+    expect(
+      tag(word(`<div id="t" style="font-size:30px;line-height:30px;mso-line-height-rule:exactly">x</div>`), 'id="t"'),
+    ).toMatch(/line-height:\s*30px/);
+  });
+
+  test("mso-line-height-alt replaces the line-height", () => {
+    const out = tag(word(`<div id="t" style="font-size:16px;line-height:1.50;mso-line-height-alt:1.5em">x</div>`), 'id="t"');
+    expect(out).toMatch(/line-height:\s*1.5em/);
+  });
+
+  test("text-align:centre on a div centres a table inside it (03 c17)", () => {
+    expect(tag(word(`<div id="t" style="text-align:center">${TABLE}</div>`), 'id="t"')).toContain('align="center"');
+  });
+
+  test("a width attribute written with px is not read (02 c06)", () => {
+    expect(tag(word(`<table id="t" width="300px"><tr><td>x</td></tr></table>`), 'id="t"')).not.toContain("width");
+    expect(tag(word(`<table id="t" width="300"><tr><td>x</td></tr></table>`), 'id="t"')).toContain('width="300"');
+  });
+
+  test("a table floated with align keeps a gutter unless the email removes it (03 c02)", () => {
+    expect(tag(word(`<table id="t" align="left"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/margin-left:\s*3.5px/);
+    expect(
+      tag(word(`<table id="t" align="left" style="mso-table-lspace:0pt;mso-table-rspace:0pt"><tr><td>x</td></tr></table>`), 'id="t"'),
+    ).not.toContain("margin");
+  });
+
+  test("a right-to-left table sits on the right (03 c21)", () => {
+    expect(tag(word(`<table id="t" dir="rtl"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/margin-left:\s*auto/);
+  });
+
+  test("a var() declaration is dropped, so the inline colour it would override stays (07 c13)", () => {
+    const out = word(
+      `<table id="t" class="v" style="background-color:#FF8800"><tr><td>x</td></tr></table>`,
+      `<style>.v{--k:#00AA00;background-color:var(--k) !important}</style>`,
+    );
+    expect(tag(out, 'id="t"')).toContain("#FF8800");
+    expect(out).not.toContain("var(");
+    expect(tag(out, 'id="t"')).not.toMatch(/#00AA00|rgb\(0,\s*170,\s*0\)/i);
+  });
+
+  test("display:none from a class does not hide a table inside a div (07 c19)", () => {
+    const out = word(`<div id="t" class="h"><span id="s">gone</span>${TABLE}</div>`, `<style>.h{display:none !important}</style>`);
+    expect(tag(out, 'id="t"')).toContain("display:block!important");
+    expect(tag(out, 'id="s"')).toContain("display:none!important");
+  });
+
   test("no other client is touched", () => {
     const out = gmail(`<div id="t" style="padding:20px;width:200px;margin:0 auto">text</div>`);
     expect(tag(out, 'id="t"')).toContain("padding");
