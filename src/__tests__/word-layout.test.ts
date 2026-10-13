@@ -93,7 +93,7 @@ describe("Word box model", () => {
   });
 
   test("a declaration in a colour notation Word cannot parse is dropped whole (05 c12-c14)", () => {
-    for (const colour of ["rgba(0,170,0,1)", "#00AA00FF", "hsl(120,100%,33%)"]) {
+    for (const colour of ["rgba(0,170,0,1)", "#00AA00FF", "#0A0F", "hsl(120,100%,33%)"]) {
       const out = tag(word(`<table><tr><td id="t" style="color:red;background-color:${colour}">x</td></tr></table>`), 'id="t"');
       expect(out).not.toContain("background");
       expect(out).toContain("color");
@@ -190,6 +190,13 @@ describe("Word box model", () => {
     expect(
       tag(word(`<table id="t" align="left" style="mso-table-lspace:0pt;mso-table-rspace:0pt"><tr><td>x</td></tr></table>`), 'id="t"'),
     ).not.toContain("margin");
+  });
+
+  test("rgb() and 3-digit hex are read; a negative margin does not move a table (09 c30, c32, c33)", () => {
+    for (const colour of ["rgb(0,170,0)", "#0A0"]) {
+      expect(tag(word(`<table><tr><td id="t" style="background-color:${colour}">x</td></tr></table>`), 'id="t"')).toContain("background");
+    }
+    expect(tag(word(`<table id="t" style="margin-left:-20px"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/margin-left:\s*0/);
   });
 
   test("a right-to-left table sits on the right (03 c21)", () => {

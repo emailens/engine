@@ -162,9 +162,10 @@ function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
  * `border-top: solid 1px #66666650` divider was not drawn at all. The same
  * goes for `var()`: a class rule setting a background through a custom
  * property lost to the inline colour it was meant to override
- * (07-style-delivery c13).
+ * (07-style-delivery c13), and for 4-digit hex (09-follow-ups c31). `rgb()` and
+ * 3-digit hex are read (09 c30, c32).
  */
-const UNKNOWN_TO_WORD = /(?:^|;)\s*[\w-]+\s*:[^;]*(?:\brgba\(|\bhsla?\(|\bvar\(|#[0-9a-f]{8}(?![0-9a-f]))[^;]*/gi;
+const UNKNOWN_TO_WORD = /(?:^|;)\s*[\w-]+\s*:[^;]*(?:\brgba\(|\bhsla?\(|\bvar\(|#[0-9a-f]{8}(?![0-9a-f])|#[0-9a-f]{4}(?![0-9a-f]))[^;]*/gi;
 const dropUnknown = (declarations: string) => declarations.replace(UNKNOWN_TO_WORD, "");
 
 /**
@@ -173,7 +174,7 @@ const dropUnknown = (declarations: string) => declarations.replace(UNKNOWN_TO_WO
  * `rgb()`, which Word does read. Returns the input itself when nothing matches.
  */
 export function dropWordUnknownColors(html: string): string {
-  if (!/rgba\(|hsla?\(|var\(|#[0-9a-f]{8}/i.test(html)) return html;
+  if (!/rgba\(|hsla?\(|var\(|#[0-9a-f]{8}|#[0-9a-f]{4}(?![0-9a-f])/i.test(html)) return html;
   return html
     .replace(/(\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi, (whole, lead: string, dq?: string, sq?: string) => {
       const style = dq ?? sq ?? "";
@@ -378,6 +379,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
     // A right-to-left table sits against the right edge of its cell
     // (03-columns c21); a browser leaves it on the left.
     if (/^rtl$/i.test(table.attr("dir") ?? "")) props.set("margin-left", "auto!important");
+    // A negative margin does not pull a table over its neighbour: with
+    // `margin-left:-20px` it stayed where it was (09-follow-ups c33).
+    for (const prop of MARGIN) {
+      const value = props.get(prop);
+      if (value !== undefined && /(^|\s)-/.test(value)) props.set(prop, flattenMargin(value));
+    }
     const after = serializeStyle(props);
     if (after !== before) table.attr("style", after);
   });
