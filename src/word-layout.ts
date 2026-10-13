@@ -253,14 +253,6 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const family = props.get("font-family");
     if (family !== undefined && faces.has(firstFamily(family))) props.set("font-family", TIMES);
 
-    if (tag === "img") {
-      // An image is as wide as its width attribute says. A percentage width
-      // in CSS is not read: `width="138"` with `width:100%` drew at 138px in
-      // a 420px column on a real campaign.
-      const attr = $(el).attr("width");
-      if (attr && /^\d+$/.test(attr) && /%/.test(props.get("width") ?? "")) props.set("width", `${attr}px`);
-    }
-
     // `mso-line-height-alt` replaces the line-height, as mso-padding-alt does
     // the padding. A real campaign set `line-height:1.50;
     // mso-line-height-alt:1.5em` on 16px text and Outlook spaced the lines
@@ -319,6 +311,52 @@ export function applyWordBoxModel($: CheerioAPI): void {
       else $(el).removeAttr("style");
     }
   });
+
+  // Images get their own pass: most carry no style attribute at all.
+  $("img").each((_, node) => {
+    const el = node as Element;
+    const props = parseInlineStyle($(el).attr("style") || "");
+    // An image is sized by its width and height attributes and by nothing
+    // else (Emailens probe sheet 06-images, Outlook 2007 to 2019):
+    //   - a CSS width is not read, alone or against an attribute (c04, c05,
+    //     c21), and neither is `height:auto` (c09);
+    //   - an attribute must be a bare number: `width="200px"` and
+    //     `width="100%"` both left the image at its natural size (c06, c08);
+    //   - with no usable attribute the image is drawn at its natural size,
+    //     however narrow the cell.
+    // A real campaign's `width="138"` with `width:100%` drew at 138px.
+    const numeric = (name: string) => {
+      const value = $(el).attr(name);
+      if (value !== undefined && !/^\d+$/.test(value.trim())) $(el).removeAttr(name);
+      return value !== undefined && /^\d+$/.test(value.trim()) ? value.trim() : undefined;
+    };
+    const width = numeric("width");
+    const height = numeric("height");
+    // Padding, margin, border and background on the image itself drew
+    // nothing (c18, c19, c20, c23), and nor did the hspace, vspace and
+    // border attributes (c16, c17).
+    for (const prop of [...props.keys()]) {
+      if (/^(?:width|height|max-|min-|padding|margin|border|background)/.test(prop)) props.delete(prop);
+    }
+    for (const name of ["hspace", "vspace"]) $(el).removeAttr(name);
+    if ($(el).attr("border") !== undefined) $(el).attr("border", "0");
+    // !important, so a class rule such as `img{width:100%}` cannot resize it
+    // in the preview; Word reads no CSS size from any source.
+    props.set("width", width ? `${width}px!important` : "auto!important");
+    props.set("height", height ? `${height}px!important` : "auto!important");
+    props.set("max-width", "none!important");
+    // An inline image leaves no gap for descenders beneath it (c12).
+    props.set("vertical-align", "bottom");
+    // SVG and WebP are not drawn: the space is kept and left empty (c24, c25).
+    if (/\.(?:svg|webp)(?:[?#]|$)/i.test($(el).attr("src") ?? "")) props.set("visibility", "hidden");
+    const after = serializeStyle(props);
+    if (after) $(el).attr("style", after);
+    else $(el).removeAttr("style");
+  });
+
+  // <picture> falls back to its <img>: a WebP <source> was passed over for
+  // the PNG beside it (06-images c27).
+  $("picture source").remove();
 
   $("table").each((_, node) => {
     const el = node as Element;

@@ -117,10 +117,36 @@ describe("Word box model", () => {
     expect(tag(out, 'id="c"')).toContain("Times New Roman");
   });
 
-  test("an image takes its width attribute over a percentage width in CSS", () => {
-    expect(tag(word(`<img id="t" width="138" style="width:100%;height:auto" src="x.png">`), 'id="t"')).toMatch(/width:\s*138px/);
-    // With no attribute to fall back on, the declaration is left alone.
-    expect(tag(word(`<img id="t" style="width:100%" src="x.png">`), 'id="t"')).toContain("100%");
+  test("an image is sized by bare-number attributes and nothing else (06 c04-c09, c21)", () => {
+    const img = (attrs: string) => tag(word(`<img id="t" ${attrs} src="x.png">`), 'id="t"');
+    // The attribute wins over CSS, percentage or not.
+    expect(img('width="138" style="width:100%;height:auto"')).toMatch(/width:\s*138px/);
+    expect(img('width="200" style="width:100px"')).toMatch(/width:\s*200px/);
+    // Both attributes: both apply, and height:auto does not undo the height.
+    const both = img('width="200" height="100" style="height:auto"');
+    expect(both).toMatch(/width:\s*200px/);
+    expect(both).toMatch(/height:\s*100px/);
+    // No usable attribute: natural size, whatever the CSS or the attribute said.
+    for (const attrs of ['style="width:100px"', 'style="width:50%"', 'width="200px"', 'width="100%"']) {
+      expect(img(attrs)).toContain("width: auto!important");
+      expect(img(attrs)).not.toMatch(/100px|50%|200px|100%/);
+    }
+  });
+
+  test("an image draws no padding, margin, border or spacing of its own (06 c16-c20)", () => {
+    const out = tag(
+      word(`<img id="t" width="100" height="50" hspace="20" vspace="10" border="10" style="padding:10px;margin:10px;border:10px solid #0a0" src="x.png">`),
+      'id="t"',
+    );
+    expect(out).not.toMatch(/padding|margin|hspace|vspace|solid/);
+    expect(out).toContain('border="0"');
+  });
+
+  test("SVG and WebP are left blank, and picture falls back to its img (06 c24, c25, c27)", () => {
+    expect(tag(word(`<img id="t" width="10" height="10" src="a.svg">`), 'id="t"')).toContain("visibility: hidden");
+    expect(tag(word(`<img id="t" width="10" height="10" src="a.webp?x=1">`), 'id="t"')).toContain("visibility: hidden");
+    expect(tag(word(`<img id="t" width="10" height="10" src="a.png">`), 'id="t"')).not.toContain("visibility");
+    expect(word(`<picture><source srcset="a.webp" type="image/webp"><img src="a.png"></picture>`)).not.toContain("<source");
   });
 
   test("a VML shape is translated whatever prefix the email binds to the namespace", () => {
