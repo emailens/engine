@@ -51,6 +51,11 @@ Apple Mail and Thunderbird. Each rule in the source names the case it rests on.
   a line.
 - **VML is translated whatever prefix the email binds to the VML namespace**,
   and lengths in points are read.
+- **A not-Outlook block closed with `<!--[endif]---->` is skipped**, the
+  spelling Dynamics 365 writes. Before, Outlook Classic previews of those emails
+  drew every image and button twice.
+- **A button drawn as an empty `v:roundrect` with its label in a `v:shape`
+  laid over it** becomes one button with the label inside.
 - **Stylesheet rules merge into inline styles in cascade order.** The last
   declaration wins and the style attribute beats a rule, unless only the rule
   is `!important`. Before, the first value was kept, so

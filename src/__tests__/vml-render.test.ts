@@ -3,6 +3,31 @@ import { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeT
 
 const mso = (vml: string) => `<!--[if gte mso 9]>${vml}<![endif]-->`;
 
+describe("vmlToCss: a label in a shape laid over an empty roundrect", () => {
+  const button = `<v:roundrect style="height:40px;v-text-anchor:middle; width:172px;" arcsize="8%" stroke="false" fillcolor="rgb(0, 120, 212)"><w:anchorlock/></v:roundrect> <v:shapetype id="t" coordsize="200 200"><v:path v="m 0,0 l 0,200 x e"></v:path></v:shapetype> <v:shape type="#t" href="https://example.com/" style="top: 0px; left: 0px; height: 40px; width: 172px; v-text-anchor: middle"><v:textbox inset="0,0,0,0"><center style="font-size: 16px; color: white">REGISTER NOW</center></v:textbox></v:shape>`;
+
+  test("the label and the link move into the box", () => {
+    const out = vmlToCss(button);
+    expect(out).toMatch(/<div data-vml="roundrect" data-href="https:\/\/example\.com\/"[^>]*>\s*<span[^>]*>REGISTER NOW<\/span><\/div>/);
+    expect(out).not.toMatch(/<v:/);
+  });
+
+  test("a shape of another size is not merged", () => {
+    const out = vmlToCss(button.replace("width: 172px", "width: 300px"));
+    expect(out).toMatch(/<div data-vml="roundrect"[^>]*><\/div>/);
+  });
+});
+
+describe("resolveMsoBranch closer spellings", () => {
+  test("a block closed with <!--[endif]----> is skipped like the canonical form", () => {
+    const html = `<a><!--[if gte mso 9]><img id="mso" width="178"><![endif]--><!--[if !mso]> <!----><img id="web"><!--[endif]----></a><p>after</p>`;
+    const out = resolveMsoBranch(html);
+    expect(out).toContain('id="mso"');
+    expect(out).not.toContain('id="web"');
+    expect(out).toContain("<p>after</p>");
+  });
+});
+
 describe("resolveMsoBranch", () => {
   test("activates the Outlook-only branch", () => {
     const out = resolveMsoBranch(`<div>a</div>${mso("<p>outlook</p>")}`);

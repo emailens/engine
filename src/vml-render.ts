@@ -101,12 +101,17 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
  * sees `[if !mso]`, evaluates it false and skips to `[endif]` whichever
  * spelling closed the opener, so each must resolve the same way here.
  *
+ * The closer has a second spelling too. Dynamics 365 writes
+ * `<!--[if !mso]> <!---->` ... `<!--[endif]---->`, an ordinary comment where
+ * the canonical form has `<!--<![endif]-->`. A real campaign built that way
+ * rendered in Outlook 2016 with the block skipped, so both closers end it.
+ *
  * The condition is matched by *containing* a negated mso/vml term rather than
  * starting with one, because `[if (!mso)&(!IE)]` is as common in real email as
  * the bare `[if !mso]`.
  */
 const DOWNLEVEL_REVEALED =
-  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)<!--\s*<!\[endif\]-->/gi;
+  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
 
 /**
  * A downlevel-hidden block: the markup only Outlook reads.
@@ -393,7 +398,31 @@ export function vmlToCss(html: string): string {
     },
   );
 
-  // Property elements have no visual role once their parent shape is gone.
+  // ── an empty roundrect with its label in a shape laid over it ───────────
+  // Dynamics 365 draws a button as two shapes: a filled <v:roundrect> with
+  // nothing in it, then a <v:shape> of the same size positioned over it that
+  // holds the text and the link. Outlook 2016 drew one 172x40 button with the
+  // label inside. Translated separately, the label landed under the box, in a
+  // cell too short for it, and was clipped. The label moves into the box.
+  out = out.replace(
+    /(<div data-vml="roundrect")([^>]*>)\s*<\/div>\s*(?:<v:shapetype\b[\s\S]*?<\/v:shapetype>\s*)?<v:shape\b([^>]*)>([\s\S]*?)<\/v:shape>/gi,
+    (whole, open: string, rest: string, shapeAttrs: string, inner: string) => {
+      const box = styleProps((/style="([^"]*)"/i.exec(rest) ?? [])[1] ?? "");
+      const shape = styleProps(attrs(shapeAttrs).style ?? "");
+      // Only when the shape really sits on the box: same size, or no size of its own.
+      const sameSize = (prop: "width" | "height") => shape[prop] === undefined || px(shape[prop]) === px(box[prop]);
+      if (!sameSize("width") || !sameSize("height")) return whole;
+      const label = inner.replace(/<\/?(?:v:textbox|w:anchorlock|center)[^>]*>/gi, (tag) =>
+        /^<center/i.test(tag) ? tag.replace(/^<center/i, "<span") : /^<\/center/i.test(tag) ? "</span>" : "",
+      ).trim();
+      const href = attrs(shapeAttrs).href;
+      return `${open}${href && !/data-href=/.test(rest) ? ` data-href="${href}"` : ""}${rest}${label}</div>`;
+    },
+  );
+
+  // Property elements have no visual role once their parent shape is gone, and
+  // a shape definition draws nothing by itself.
+  out = out.replace(/<v:shapetype\b[\s\S]*?<\/v:shapetype>/gi, "");
   out = out.replace(/<\/?v:(?:fill|textbox|stroke|shadow|imagedata|path|formulas|handles)[^>]*?\/?>/gi, "");
   return blankLabelsAfterNestedShape(out);
 }
