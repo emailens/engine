@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.14.3 - 2026-10-13
+
+A patch. No API changes. `^0.14.0` picks this up.
+
+### Changed
+
+- **Support data synced with caniemail (2026-09-16).** Scores can move for
+  emails that use these features:
+  - `<meta name="color-scheme">` on Gmail Android and Gmail iOS is now
+    partial, not unsupported. Only `light only` is honoured.
+  - SVG images on Gmail web are now partial, not unsupported. Gmail renders
+    them rasterized as PNG, and the Gmail Android and iOS notes say the same.
+  - `animation` on Superhuman carries a note about reduced motion.
+
+### Performance
+
+- **`transformForAllClients` parses each source once.** Every client used to
+  reparse the same HTML. Clients now clone one parsed tree, and the last
+  client takes the tree itself. Output is byte-identical to 0.14.2 across 93
+  fixture documents and 21 clients (1,953 results, HTML and warnings). Local
+  runs measured roughly 40 to 59 percent less time per email.
+- **Intent scoring reuses the DOM `analyzeDocument` already parsed.** It
+  parses again only when an Outlook conditional branch has to be resolved.
+  Compatibility analysis measured about 10 percent faster locally.
+
+### Internal
+
+- A regression corpus of 77 pinned open-source templates from 17 repositories
+  (licences and provenance included) and six synthetic edge cases, plus
+  `bench:core` and `bench:sizes`. None of it ships in the package.
+
 ## 0.14.2 - 2026-09-28
 
 ### Fixed
