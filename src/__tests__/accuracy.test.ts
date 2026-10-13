@@ -94,6 +94,10 @@ describe("Gmail Transform Accuracy", () => {
   // Transactional: Attic welcome email (flex, grid, gradient, shadow, etc.)
   test("Template 1 (Transactional): Gmail Web", () => {
     const tracker = new AccuracyTracker();
+    // Not asserted here: box-shadow, position, gap, display:grid and
+    // linear-gradient. Real Gmail on the web applied all five when measured
+    // (Emailens probe sheets 03-columns and 05-backgrounds, 2026-10-13), so the
+    // transform no longer strips them for gmail-web.
     const result = transformForClient(templates.transactional, "gmail-web");
     const html = result.html;
 
@@ -146,17 +150,7 @@ describe("Gmail Transform Accuracy", () => {
       /(style="[^"]*display\s*:)/.test(html),
     );
 
-    // Gmail strips box-shadow from inline styles
-    tracker.check(
-      "Strips box-shadow",
-      !/(style="[^"]*box-shadow\s*:)/.test(html),
-    );
 
-    // Gmail strips position from inline styles
-    tracker.check(
-      "Strips position",
-      !/(style="[^"]*\bposition\s*:)/.test(html),
-    );
 
     // Gmail strips opacity from inline styles
     tracker.check(
@@ -176,23 +170,8 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*transition\s*:)/.test(html),
     );
 
-    // Gmail strips gap from inline styles
-    tracker.check(
-      "Strips gap",
-      !/(style="[^"]*\bgap\s*:)/.test(html),
-    );
 
-    // Gmail strips display:grid
-    tracker.check(
-      "Strips display:grid",
-      !/(style="[^"]*display\s*:\s*grid)/.test(html),
-    );
 
-    // Gmail strips linear-gradient from background
-    tracker.check(
-      "Strips linear-gradient",
-      !/(style="[^"]*linear-gradient)/.test(html),
-    );
 
     // Gmail strips radial-gradient
     tracker.check(
@@ -208,6 +187,10 @@ describe("Gmail Transform Accuracy", () => {
   // Newsletter: Craft Weekly (font-face, gradients, grid, shadows, etc.)
   test("Template 2 (Newsletter): Gmail Web", () => {
     const tracker = new AccuracyTracker();
+    // Not asserted here: box-shadow, position, gap, display:grid and
+    // linear-gradient. Real Gmail on the web applied all five when measured
+    // (Emailens probe sheets 03-columns and 05-backgrounds, 2026-10-13), so the
+    // transform no longer strips them for gmail-web.
     const result = transformForClient(templates.newsletter, "gmail-web");
     const html = result.html;
 
@@ -217,17 +200,7 @@ describe("Gmail Transform Accuracy", () => {
     // Gmail strips @font-face (was in <style> block)
     tracker.check("No @font-face rules remain", !html.includes("@font-face"));
 
-    // Gmail strips box-shadow from inline styles
-    tracker.check(
-      "Strips box-shadow",
-      !/(style="[^"]*box-shadow\s*:)/.test(html),
-    );
 
-    // Gmail strips linear-gradient
-    tracker.check(
-      "Strips linear-gradient",
-      !/(style="[^"]*linear-gradient)/.test(html),
-    );
 
     // Gmail strips radial-gradient
     tracker.check(
@@ -241,11 +214,6 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*transition\s*:)/.test(html),
     );
 
-    // Gmail strips position
-    tracker.check(
-      "Strips position",
-      !/(style="[^"]*\bposition\s*:)/.test(html),
-    );
 
     // Gmail strips overflow
     tracker.check(
@@ -259,17 +227,7 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*\bopacity\s*:)/.test(html),
     );
 
-    // Gmail strips display:grid
-    tracker.check(
-      "Strips display:grid",
-      !/(style="[^"]*display\s*:\s*grid)/.test(html),
-    );
 
-    // Gmail strips gap
-    tracker.check(
-      "Strips gap",
-      !/(style="[^"]*\bgap\s*:)/.test(html),
-    );
 
     // Gmail keeps border-radius
     tracker.check("Keeps border-radius", /border-radius/.test(html));
@@ -309,6 +267,10 @@ describe("Gmail Transform Accuracy", () => {
   // Receipt: Haven order confirmation (SVG, grid, flex, shadow, etc.)
   test("Template 3 (Receipt): Gmail Web", () => {
     const tracker = new AccuracyTracker();
+    // Not asserted here: box-shadow, position, gap, display:grid and
+    // linear-gradient. Real Gmail on the web applied all five when measured
+    // (Emailens probe sheets 03-columns and 05-backgrounds, 2026-10-13), so the
+    // transform no longer strips them for gmail-web.
     const result = transformForClient(templates.receipt, "gmail-web");
     const html = result.html;
 
@@ -324,23 +286,8 @@ describe("Gmail Transform Accuracy", () => {
       /(style="[^"]*display\s*:\s*flex)/.test(html) || /(style="[^"]*display\s*:flex)/.test(html),
     );
 
-    // Gmail strips display:grid
-    tracker.check(
-      "Strips display:grid",
-      !/(style="[^"]*display\s*:\s*grid)/.test(html),
-    );
 
-    // Gmail strips gap
-    tracker.check(
-      "Strips gap",
-      !/(style="[^"]*\bgap\s*:)/.test(html),
-    );
 
-    // Gmail strips box-shadow
-    tracker.check(
-      "Strips box-shadow",
-      !/(style="[^"]*box-shadow\s*:)/.test(html),
-    );
 
     // Gmail strips transition
     tracker.check(
@@ -354,11 +301,6 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*\boverflow\s*:)/.test(html),
     );
 
-    // Gmail strips position
-    tracker.check(
-      "Strips position",
-      !/(style="[^"]*\bposition\s*:)/.test(html),
-    );
 
     // Gmail strips opacity
     tracker.check(
@@ -1090,8 +1032,6 @@ describe("Overall Accuracy Score", () => {
       tracker.check(`[Gmail/${name}] Keeps font-family`, /font-family/.test(out));
       tracker.check(`[Gmail/${name}] Keeps padding`, /padding/.test(out));
       tracker.check(`[Gmail/${name}] Keeps border-radius`, /border-radius/.test(out));
-      tracker.check(`[Gmail/${name}] Strips box-shadow`, !/(style="[^"]*box-shadow\s*:)/.test(out));
-      tracker.check(`[Gmail/${name}] Strips position`, !/(style="[^"]*\bposition\s*:)/.test(out));
       tracker.check(`[Gmail/${name}] Strips overflow`, !/(style="[^"]*\boverflow\s*:)/.test(out));
       tracker.check(`[Gmail/${name}] Strips transition`, !/(style="[^"]*transition\s*:)/.test(out));
       tracker.check(`[Gmail/${name}] Strips opacity`, !/(style="[^"]*\bopacity\s*:)/.test(out));
