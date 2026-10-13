@@ -452,6 +452,70 @@ describe("applyMsoHide", () => {
     expect(applyMsoHide(html)).toBe(html);
   });
 
+  // Observed on Outlook 2007 to 2019 and Windows 10 Mail (Emailens probe sheet
+  // 07-style-delivery, 2026-10-13): mso-hide:all on a div does not reach a
+  // table nested inside it. Word draws the table.
+  describe("a table inside a hidden div", () => {
+    const TABLE = `<table><tr><td>mobile only</td></tr></table>`;
+    const hiddenDecl = /display\s*:\s*none/;
+    /** The style of the element whose opening tag contains `marker`. */
+    const styleOf = (html: string, marker: string) =>
+      new RegExp(`<[^>]*${marker}[^>]*>`).exec(html)?.[0] ?? "";
+
+    test("is drawn: the wrapper stops being display:none", () => {
+      const out = applyMsoHide(`<div id="w" style="display:none;mso-hide:all">${TABLE}</div>`);
+      expect(styleOf(out, 'id="w"')).not.toMatch(hiddenDecl);
+      expect(out).toContain("<td>mobile only</td>");
+    });
+
+    test("the wrapper's own text stays hidden", () => {
+      const out = applyMsoHide(`<div style="mso-hide:all">preheader text${TABLE}</div>`);
+      expect(out).toMatch(/<span style="display:none!important">preheader text<\/span>/);
+    });
+
+    test("siblings of the table that hold no table stay hidden", () => {
+      const out = applyMsoHide(`<div style="mso-hide:all"><p id="p">note</p>${TABLE}</div>`);
+      expect(styleOf(out, 'id="p"')).toMatch(hiddenDecl);
+    });
+
+    test("a table that carries mso-hide:all itself stays hidden, and the output is unchanged", () => {
+      const html = `<div id="w" style="mso-hide:all"><table style="mso-hide:all"><tr><td>x</td></tr></table></div>`;
+      const out = applyMsoHide(html);
+      expect(styleOf(out, 'id="w"')).toMatch(hiddenDecl);
+      expect(out).not.toContain("<span");
+    });
+
+    test("a table under a second hidden element stays hidden", () => {
+      const out = applyMsoHide(`<div id="w" style="mso-hide:all"><div style="mso-hide:all">${TABLE}</div></div>`);
+      expect(styleOf(out, 'id="w"')).toMatch(hiddenDecl);
+    });
+
+    test("a table reached through an unhidden child is drawn, and that child's other content is hidden", () => {
+      const out = applyMsoHide(`<div id="w" style="mso-hide:all"><div id="mid"><b id="b">x</b>${TABLE}</div></div>`);
+      expect(styleOf(out, 'id="w"')).not.toMatch(hiddenDecl);
+      expect(styleOf(out, 'id="mid"')).not.toMatch(hiddenDecl);
+      expect(styleOf(out, 'id="b"')).toMatch(hiddenDecl);
+    });
+
+    test("a hidden td or span around a table is left hidden: only a div wrapper was observed", () => {
+      const cell = `<table><tr><td id="c" style="mso-hide:all">${TABLE}</td></tr></table>`;
+      expect(styleOf(applyMsoHide(cell), 'id="c"')).toMatch(hiddenDecl);
+    });
+
+    test("an email with no hidden div keeps its exact bytes", () => {
+      const html = `<p style="mso-hide:all">a</p>${TABLE}<DIV>b</DIV>`;
+      expect(applyMsoHide(html)).toBe(`<p style="mso-hide:all;display:none!important">a</p>${TABLE}<DIV>b</DIV>`);
+    });
+
+    test("through the Word transform, the table is visible and other clients are untouched", () => {
+      const email = `<html><body><div id="w" style="display:none;mso-hide:all">${TABLE}</div><p>body</p></body></html>`;
+      const word = transformForClient(email, "outlook-windows-legacy").html;
+      expect(styleOf(word, 'id="w"')).not.toMatch(hiddenDecl);
+      const gmail = transformForClient(email, "gmail-web").html;
+      expect(styleOf(gmail, 'id="w"')).toMatch(hiddenDecl);
+    });
+  });
+
   test("a correctly hidden preheader stays hidden through the Word transform", () => {
     // The bug this fixes: the transform strips `display` for the Word engine
     // (right , Outlook ignores it), leaving only `mso-hide:all`, which Chromium

@@ -1,3 +1,5 @@
+import * as cheerio from "cheerio";
+import type { AnyNode, Element } from "domhandler";
 /**
  * Resolve the Outlook branch of an email and translate its VML into CSS a
  * browser can draw.
@@ -173,6 +175,81 @@ const MSO_HIDE = /mso-hide\s*:\s*all/i;
  */
 export function applyMsoHide(html: string): string {
   if (!MSO_HIDE.test(html)) return html;
+  return releaseNestedTables(hideMsoHidden(html));
+}
+
+/**
+ * A table inside a `<div>` hidden with `mso-hide:all` is still drawn by Word.
+ *
+ * `mso-hide:all` hides the element's own text, but it does not reach a nested
+ * table: the table needs `mso-hide:all` of its own. This is why a "mobile only"
+ * block that is hidden everywhere else turns up in Outlook, and a preview that
+ * hides it shows the author a clean email that their Outlook readers never see.
+ *
+ * Observed identically on Outlook 2007, 2010, 2013, 2016 and 2019 and on
+ * Windows 10 Mail (Emailens probe sheet 07-style-delivery, 2026-10-13): a
+ * `<div style="display:none;mso-hide:all">` wrapping a table rendered the
+ * table at full size, with or without a stylesheet rule on the wrapper.
+ *
+ * The evidence is for a `<div>` wrapper. A hidden `<td>` or `<span>` around a
+ * table was not tested, so those are left hidden as before.
+ *
+ * A browser cannot show a child of a `display:none` parent, so the wrapper is
+ * un-hidden and everything in it except the escaping tables is hidden instead.
+ */
+function releaseNestedTables(html: string): string {
+  if (!/<table/i.test(html) || !/<div/i.test(html)) return html;
+  const $ = cheerio.load(html, null, /<html[\s>]/i.test(html));
+  const isHidden = (el: AnyNode) =>
+    MSO_HIDE.test($(el).attr("style") ?? "");
+  /** Tables under `wrapper` that carry no mso-hide themselves, nor does anything in between. */
+  const escaping = (wrapper: Element) =>
+    $(wrapper)
+      .find("table")
+      .toArray()
+      .filter(
+        (table) =>
+          !isHidden(table) &&
+          $(table).parentsUntil(wrapper).toArray().every((el) => !isHidden(el)),
+      );
+  const HIDE = "display:none!important";
+  const withoutDisplayNone = (style: string) =>
+    style.replace(/(?:^|;)\s*display\s*:\s*none\s*(?:!important)?\s*(?=;|$)/gi, "").replace(/^;/, "");
+
+  const release = (wrapper: Element) => {
+    const el = $(wrapper);
+    el.attr("style", withoutDisplayNone(el.attr("style") ?? ""));
+    for (const child of el.contents().toArray()) {
+      if (child.type === "text") {
+        if (child.data.trim()) $(child).replaceWith(`<span style="${HIDE}">${$.html(child)}</span>`);
+        continue;
+      }
+      if (child.type !== "tag") continue;
+      if (child.name === "table" && !isHidden(child)) continue;
+      if (isHidden(child)) continue; // already hidden by its own mso-hide
+      if (escaping(child).length > 0) {
+        release(child);
+        continue;
+      }
+      const style = $(child).attr("style") ?? "";
+      $(child).attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}${HIDE}`);
+    }
+  };
+
+  let changed = false;
+  $("div[style]").each((_, div) => {
+    if (!isHidden(div)) return;
+    // Only the outermost hidden wrapper; anything nested is reached from it.
+    if ($(div).parents().toArray().some((el) => isHidden(el))) return;
+    if (escaping(div).length === 0) return;
+    release(div);
+    changed = true;
+  });
+  // Untouched emails keep their exact bytes: no parse-and-serialise round trip.
+  return changed ? $.html() : html;
+}
+
+function hideMsoHidden(html: string): string {
   // Each quote style gets its own alternative so the *other* quote may appear
   // inside the value. One character class excluding both cannot cross
   // `font-family:'Segoe UI'`, which is how the canonical preheader is written,
