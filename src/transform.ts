@@ -12,7 +12,7 @@ import { parseInlineStyle, serializeStyle, splitStyleDeclarations } from "./styl
 import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
-import { applyWordBoxModel } from "./word-layout";
+import { applyWordBoxModel, dropWordUnknownColors } from "./word-layout";
 import { MAX_HTML_SIZE } from "./constants";
 import { shouldPreserveSelector, applyTargetingSimulation } from "./rules/targeting-matchers";
 
@@ -924,7 +924,9 @@ export function transformForClient(
   // the fallback. Doing this for any other client would render markup they
   // never see.
   const wordEngine = isWordEngineClient(clientId) && /<!--\[if/i.test(html);
-  const source = wordEngine ? resolveMsoBranch(html) : html;
+  const branch = wordEngine ? resolveMsoBranch(html) : html;
+  // Before the downlevel pass, which would turn these into colours Word reads.
+  const source = isWordEngineClient(clientId) ? dropWordUnknownColors(branch) : branch;
 
   // Downlevel once per transformForClient call
   const downleveled = downlevelCSS(source);
@@ -961,22 +963,27 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   // from the Outlook branch while everyone else keeps the fallback. Computed
   // once, and only when the email actually has an Outlook branch to resolve.
   const hasOutlookBranch = /<!--\[if/i.test(html);
-  const outlookSource = hasOutlookBranch ? downlevelCSS(resolveMsoBranch(html)) : downleveled;
+  // It also loses the colour formats Word cannot parse before the downlevel
+  // pass rewrites them, which gives it its own source even with no branch.
+  const wordRaw = dropWordUnknownColors(hasOutlookBranch ? resolveMsoBranch(html) : html);
+  const ownWordSource = wordRaw !== html;
+  const outlookSource = ownWordSource ? downlevelCSS(wordRaw) : downleveled;
   // Parse each source once; clients clone the tree instead of reparsing it.
   const baseDom = cheerio.load(downleveled);
-  const outlookDom = hasOutlookBranch ? cheerio.load(outlookSource) : baseDom;
+  const outlookDom = ownWordSource ? cheerio.load(outlookSource) : baseDom;
 
   const clientIds = Object.keys(CLIENT_CONFIGS);
   const lastClientForSource = new Map<cheerio.CheerioAPI, string>();
   for (const clientId of clientIds) {
-    const sourceDom = isWordEngineClient(clientId) && hasOutlookBranch ? outlookDom : baseDom;
+    const sourceDom = isWordEngineClient(clientId) && ownWordSource ? outlookDom : baseDom;
     lastClientForSource.set(sourceDom, clientId);
   }
 
   return clientIds.map((clientId) => {
     const wordEngine = isWordEngineClient(clientId) && hasOutlookBranch;
-    const source = wordEngine ? outlookSource : downleveled;
-    const parsedDom = wordEngine ? outlookDom : baseDom;
+    const ownSource = isWordEngineClient(clientId) && ownWordSource;
+    const source = ownSource ? outlookSource : downleveled;
+    const parsedDom = ownSource ? outlookDom : baseDom;
     // Each transform mutates an isolated DOM. The last client using a source
     // can safely take ownership of its pristine tree instead of cloning it.
     const clientDom = lastClientForSource.get(parsedDom) === clientId

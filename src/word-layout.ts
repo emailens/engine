@@ -95,7 +95,7 @@ const IGNORED_BY_WORD = /\[|>|:first-child|:nth-child|:not\(|::?before|\.[\w-]+\
  * Adds an inline `!important` override to each matched element where Word
  * would not have honoured the property.
  */
-function overrideStylesheetRules($: CheerioAPI): void {
+function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
   const override = (el: Element, declarations: string) => {
     const style = $(el).attr("style") ?? "";
     const sep = style.trim() === "" || /;\s*$/.test(style) ? "" : ";";
@@ -107,7 +107,8 @@ function overrideStylesheetRules($: CheerioAPI): void {
       const hasPadding = PADDING.some((prop) => props.has(prop));
       const hasSize = props.has("width") || props.has("height");
       const hasBackground = props.has("background") || props.has("background-color");
-      if (!hasPadding && !hasSize && !hasBackground) continue;
+      const timesFamily = faces.has(firstFamily(props.get("font-family") ?? ""));
+      if (!hasPadding && !hasSize && !hasBackground && !timesFamily) continue;
       for (const one of selector.split(",")) {
         if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
         let matched: Element[];
@@ -118,6 +119,9 @@ function overrideStylesheetRules($: CheerioAPI): void {
         }
         for (const el of matched) {
           const tag = el.tagName?.toLowerCase();
+          // An inline family is the more specific one and was handled above.
+          if (timesFamily && !/font-family/i.test($(el).attr("style") ?? ""))
+            override(el, `font-family:${TIMES}!important`);
           if (hasPadding && (tag === "div" || tag === "p" || tag === "span" || tag === "a"))
             override(el, "padding:0!important");
           if (hasSize && (tag === "div" || tag === "span")) {
@@ -132,7 +136,52 @@ function overrideStylesheetRules($: CheerioAPI): void {
   });
 }
 
+/**
+ * Colour notations Word does not parse. A declaration that uses one is ignored
+ * whole: `rgba()`, 8-digit hex and `hsl()` backgrounds all left the cell's own
+ * colour showing (05-backgrounds c12, c13, c14), and a real campaign's
+ * `border-top: solid 1px #66666650` divider was not drawn at all.
+ */
+const UNKNOWN_TO_WORD = /(?:^|;)\s*[\w-]+\s*:[^;]*(?:\brgba\(|\bhsla?\(|#[0-9a-f]{8}(?![0-9a-f]))[^;]*/gi;
+const dropUnknown = (declarations: string) => declarations.replace(UNKNOWN_TO_WORD, "");
+
+/**
+ * Remove those declarations from style attributes and <style> blocks. Runs on
+ * the source string, before the downlevel pass converts the notations into
+ * `rgb()`, which Word does read. Returns the input itself when nothing matches.
+ */
+export function dropWordUnknownColors(html: string): string {
+  if (!/rgba\(|hsla?\(|#[0-9a-f]{8}/i.test(html)) return html;
+  return html
+    .replace(/(\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi, (whole, lead: string, dq?: string, sq?: string) => {
+      const style = dq ?? sq ?? "";
+      const kept = dropUnknown(style);
+      if (kept === style) return whole;
+      const quote = dq === undefined ? "'" : '"';
+      return `${lead}${quote}${kept.replace(/^\s*;\s*/, "")}${quote}`;
+    })
+    .replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (_whole, open: string, css: string, close: string) =>
+      // Per block, so a dropped declaration never eats the selector before it.
+      `${open}${css.replace(/\{([^{}]*)\}/g, (_block, body: string) => `{${dropUnknown(body)}}`)}${close}`,
+    );
+}
+
+/** Families the email declares with @font-face. */
+function declaredFaces($: CheerioAPI): Set<string> {
+  const faces = new Set<string>();
+  $("style").each((_, block) => {
+    for (const [, body] of ($(block).html() ?? "").matchAll(/@font-face\s*\{([^}]*)\}/gi)) {
+      const family = parseInlineStyle(body).get("font-family");
+      if (family) faces.add(firstFamily(family));
+    }
+  });
+  return faces;
+}
+const firstFamily = (value: string) => value.split(",")[0].replace(/["']|!important/gi, "").trim().toLowerCase();
+const TIMES = "'Times New Roman',serif";
+
 export function applyWordBoxModel($: CheerioAPI): void {
+  const faces = declaredFaces($);
 
   $("[style]").each((_, node) => {
     const el = node as Element;
@@ -171,6 +220,25 @@ export function applyWordBoxModel($: CheerioAPI): void {
       props.delete("background-color");
     }
 
+    // A family declared with @font-face cannot be loaded, and Word then skips
+    // the rest of the stack and draws Times New Roman. Measured on a real
+    // campaign: `'Roboto', Arial, sans-serif` with a Roboto @font-face came
+    // out in Times on Outlook 2007, 2010, 2013 and 2016, while `'Nunito',
+    // Arial, sans-serif`, with no @font-face, fell back to Arial as written.
+    // Outlook 2019 did not do this: it used the next family in the stack. One
+    // simulated client stands for all five, and it shows the majority, which
+    // is also the outcome an author most needs to see.
+    const family = props.get("font-family");
+    if (family !== undefined && faces.has(firstFamily(family))) props.set("font-family", TIMES);
+
+    if (tag === "img") {
+      // An image is as wide as its width attribute says. A percentage width
+      // in CSS is not read: `width="138"` with `width:100%` drew at 138px in
+      // a 420px column on a real campaign.
+      const attr = $(el).attr("width");
+      if (attr && /^\d+$/.test(attr) && /%/.test(props.get("width") ?? "")) props.set("width", `${attr}px`);
+    }
+
     if (tag === "td" || tag === "th") {
       // `mso-padding-alt` replaces the cell's padding: 20px with a 5px
       // alternative measured 5px on every side (01 c11).
@@ -200,7 +268,7 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // (01 c14, c15). Prepended, and without !important, so anything the email
   // declares itself still wins. Other headings were not measured.
   // After the inline pass, which would otherwise delete the overrides it adds.
-  overrideStylesheetRules($);
+  overrideStylesheetRules($, faces);
 
   const reset = "<style>p,h2{margin:0}</style>";
   const head = $("head");

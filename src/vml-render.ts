@@ -51,8 +51,10 @@ import type { AnyNode, Element } from "domhandler";
 /** Read a length that VML wrote, tolerating a bare number or a px suffix. */
 function px(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const m = value.trim().match(/^(-?[\d.]+)(?:px)?$/i);
-  return m ? parseFloat(m[1]) : undefined;
+  // Points are VML's native unit and what generators emit (`width:103.5pt`).
+  const m = value.trim().match(/^(-?[\d.]+)(px|pt)?$/i);
+  if (!m) return undefined;
+  return m[2]?.toLowerCase() === "pt" ? (parseFloat(m[1]) * 4) / 3 : parseFloat(m[1]);
 }
 
 function styleProps(style: string): Record<string, string> {
@@ -272,6 +274,13 @@ function hideMsoHidden(html: string): string {
 /** Translate the VML shapes a browser cannot draw into divs it can. */
 export function vmlToCss(html: string): string {
   let out = html;
+
+  // The prefix is whatever the email binds to the VML namespace. `v:` is the
+  // convention, not a rule: a real campaign wrote `<a:roundrect xmlns:a=...>`
+  // and Outlook 2016 drew the button. Rewrite any other prefix to `v:`.
+  for (const [, prefix] of html.matchAll(/xmlns:([\w-]+)\s*=\s*["']urn:schemas-microsoft-com:vml["']/gi)) {
+    if (prefix.toLowerCase() !== "v") out = out.replace(new RegExp(`(</?)${prefix}:`, "gi"), "$1v:");
+  }
 
   // ── v:roundrect → a flex-centred box with a border radius ───────────────
   out = out.replace(

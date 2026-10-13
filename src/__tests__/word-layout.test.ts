@@ -92,6 +92,47 @@ describe("Word box model", () => {
     expect(tag(out, 'id="t"')).not.toContain("padding:0!important");
   });
 
+  test("a declaration in a colour notation Word cannot parse is dropped whole (05 c12-c14)", () => {
+    for (const colour of ["rgba(0,170,0,1)", "#00AA00FF", "hsl(120,100%,33%)"]) {
+      const out = tag(word(`<table><tr><td id="t" style="color:red;background-color:${colour}">x</td></tr></table>`), 'id="t"');
+      expect(out).not.toContain("background");
+      expect(out).toContain("color");
+    }
+    // A real campaign's divider: no border at all in Outlook, not a solid one.
+    expect(tag(word(`<table id="t" style="border-top: solid 1px #66666650; font-size: 0"><tr><td>x</td></tr></table>`), 'id="t"')).not.toContain("border");
+    // In a stylesheet the rule keeps its selector and its other declarations.
+    const sheet = word(`<p class="a">x</p>`, `<style>.a{color:red;background:hsl(0,0%,50%)}.b{color:#112233}</style>`);
+    expect(sheet).toMatch(/\.a\{color:\s*red;?\}/);
+    expect(sheet).toContain("#112233");
+  });
+
+  test("a family declared with @font-face falls to Times New Roman, not to the next in the stack", () => {
+    const face = `<style>@font-face{font-family:'Roboto';src:url(x.ttf)}.h{font-family:Roboto,Arial}</style>`;
+    const out = word(
+      `<h1 id="a" style="font-family: 'Roboto', Arial, sans-serif">x</h1><p id="b" style="font-family:'Nunito',Arial,sans-serif">x</p><p id="c" class="h">x</p>`,
+      face,
+    );
+    expect(tag(out, 'id="a"')).toContain("Times New Roman");
+    expect(tag(out, 'id="b"')).toContain("Nunito");
+    expect(tag(out, 'id="c"')).toContain("Times New Roman");
+  });
+
+  test("an image takes its width attribute over a percentage width in CSS", () => {
+    expect(tag(word(`<img id="t" width="138" style="width:100%;height:auto" src="x.png">`), 'id="t"')).toMatch(/width:\s*138px/);
+    // With no attribute to fall back on, the declaration is left alone.
+    expect(tag(word(`<img id="t" style="width:100%" src="x.png">`), 'id="t"')).toContain("100%");
+  });
+
+  test("a VML shape is translated whatever prefix the email binds to the namespace", () => {
+    const out = word(
+      `<!--[if mso]><a:roundrect xmlns:a="urn:schemas-microsoft-com:vml" href="https://example.com/" fillcolor="#171717" arcsize="21%" style="width:103.5pt;height:36pt" stroke="f"><center>Go</center></a:roundrect><![endif]-->`,
+    );
+    expect(out).toContain('data-vml="roundrect"');
+    // Points, VML's own unit, convert at 4/3.
+    expect(out).toContain("width:138px;height:48px");
+    expect(out).toContain("#171717");
+  });
+
   test("no other client is touched", () => {
     const out = gmail(`<div id="t" style="padding:20px;width:200px;margin:0 auto">text</div>`);
     expect(tag(out, 'id="t"')).toContain("padding");
