@@ -777,6 +777,7 @@ export function analyzeDocument(
       html,
       withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
       framework,
+      $,
     ),
     targeting: pass.targeting,
   };

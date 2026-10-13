@@ -40,12 +40,21 @@ interface StyleRule {
   body: string;
 }
 
-export function applyIntent(html: string, warnings: CSSWarning[], framework?: Framework): CSSWarning[] {
+export function applyIntent(
+  html: string,
+  warnings: CSSWarning[],
+  framework?: Framework,
+  parsedLiveDom?: CheerioAPI,
+): CSSWarning[] {
   const wordHtml = /<!--\[if/i.test(html) ? resolveMsoBranch(html) : html;
   const vml = checkVml(html);
-  let next = adjustOutlook(loadHtml(wordHtml), loadHtml(html), warnings, framework);
+  const live$ = parsedLiveDom ?? loadHtml(html);
+  // The intent checks only read these DOMs. Reuse the original live DOM when
+  // there is no MSO branch instead of parsing the same HTML again.
+  const word$ = wordHtml === html ? live$ : loadHtml(wordHtml);
+  let next = adjustOutlook(word$, live$, warnings, framework);
   next = adjustSharedLosses(html, next, framework);
-  next = adjustBody(html, next);
+  next = adjustBody(live$, next);
   return appendKillers(next, html, wordHtml, vml, framework);
 }
 
@@ -527,8 +536,8 @@ const BODY_CLIENTS = Object.entries(CSS_SUPPORT["<body>"] ?? {})
   .filter(([, level]) => level === "unsupported" || level === "partial")
   .map(([id]) => id);
 
-function adjustBody(html: string, warnings: CSSWarning[]): CSSWarning[] {
-  if (!bodyBackgroundLost(loadHtml(html))) return warnings;
+function adjustBody($: CheerioAPI, warnings: CSSWarning[]): CSSWarning[] {
+  if (!bodyBackgroundLost($)) return warnings;
   const extra: CSSWarning[] = [];
   for (const client of BODY_CLIENTS) {
     if (warnings.some((w) => w.client === client && w.property === "body-background")) continue;

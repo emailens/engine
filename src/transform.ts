@@ -726,7 +726,16 @@ function applyTransform(
   config: ClientTransformConfig,
   framework?: Framework,
 ): TransformResult {
-  const $ = cheerio.load(html);
+  return applyTransformDom(cheerio.load(html), html, config, framework);
+}
+
+/** Apply a client's mutations to an already-parsed, client-owned DOM. */
+function applyTransformDom(
+  $: cheerio.CheerioAPI,
+  html: string,
+  config: ClientTransformConfig,
+  framework?: Framework,
+): TransformResult {
   const warnings: CSSWarning[] = [];
   const clientId = config.id;
 
@@ -948,14 +957,27 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   // once, and only when the email actually has an Outlook branch to resolve.
   const hasOutlookBranch = /<!--\[if/i.test(html);
   const outlookSource = hasOutlookBranch ? downlevelCSS(resolveMsoBranch(html)) : downleveled;
+  // Parse each source once; clients clone the tree instead of reparsing it.
+  const baseDom = cheerio.load(downleveled);
+  const outlookDom = hasOutlookBranch ? cheerio.load(outlookSource) : baseDom;
 
-  return Object.keys(CLIENT_CONFIGS).map((clientId) => {
+  const clientIds = Object.keys(CLIENT_CONFIGS);
+  const lastClientForSource = new Map<cheerio.CheerioAPI, string>();
+  for (const clientId of clientIds) {
+    const sourceDom = isWordEngineClient(clientId) && hasOutlookBranch ? outlookDom : baseDom;
+    lastClientForSource.set(sourceDom, clientId);
+  }
+
+  return clientIds.map((clientId) => {
     const wordEngine = isWordEngineClient(clientId) && hasOutlookBranch;
-    const result = applyTransform(
-      wordEngine ? outlookSource : downleveled,
-      CLIENT_CONFIGS[clientId],
-      framework,
-    );
+    const source = wordEngine ? outlookSource : downleveled;
+    const parsedDom = wordEngine ? outlookDom : baseDom;
+    // Each transform mutates an isolated DOM. The last client using a source
+    // can safely take ownership of its pristine tree instead of cloning it.
+    const clientDom = lastClientForSource.get(parsedDom) === clientId
+      ? parsedDom
+      : cheerio.load(parsedDom.root().clone().toArray()[0]);
+    const result = applyTransformDom(clientDom, source, CLIENT_CONFIGS[clientId], framework);
     // See transformForClient: translation must follow the strip pass, and
     // mso-hide is not gated on there being an Outlook branch.
     if (wordEngine) result.html = vmlToCss(result.html);
