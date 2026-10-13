@@ -519,33 +519,18 @@ function superhumanAdditionalChecks(
 // =============================================================================
 
 const EMPTY_SET: Set<string> = new Set();
-/**
- * The desktop webmail clients were measured on real accounts (Emailens probe
- * sheets 03-columns and 05-backgrounds, 2026-10-13), and each applied
- * properties the support tables list as dropped:
- *
- *   Gmail        position (relative and absolute), box-shadow, gap,
- *                display:grid, linear-gradient backgrounds
- *   Outlook.com  position
- *   Yahoo        position, box-shadow, opacity
- *   AOL          box-shadow, opacity
- *
- * Stripping them drew a preview worse than an untouched browser render. The
- * mobile apps were not in the measured fleet and keep the old lists.
- */
-const OUTLOOK_WEB_STRIPPED = new Set(["transform", "animation", "transition"]);
-const OUTLOOK_APP_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
-const YAHOO_WEB_STRIPPED = new Set(["transform", "animation", "transition"]);
+const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
 const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
-const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES].filter((prop) => !["position", "box-shadow", "gap"].includes(prop)));
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
-    strippedProperties: GMAIL_WEB_STRIPPED,
+    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
     stripMode: "strip",
-    // Radial gradients were not measured, so they stay as the tables have them.
-    valueStrips: [{ prop: "background", pattern: /radial-gradient/ }],
+    valueStrips: [
+      { prop: "display", pattern: /grid/ },
+      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+    ],
     inlineAndStripStyles: true,
     stripExternalStylesheets: true,
     stripForms: true,
@@ -618,7 +603,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-ios": {
     id: "outlook-ios",
-    strippedProperties: OUTLOOK_APP_STRIPPED,
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -627,7 +612,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-android": {
     id: "outlook-android",
-    strippedProperties: OUTLOOK_APP_STRIPPED,
+    strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -668,7 +653,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "yahoo-mail": {
     id: "yahoo-mail",
-    strippedProperties: YAHOO_WEB_STRIPPED,
+    strippedProperties: YAHOO_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -745,7 +730,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     id: "aol",
     // caniemail: restrictive; drops animation, box-shadow, opacity, transform,
     // external stylesheets, and SVG. Forms are kept.
-    strippedProperties: new Set(["animation", "transform"]),
+    strippedProperties: new Set(["animation", "box-shadow", "opacity", "transform"]),
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: true,

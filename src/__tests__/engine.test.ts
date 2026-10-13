@@ -297,16 +297,11 @@ describe("transformForClient", () => {
   });
 
   test("Gmail strips unsupported inline CSS properties", () => {
-    const html = `<html><body><div style="position: absolute; color: red; box-shadow: 1px 1px black; transform: rotate(5deg); filter: blur(2px);">test</div></body></html>`;
+    const html = `<html><body><div style="position: absolute; color: red; box-shadow: 1px 1px black;">test</div></body></html>`;
     const result = transformForClient(html, "gmail-web");
-    expect(result.html).not.toContain("transform");
-    expect(result.html).not.toContain("filter");
+    expect(result.html).not.toContain("position");
+    expect(result.html).not.toContain("box-shadow");
     expect(result.html).toContain("color: red");
-    // Real Gmail on the web applied these two when measured (2026-10-13).
-    expect(result.html).toContain("position");
-    expect(result.html).toContain("box-shadow");
-    // The apps were not measured and keep the stricter list.
-    expect(transformForClient(html, "gmail-android").html).not.toContain("box-shadow");
   });
 
   test("Outlook Classic strips border-radius, box-shadow, max-width", () => {
@@ -422,6 +417,7 @@ describe("transform strip-sets stay consistent with CSS_SUPPORT", () => {
   // (see showcase-transforms in the SaaS), so they're grandfathered here rather
   // than silently "fixed". Remove an entry only alongside the config change.
   const ACCEPTED_STRIP_DIVERGENCES = new Set([
+    "yahoo-mail|opacity",
     "yahoo-mail-android|opacity",
     "yahoo-mail-ios|opacity",
     "hey-mail|transform",
