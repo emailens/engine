@@ -1,0 +1,132 @@
+<!--
+  Template: Post-Purchase Review Request
+  File: 04-review-request-post-delivery.mjml
+  Category: receipt-invoice / post-purchase
+  
+  Purpose:
+  Request product/service review after confirmed delivery to boost social proof and customer engagement.
+  Warm, gratitude-focused approach to maximize review submission rate.
+  
+  When to send:
+  - 7-10 days after delivery confirmation (allows time for product testing)
+  - After "delivered" shipping status update
+  - Post-purchase nurture sequence (email 2 or 3)
+  - Only to customers who haven't left a review yet
+  
+  Personalize:
+  - {{first_name}}
+  - {{product_name}} or {{product_category}} (e.g., "skincare products")
+  - {{order_number}} (optional reference)
+  - {{review_url}} for "Share Your Feedback" CTA
+  - {{product_image}} - hero flatlay image
+  - Brand colors (#ffe6a7 primary, #fdfcdc secondary, #3e2723 text)
+  
+  Notes:
+  - Marketing/transactional hybrid (review request after purchase)
+  - Gratitude-first approach: "Thank you" before asking
+  - Educational section: "Why Your Voice Matters" reduces friction
+  - 3-point bullet list = clear value proposition for leaving review
+  - Community building language: "strengthen our community", "skin-positive"
+  - Works best 7-14 days post-delivery (sweet spot for fresh experience)
+  - Avoid sending too early (product not tested) or too late (forgotten)
+  - Can be automated via Shopify/WooCommerce + email platform
+  
+  Best practices:
+  - Keep tone warm, never demanding or transactional
+  - Make CTA obvious but not aggressive
+  - Explain benefits of leaving review (education = higher conversion)
+  - Provide support contact in case of issues (prevent bad reviews)
+  - Segment: Only send to satisfied customers (use NPS or delivery tracking)
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Arial, sans-serif">
+    <!-- Header/Thank You Section -->
+    <mj-section background-color="#ffe6a7" padding="20px 15px">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#3e2723" font-size="26px" font-weight="bold" padding="10px 0">
+          Thank You for Your Purchase!
+        </mj-text>
+        <mj-image align="center" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1747161894/uploaded-by-ai/an-aesthetically-pleasing-flatlay-of-skincare-products-arran.jpg" alt="Skincare Product Flatlay" width="500px" padding="10px 0 20px 0" border-radius="7px"></mj-image>
+        <mj-text align="center" color="#6d4c41" font-size="16px" padding="0">
+          We hope your new skincare products have arrived safely and are brightening your daily routine. Your trust means everything to us, and we’d love to hear about your experience!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Main Feedback CTA Section -->
+    <mj-section background-color="#fdfcdc" padding="20px 20px">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#4d342e" font-size="20px" font-weight="bold" padding="10px 0">
+          How Was Your Experience?
+        </mj-text>
+        <mj-text align="center" color="#4d342e" font-size="16px">
+          Your feedback helps us grow and inspires us to keep delivering self-care solutions you’ll truly love. If you have a moment, please leave us a review about your shopping and delivery experience!
+        </mj-text>
+        <mj-button align="center" background-color="#ffe6a7" color="#3e2723" font-size="16px" border-radius="12px" font-weight="bold" href="https://yourreviewlink.com" padding="20px 0">
+          Share Your Feedback
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Benefits/Social Proof Section -->
+    <mj-section background-color="#ffffff" padding="15px 15px">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#4d342e" font-size="18px" font-weight="bold" padding="10px 0">
+          Why Your Voice Matters
+        </mj-text>
+        <mj-text align="left" color="#333333" font-size="15px" line-height="1.6">
+          <ul style="padding-left:15px;">
+            <li>⭐ Guide new customers to make informed choices.</li>
+            <li>⭐ Help us improve our products and customer service.</li>
+            <li>⭐ Strengthen our community with your honest thoughts.</li>
+          </ul>
+          Every review—big or small—makes a real difference!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Aftercare & Community Section -->
+    <mj-section background-color="#ffe6a7" padding="15px 15px">
+      <mj-column background-color="transparent" padding="20px 15px" width="50%">
+        <mj-image align="center" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1747161894/uploaded-by-ai/a-beautifully-composed-image-showcasing-natural-ingredients-.jpg" width="200px" alt="Natural Ingredients" border-radius="7px"></mj-image>
+      </mj-column>
+      <mj-column background-color="transparent" padding="20px 15px" width="50%" vertical-align="middle">
+        <mj-text align="center" color="#4d342e" font-size="14px">
+          If you have any questions or need tips for your skincare routine, our friendly team is always here to help. We love being part of your daily self-care!<br/><br/>
+          Your choice means the world to us—every review and message helps us grow and create what matters most to you. Thank you for supporting our skincare community!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Social Section -->
+    <mj-section background-color="#fdfcdc" padding="10px 0px">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#6d4c41" font-size="14px">
+          Join our skin-positive community for tips, sneak peeks, and exclusive offers:
+        </mj-text>
+        <mj-social align="center" font-size="15px" icon-size="30px" mode="horizontal">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061171/youtube-round-outlined.png" href="https://youtube.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://twitter.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/linkedin-round-outlined.png" href="https://linkedin.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://instagram.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://facebook.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740062001/tiktok-round-outlined.png" href="https://tiktok.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png" href="https://pinterest.com"></mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Footer -->
+    <mj-section background-color="#ffe6a7" padding="10px 15px">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#4d342e" font-size="12px">
+          You are receiving this email because you recently shopped with us.<br>
+          Need help? Reach us at <a href="mailto:support@yourskincare.com" style="color:#4d342e;text-decoration:underline;">support@yourskincare.com</a>
+        </mj-text>
+        <mj-text align="center" color="#bfa278" font-size="11px" padding="5px 0 0 0">
+          &copy; 2024 Your Skincare Brand. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

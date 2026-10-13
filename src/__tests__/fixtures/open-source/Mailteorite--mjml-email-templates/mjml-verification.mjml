@@ -1,0 +1,134 @@
+<!--
+  Template: Welcome & Email Verification (Security-Focused)
+  File: 05-welcome-security-verification.mjml
+  Category: welcome / onboarding
+  
+  Purpose:
+  Prompt new users to verify email address with emphasis on security and trust-building.
+  Specifically designed for financial services, fintech, banking, or high-security SaaS.
+  
+  When to send:
+  - Immediately after account creation (within 1-2 minutes)
+  - After financial account signup (banking, investment, crypto)
+  - High-security platforms requiring verified email
+  - B2B SaaS with sensitive data handling
+  
+  Personalize:
+  - {{first_name}} or {{firstName}} (e.g., "Clara")
+  - {{verification_url}} or {{activationLink}} - unique email verification link
+  - {{company_name}} (e.g., "SecureFunds")
+  - Brand colors (#233654 primary dark blue, #f3f6fb light background)
+  
+  Tested on:
+  Gmail (web/mobile), Outlook, Apple Mail, iOS Mail
+  
+  Notes:
+  - Transactional email (email verification = no unsubscribe required)
+  - Security-first messaging: emphasizes protection, encryption, compliance
+  - Trust signals: AES-256, PCI-DSS, 24/7 support
+  - Educational sections explain WHY verification matters (not just WHAT to do)
+  - Professional, serious tone (vs. casual SaaS welcome emails)
+  - Works for fintech, banking, healthcare, legal, insurance industries
+  - Verification link should expire (24-48h) for security
+-->
+<mjml>
+  <mj-body background-color="none">
+    <!-- Header: Security and Confirmation -->
+    <mj-section background-color="#233654" padding="30px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" font-size="24px" color="#ffffff" font-weight="bold" padding="20px 0">
+          Verify Your SecureFunds Account
+        </mj-text>
+        <mj-image 
+          src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1748807535/uploaded-by-ai/an-illustration-of-a-security-verification-symbol-featuring-.jpg" 
+          alt="Security Verification Icon" 
+          width="220px" 
+          padding="10px 0 10px 0" 
+          align="center" 
+          border-radius="18px"
+        />
+        <mj-text align="center" font-size="17px" color="#cde5ff" padding="5px 0 15px 0">
+          Hello Clara,<br />
+          To ensure the highest level of security for your financial account and protect your sensitive data, please complete the verification of your email address. This essential step will activate your access to all our services.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA: Verify Account -->
+    <mj-section background-color="#f3f6fb" padding="30px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#16243e" font-size="17px" font-weight="bold" padding="0 0 10px 0">
+          Activate Your Account Securely
+        </mj-text>
+        <mj-text align="center" color="#45516d" font-size="15px" padding="0 0 15px 0">
+          Click the button below to complete your profile creation with SecureFunds. This process ensures you are the rightful owner of this email address.
+        </mj-text>
+        <mj-button href="https://securefunds.com/activation/X79YZ" background-color="#233654" color="#ffffff" border-radius="8px" font-size="16px" padding="10px 25px" align="center">
+          Verify My Email Address
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Advanced Security Section with emphasized bullet points -->
+    <mj-section background-color="#eef3fa" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text color="#233654" font-size="16px" font-weight="bold" align="center" padding="10px 10px 8px 10px">
+          Security at the Core of SecureFunds
+        </mj-text>
+        <mj-text color="#263859" font-size="15px" align="left" padding="12px 20px 5px 20px">
+          At SecureFunds, protecting your assets and personal information is our highest priority.
+        </mj-text>
+        <mj-text color="#263859" font-size="15px" align="left" padding="10px 30px 18px 40px">
+          <ul style="padding-left:28px; margin-left:0; color:#223555;">
+            <li style="margin-bottom:16px; padding-left:8px;">
+              <b>AES-256 Encryption:</b> All your information is shielded by state-of-the-art banking-level encryption, making it inaccessible to unauthorized parties.
+            </li>
+            <li style="margin-bottom:8px; padding-left:8px;">
+              <b>PCI-DSS Compliance:</b> We adhere to the strictest industry standards to guarantee your transactions and payment data are always safe and confidential.
+            </li>
+          </ul>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Why verification is essential -->
+    <mj-section background-color="#e7ecef" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text color="#1c293b" font-size="16px" font-weight="bold" align="center" padding="0 10px">
+          Why Does Verification Safeguard Your Account?
+        </mj-text>
+        <mj-text color="#32425a" font-size="15px" align="left" padding="10px 20px 20px 20px">
+          This step ensures that only the genuine owner of this email address has access to your personal account area and financial operations. By verifying your account:
+          <br><br>
+          &bull; You significantly reduce the risks of identity theft,<br>
+          &bull; You’ll be instantly informed about any unusual activity,<br>
+          &bull; You stay in control of the protection of your funds and confidential information.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer with support & socials -->
+    <mj-section background-color="#233654" padding="15px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#b5d3f1" font-size="13px" padding="5px 0 8px 0">
+          Need help or have questions? Contact our 24/7 support: <a href="mailto:support@securefunds.com" style="color:#ffffff;text-decoration:underline;">support@securefunds.com</a>
+        </mj-text>
+        <mj-text align="center" color="#9bbad6" font-size="12px" padding="0 0 8px 0">
+          Learn more about our security measures in our privacy policy.
+        </mj-text>
+        <mj-social align="center" font-size="15px" icon-size="30px" mode="horizontal" padding="0">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061171/youtube-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/linkedin-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740062001/tiktok-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#7c8fa6" font-size="11px" padding="8px 0 0 0">
+          © 2024 SecureFunds. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

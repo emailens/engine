@@ -1,0 +1,155 @@
+<!--
+  Template: Weekly Newsletter with Data Analysis
+  File: 01-weekly-data-analysis.mjml
+  Category: newsletter / content-digest
+  
+  Purpose:
+  Deliver recurring educational content with data tables, insights, and analysis.
+  Builds authority and keeps subscribers engaged with valuable industry information.
+  
+  When to send:
+  - Weekly on consistent day/time (e.g., every Monday 9 AM)
+  - Bi-weekly for less frequent updates
+  - Monthly for deep-dive analysis
+  - Industry newsletters (finance, economics, tech, market research)
+  
+  Personalize:
+  - {{first_name}} (optional for newsletters)
+  - {{week_number}} or {{date}} (e.g., "Week of Jan 15-22")
+  - {{topic_focus}} (e.g., "Transatlantic Economy")
+  - {{data_table}} - dynamic data injection
+  - {{cta_url}} - newsletter signup or premium subscription
+  - Brand colors (#2a9d8f teal/green, #000000 black background)
+ 
+  Notes:
+  - Marketing email (unsubscribe required - included in footer)
+  - Data-heavy content: tables, accordion sections for scannability
+  - Professional/editorial tone (journalistic, not salesy)
+  - Works for B2B content, thought leadership, industry reports
+  - Accordion elements may not work in all email clients (fallback to expanded)
+  - Background image with overlay = visual depth without readability loss
+  - Dark theme (#000000) = modern, premium, reduces eye strain
+  - Best for professional audiences (finance, consulting, research)
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Arial, sans-serif">
+    <!-- Header / Intro -->
+    <mj-section background-color="#000000" padding="0px 0px 0px 0px">
+      <mj-column width="100%" padding="20px 15px" background-color="transparent">
+        <mj-text align="center" color="#2a9d8f" font-size="26px" font-weight="bold" padding="20px 15px">
+          🌎 Transatlantic Economy Pulse
+        </mj-text>
+        <mj-text align="center" color="#e0f7f4" font-size="17px" padding="0px 15px">
+          Your Weekly Brief on U.S.–E.U. Economic Relations, Key Data & Worldwide Impact
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <!-- Section 1 : Analysis with background image -->
+    <mj-section background-url="https://res.cloudinary.com/dk79hhqvp/image/upload/v1748022901/uploaded-by-ai/a-vibrant-and-dynamic-urban-landscape-showcasing-the-bustlin.jpg" background-size="cover" background-repeat="no-repeat" background-position="center" padding="50px 0">
+      <mj-column width="100%" padding="20px 15px" background-color="rgba(42,157,143,0.90)">
+         <mj-text align="left" color="#ffffff" font-size="22px" font-weight="bold" padding="0px 0px 10px 0px">
+            🇺🇸🤝🇪🇺 U.S.–E.U. Economic Relations: 2024 Insights
+         </mj-text>
+         <mj-text align="left" color="#e0f7f4" font-size="16px" padding="0px 0px 12px 0px">
+           Recent months have seen renewed tension and cooperation between the USA and the European Union. Major focus areas include trade tariffs, digital services taxation, and joint efforts to stabilize supply chains. Strong dollar vs. euro fluctuations are influencing exports, while inflation and tech investments remain pivotal topics.
+         </mj-text>
+         <mj-text align="left" color="#e0f7f4" font-size="16px" padding="0px 0px 0px 0px">
+           Here are some numbers to put things in perspective:
+         </mj-text>
+      </mj-column>
+    </mj-section>
+    <!-- Section 2 : Data Table -->
+    <mj-section background-color="#000000" padding="0px 0px 0px 0px">
+      <mj-column width="100%" padding="20px 15px" background-color="transparent">
+         <mj-table align="center" color="#2a9d8f" font-size="15px" cellpadding="8" cellspacing="0" background-color="#131313" style="border-radius:8px;">
+          <tr style="background-color:#204e45;">
+            <th style="padding:8px 18px; border-radius:8px 0 0 0; text-align:left; color:#e0f7f4;">Key Indicator</th>
+            <th style="padding:8px 18px; text-align:center; color:#e0f7f4;">USA</th>
+            <th style="padding:8px 18px; border-radius:0 8px 0 0; text-align:center; color:#e0f7f4;">EU</th>
+          </tr>
+          <tr>
+            <td style="padding:8px 18px; text-align:left;">GDP Growth (Q1 2024)</td>
+            <td style="padding:8px 18px; text-align:center;">2.0%</td>
+            <td style="padding:8px 18px; text-align:center;">0.5%</td>
+          </tr>
+          <tr style="background-color:#223a36;">
+            <td style="padding:8px 18px; text-align:left;">Inflation (April 2024)</td>
+            <td style="padding:8px 18px; text-align:center;">3.1%</td>
+            <td style="padding:8px 18px; text-align:center;">2.6%</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 18px; text-align:left;">Unemployment Rate</td>
+            <td style="padding:8px 18px; text-align:center;">3.8%</td>
+            <td style="padding:8px 18px; text-align:center;">6.0%</td>
+          </tr>
+          <tr style="background-color:#223a36;">
+            <td style="padding:8px 18px; text-align:left;">USD/EUR Exchange Rate</td>
+            <td style="padding:8px 18px; text-align:center;">—</td>
+            <td style="padding:8px 18px; text-align:center;">1.08</td>
+          </tr>
+         </mj-table>
+      </mj-column>
+    </mj-section>
+    <!-- Section 3 : Data/Trends Tabs (Accordion Style) -->
+    <mj-section background-color="#2a9d8f" padding="40px 20px 30px 20px">
+      <mj-column width="100%" padding="20px 15px" background-color="transparent">
+        <mj-accordion>
+          <mj-accordion-element>
+            <mj-accordion-title background-color="#000000" color="#2a9d8f" font-size="16px" font-weight="bold">
+              📈 Growth & Investment Trends
+            </mj-accordion-title>
+            <mj-accordion-text background-color="#1a3732" color="#ffffff" font-size="15px">
+              The U.S. economy remains robust, driven by tech, consumer spending, and low unemployment, while European growth is slowed by energy prices and weak domestic demand. Both regions are pushing for green investment—watch for new cross-Atlantic startup hubs!
+            </mj-accordion-text>
+          </mj-accordion-element>
+          <mj-accordion-element>
+            <mj-accordion-title background-color="#000000" color="#2a9d8f" font-size="16px" font-weight="bold">
+              🌐 Key Trade Developments
+            </mj-accordion-title>
+            <mj-accordion-text background-color="#1a3732" color="#ffffff" font-size="15px">
+              In 2024, digital services and AI regulations are at center stage. The U.S. is pressuring for transatlantic data deals, while the EU tightens privacy and antitrust controls. Tariff disputes over steel, agriculture, and green tech continue—but negotiation channels are open.
+            </mj-accordion-text>
+          </mj-accordion-element>
+          <mj-accordion-element>
+            <mj-accordion-title background-color="#000000" color="#2a9d8f" font-size="16px" font-weight="bold">
+              💶 Currency Moves & Consumer Impact
+            </mj-accordion-title>
+            <mj-accordion-text background-color="#1a3732" color="#ffffff" font-size="15px">
+              A modestly stronger dollar means EU imports cost more for Europeans, but travel to the U.S. is less expensive for Americans. Monitoring inflation on both sides is crucial for financial planning—especially for young expats, entrepreneurs, and remote professionals.
+            </mj-accordion-text>
+          </mj-accordion-element>
+        </mj-accordion>
+      </mj-column>
+    </mj-section>
+    <!-- Call to Action -->
+    <mj-section background-color="#000000" padding="30px 20px">
+      <mj-column width="100%" padding="20px 15px" background-color="transparent">
+        <mj-text align="center" color="#ffffff" font-size="17px" font-weight="bold" padding="0px 0px 14px 0px">
+          Stay Ahead with Data-Driven Opinions
+        </mj-text>
+        <mj-text align="center" color="#e0f7f4" font-size="15px" padding="0px 0px 16px 0px">
+          Want actionable insights for your career, studies, or business?<br>
+          Subscribe to receive fresh global economics analysis every week.
+        </mj-text>
+        <mj-button background-color="#2a9d8f" color="#000000" border-radius="10px" font-size="16px" href="#" padding="12px 30px">
+          📧 Join Our Newsletter
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    <!-- Social & Footer -->
+    <mj-section background-color="#2a9d8f" padding="15px 15px">
+      <mj-column width="100%" padding="20px 15px" background-color="transparent">
+        <mj-social font-size="15px" icon-size="30px" mode="horizontal" align="center" padding="0px 0px 10px 0px">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061171/youtube-round-outlined.png" href="https://youtube.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://twitter.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/linkedin-round-outlined.png" href="https://linkedin.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://instagram.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://facebook.com"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#000000" font-size="12px" padding="10px 0px 0px 0px">
+          © 2024 Transatlantic Economy Pulse. To unsubscribe, click <a href="#" style="color:#ffffff;text-decoration:underline;">here</a>.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

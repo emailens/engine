@@ -1,0 +1,120 @@
+<!--
+  Template: Webinar Thank You & Review Request
+  File: 01-webinar-thank-you-review.mjml
+  Category: event-follow-up / post-webinar
+  
+  Purpose:
+  Thank attendees after webinar/event and request feedback/review.
+  Reinforce key takeaways while building community and gathering testimonials.
+  
+  When to send:
+  - 2-6 hours after webinar/event ends (same day, while fresh)
+  - After virtual conference, workshop, training session
+  - Post-live demo or product launch event
+  - Educational webinar series (send after each session)
+  
+  Personalize:
+  - {{first_name}} or {{firstName}}
+  - {{webinar_title}} (e.g., "Artificial Intelligence Webinar")
+  - {{feedback_url}} - link to review/survey form
+  - {{replay_url}} (optional - link to recording)
+  - {{slides_url}} (optional - presentation download)
+  - {{next_event_date}} (optional - promote next webinar)
+  - Brand colors (#006d77 primary teal, #83c5be light teal, #edf6f9 background)
+  
+  Notes:
+  - Marketing/transactional hybrid (post-event follow-up)
+  - Gratitude-first approach before asking for feedback
+  - Educational recap section = reinforces value delivered
+  - Incentive mention: "mention in review to get slides" = increases completion
+  - Community building = social follow CTAs
+  - Works for B2B SaaS, EdTech, professional training, industry events
+  - Should be sent same day (max 24h) while memory is fresh
+  - Can be automated via Zoom/WebinarJam + email platform integration
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Arial, sans-serif">
+    <!-- Header Section -->
+    <mj-section background-color="#006d77" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#edf6f9" font-size="26px" font-weight="bold" padding="20px 0 10px 0">
+          Thank You for Joining Our Artificial Intelligence Webinar!
+        </mj-text>
+        <mj-image 
+          src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1748615099/uploaded-by-ai/a-dynamic-scene-depicting-a-diverse-team-collaborating-on-ai.jpg"
+          alt="AI Webinar Team Collaboration"
+          width="500px"
+          padding="0 0 15px 0"
+          border-radius="7px"
+        />
+        <mj-text align="center" color="#83c5be" font-size="16px" padding="0 0 10px 0">
+          Your curiosity and engagement made this session a true success! We hope you left with fresh insights to help you apply AI to your projects or daily life.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Feedback Invitation Section -->
+    <mj-section background-color="#edf6f9" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#006d77" font-size="20px" font-weight="bold" padding="10px 0 10px 0">
+          Help Us Grow – Leave a Review!
+        </mj-text>
+        <mj-text align="center" color="#355c5e" font-size="15px" padding="0 0 15px 0">
+          Your feedback helps us create content that matters to you. Take a moment to tell us what you enjoyed, what could be improved, or what topics you’d love to see in future webinars on AI and innovation.
+        </mj-text>
+        <mj-button background-color="#83c5be" border-radius="8px" color="#ffffff" font-size="17px" font-weight="bold" href="https://yourfeedbackform.com" align="center" padding="10px 0">
+          Leave a Review
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- AI Webinar Key Takeaways Section -->
+    <mj-section background-color="#83c5be" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#ffffff" font-size="18px" font-weight="bold" padding="10px 0 5px 0">
+          AI Insights You Gained During the Webinar
+        </mj-text>
+        <mj-text color="#edf6f9" font-size="15px" line-height="1.7">
+          <ul style="padding-left:18px; text-align:left;">
+            <li><strong>Understanding the fundamentals of Artificial Intelligence</strong> and core concepts</li>
+            <li><strong>Practical examples</strong> of how AI can simplify daily routines and boost professional results</li>
+            <li><strong>Live demonstrations</strong> of automation and AI-assisted decision making</li>
+            <li><strong>Q&amp;A session</strong> with our experts on the positive impact and future of AI</li>
+          </ul>
+          If you’d like to receive the presentation slides or extra resources, just mention it in your review and we’ll send them your way!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Community & Social Section -->
+    <mj-section background-color="#edf6f9" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#355c5e" font-size="17px" font-weight="bold" padding="10px 0">
+          Stay Connected with Our AI Community!
+        </mj-text>
+        <mj-text align="center" color="#006d77" font-size="15px" padding="0 0 10px 0">
+          Follow us for more AI news, expert insights, and invites to our next innovation events.
+        </mj-text>
+        <mj-social font-size="15px" icon-size="30px" mode="horizontal" align="center" padding="10px 0">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061171/youtube-round-outlined.png" href="https://youtube.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://twitter.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/linkedin-round-outlined.png" href="https://linkedin.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://instagram.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://facebook.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740062001/tiktok-round-outlined.png" href="https://tiktok.com"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png" href="https://pinterest.com"></mj-social-element>
+        </mj-social>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer Section -->
+    <mj-section background-color="#006d77" padding="15px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#edf6f9" font-size="13px">
+          For any questions or support, just reply to this email or visit our website.<br/>
+          <span style="color:#83c5be;">© 2024 YourCompany. All rights reserved.</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

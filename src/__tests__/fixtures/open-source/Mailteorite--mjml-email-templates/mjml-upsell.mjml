@@ -1,0 +1,144 @@
+<!--
+  Template: Order Bump with Future Discount
+  File: 02-order-bump-discount.mjml
+  Category: upsell / cross-sell
+  
+  Purpose:
+  Encourage customers to add one more item to their existing order before checkout.
+  Incentivize with 20% off next purchase as a reward for upgrading current order.
+  
+  When to send:
+  - Post-purchase (within 2-4 hours after order confirmation)
+  - Before order is shipped/processed
+  - Cart abandonment recovery (alternative use case)
+  - After first purchase (new customer upsell)
+  
+  Personalize:
+  - {{first_name}}
+  - {{order_number}} (optional reference)
+  - {{discount_code}} for 20% off next order
+  - "Add to my order" link → modify existing order or recommended products
+  - Product recommendations based on purchase history
+  - Brand logo + colors (#1B4332 primary, #f8f5ef background)
+    
+  Notes:
+  - Marketing email (requires unsubscribe link - included in footer)
+  - Soft upsell approach: "caring" tone vs aggressive sales
+  - Educational section "How it Works" reduces friction
+  - Navigation bar keeps brand touchpoints alive (Trending, Body, Face, etc.)
+  - Works well for beauty/wellness brands with community-driven messaging
+  - Time-sensitive: only valid while order is still modifiable (24-48h window)
+  - A/B test: discount now vs. discount next time
+  
+  Conversion goal:
+  Primary: Increase Average Order Value (AOV) by 15-30%
+  Secondary: Build loyalty with future discount incentive
+  Tertiary: Drive product discovery through "Discover more" CTA
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Nunito Sans, Arial, sans-serif">
+    <!-- Header with Logo -->
+    <mj-section background-color="#f8f5ef" padding="10px 0px 0 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-image align="center" alt="Brand Logo" padding="0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761317606/uploaded-by-ai/image-1761317606083-kn0rd3j_user_uploaded.png" width="110px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <!-- Navigation -->
+    <mj-section background-color="#f8f5ef" padding="0 0 10px 0">
+      <mj-column background-color="transparent" width="100%">
+        <mj-navbar base-url="#" hamburger="none" ico-color="#1B4332" padding="0 15px">
+          <mj-navbar-link color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" href="#">TRENDING</mj-navbar-link>
+          <mj-navbar-link color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" href="#">BODY</mj-navbar-link>
+          <mj-navbar-link color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" href="#">FACE</mj-navbar-link>
+          <mj-navbar-link color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" href="#">MAKEUP</mj-navbar-link>
+          <mj-navbar-link color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" href="#">VALUES</mj-navbar-link>
+        </mj-navbar>
+      </mj-column>
+    </mj-section>
+    <!-- Hero Section -->
+    <mj-section background-color="#f8f5ef" padding="30px 15px">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="30px" font-weight="bold" line-height="1.3" padding="0 0 10px 0">
+          Treat Yourself to a Little Extra
+        </mj-text>
+        <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="18px" padding="0 0 15px 0">
+          Add one more product to your order and <b>get 20% off your next treat</b>.
+          It’s our caring way to say thank you and help you discover something new you’ll love.
+        </mj-text>
+        <mj-button align="center" background-color="#1B4332" border-radius="30px" color="#ffffff" font-family="Nunito Sans, Arial, sans-serif" font-size="18px" font-weight="bold" href="#" padding="12px 30px">
+          Add to my order →
+        </mj-button>
+      </mj-column>
+      <mj-column background-color="transparent" padding="0 15px" width="100%">
+        <mj-image alt="Customers smiling happy" border-radius="14px" padding="20px 0 0 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761318040/uploaded-by-ai/uploaded-image_user_uploaded.png" width="500px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <!-- How it Works Section -->
+    <mj-section background-color="#f2eddf" padding="32px 15px 22px 15px">
+      <mj-column width="100%" padding="10px 10px">
+        <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="22px" font-weight="bold" padding="0 0 20px 0">
+          How does it work?
+        </mj-text>
+      </mj-column>
+      <mj-column width="32%" padding="0 8px" background-color="transparent">
+        <mj-section background-color="#fffcee" padding="15px 8px" border-radius="16px">
+          <mj-column width="100%" background-color="transparent">
+            <mj-image align="center" alt="Browse" padding="0 0 12px 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761317509/uploaded-by-ai/a-sleek-and-modern-icon-representing-a-shopping_ai_generated.jpg" width="54px"></mj-image>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="17px" font-weight="bold" padding="0 0 12px 0">
+              Browse
+            </mj-text>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" line-height="1.6" padding="0 0 0 0">
+              Pick your next favorite product—explore feel-good essentials inspired by you.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-column>
+      <mj-column width="32%" padding="0 8px" background-color="transparent">
+        <mj-section background-color="#fffcee" padding="15px 8px" border-radius="16px">
+          <mj-column width="100%" background-color="transparent">
+            <mj-image align="center" alt="Add" padding="0 0 12px 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761317509/uploaded-by-ai/an-illustrative-icon-of-a-shopping-cart-represe_ai_generated.jpg" width="54px"></mj-image>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="17px" font-weight="bold" padding="0 0 12px 0">
+              Add
+            </mj-text>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" line-height="1.6" padding="0 0 0 0">
+              Pop it in your cart before checkout and enjoy instant savings or a bonus for your next shop.
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-column>
+      <mj-column width="32%" padding="0 8px" background-color="transparent">
+        <mj-section background-color="#fffcee" padding="15px 8px" border-radius="16px">
+          <mj-column width="100%" background-color="transparent">
+            <mj-image align="center" alt="Enjoy" padding="0 0 12px 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761317510/uploaded-by-ai/a-vibrant-and-attractive-icon-symbolizing-a-gif_ai_generated.jpg" width="54px"></mj-image>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="17px" font-weight="bold" padding="0 0 12px 0">
+              Enjoy
+            </mj-text>
+            <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="14px" line-height="1.6" padding="0 0 0 0">
+              Get 20% off now or on your next treat — and celebrate a little self-love, the community way!
+            </mj-text>
+          </mj-column>
+        </mj-section>
+      </mj-column>
+      <mj-column width="100%" background-color="transparent" padding="18px 15px">
+        <mj-button align="center" background-color="#1B4332" border-radius="30px" color="#ffffff" font-family="Nunito Sans, Arial, sans-serif" font-size="16px" font-weight="bold" href="#" padding="10px 36px">
+          Discover more →
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    <!-- Footer -->
+    <mj-section background-color="#d7e8dd" padding="25px 15px">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-social align="center" font-size="15px" icon-size="30px" mode="horizontal" padding="0">
+          <mj-social-element href="https://instagram.com/" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://facebook.com/" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://twitter.com/" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://youtube.com/" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/youtube-round-outlined.png"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#1B4332" font-family="Nunito Sans, Arial, sans-serif" font-size="12px" padding="12px 0 0 0">
+          © 2024 Your Brand. All rights reserved.<br />
+          <a href="#" style="color:#1B4332; text-decoration:underline;">Unsubscribe</a> | <a href="#" style="color:#1B4332; text-decoration:underline;">Legal</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

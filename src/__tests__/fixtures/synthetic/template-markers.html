@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Order update</title></head>
+  <body style="margin:0;font-family:Arial,sans-serif">
+    <div style="display:none;max-height:0;overflow:hidden">Your order {{order.number}} has shipped.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="padding:28px">
+            <h1>Hello {{ customer.first_name | default: "there" }},</h1>
+            {% if order.shipped %}
+            <p>Order <strong>{{ order.number }}</strong> is on its way.</p>
+            {% else %}
+            <p>We are preparing order <strong>{{ order.number }}</strong>.</p>
+            {% endif %}
+            <ul>
+              {% for item in order.items %}
+              <li>{{ item.name }} — {{ item.quantity }} × {{ item.price }}</li>
+              {% endfor %}
+            </ul>
+            <a href="{{ order.tracking_url }}">Track your package</a>
+            <p>Questions? Reply to this message and we can help.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>

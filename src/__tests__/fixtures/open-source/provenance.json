@@ -1,0 +1,1015 @@
+{
+  "purpose": "Private engine regression and benchmark fixtures. Every upstream template is pinned to a commit/blob and distributed with its repository license notice; retain metadata with any redistribution.",
+  "fixtures": [
+    {
+      "file": "mailgun/action.html",
+      "repository": "mailgun/transactional-email-templates",
+      "path": "templates/inlined/action.html",
+      "commit": "e05e59e8c1e0fa7ffbacc7a165a609fd37c590b5",
+      "blob": "b1c38e2ce5719e27852993580885e9f3d9cb9d95",
+      "license": "MIT",
+      "licenseFile": "mailgun/LICENSE.txt",
+      "coverage": [
+        "action",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "mailgun/alert.html",
+      "repository": "mailgun/transactional-email-templates",
+      "path": "templates/inlined/alert.html",
+      "commit": "e05e59e8c1e0fa7ffbacc7a165a609fd37c590b5",
+      "blob": "a9fab40515e532e3357a2370878f9046389ec927",
+      "license": "MIT",
+      "licenseFile": "mailgun/LICENSE.txt",
+      "coverage": [
+        "alert",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "mailgun/billing.html",
+      "repository": "mailgun/transactional-email-templates",
+      "path": "templates/inlined/billing.html",
+      "commit": "e05e59e8c1e0fa7ffbacc7a165a609fd37c590b5",
+      "blob": "0fe6371d68e77769f633193cd4e1fc77d37a837c",
+      "license": "MIT",
+      "licenseFile": "mailgun/LICENSE.txt",
+      "coverage": [
+        "billing",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "postmark/welcome.html",
+      "repository": "ActiveCampaign/postmark-templates",
+      "path": "templates-inlined/basic-full/welcome/content.html",
+      "commit": "fa73527acb4eb59cf673a54572d213e908f1515c",
+      "blob": "e0915c8a0f684cea2ab1396fe4e848a1b3bee500",
+      "license": "MIT",
+      "licenseFile": "postmark/LICENSE.txt",
+      "coverage": [
+        "welcome",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "postmark/password-reset.html",
+      "repository": "ActiveCampaign/postmark-templates",
+      "path": "templates-inlined/basic-full/password-reset/content.html",
+      "commit": "fa73527acb4eb59cf673a54572d213e908f1515c",
+      "blob": "6fdc1305b52d84a6f7115e3d33de98eb64332cb9",
+      "license": "MIT",
+      "licenseFile": "postmark/LICENSE.txt",
+      "coverage": [
+        "password-reset",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "postmark/receipt.html",
+      "repository": "ActiveCampaign/postmark-templates",
+      "path": "templates-inlined/basic-full/receipt/content.html",
+      "commit": "fa73527acb4eb59cf673a54572d213e908f1515c",
+      "blob": "ec2454137b452c11917623e88591b1c2b32b3821",
+      "license": "MIT",
+      "licenseFile": "postmark/LICENSE.txt",
+      "coverage": [
+        "receipt",
+        "inline-css",
+        "transactional"
+      ]
+    },
+    {
+      "file": "sendgrid/password-reset.html",
+      "repository": "sendgrid/email-templates",
+      "path": "merriweather-templates/password-reset.html",
+      "commit": "12f459a7848761c7dba024a5431c0ce468aca82d",
+      "blob": "1203496ff5d75e6a08a51c982c3231ef8762e95e",
+      "license": "MIT",
+      "licenseFile": "sendgrid/LICENSE.txt",
+      "coverage": [
+        "password-reset",
+        "stylesheets",
+        "images"
+      ]
+    },
+    {
+      "file": "sendgrid/receipt.html",
+      "repository": "sendgrid/email-templates",
+      "path": "merriweather-templates/receipt.html",
+      "commit": "12f459a7848761c7dba024a5431c0ce468aca82d",
+      "blob": "817e0f73aa5cae2ca6f226bdbac3bdb3575c2f37",
+      "license": "MIT",
+      "licenseFile": "sendgrid/LICENSE.txt",
+      "coverage": [
+        "receipt",
+        "stylesheets",
+        "images"
+      ]
+    },
+    {
+      "file": "sendgrid/newsletter.html",
+      "repository": "sendgrid/email-templates",
+      "path": "dynamic-templates/newsletter/news_feed.html",
+      "commit": "12f459a7848761c7dba024a5431c0ce468aca82d",
+      "blob": "cf707691a6081a5d185ca604cb5e215d54431f18",
+      "license": "MIT",
+      "licenseFile": "sendgrid/LICENSE.txt",
+      "coverage": [
+        "newsletter",
+        "dynamic-template-markers",
+        "multicolumn"
+      ]
+    },
+    {
+      "commit": "60b5b6ddf9600e4b7d7e1ef60e5a3a8f1e56e186",
+      "repository": "leemunroe/responsive-html-email-template",
+      "path": "email-inlined.html",
+      "license": "MIT",
+      "coverage": [
+        "responsive",
+        "inline-css"
+      ],
+      "blob": "0dfecc521e7c1d2999a8676fc0f8a74746a9c97d",
+      "licenseFile": "leemunroe--responsive-html-email-template/LICENSE.txt",
+      "file": "leemunroe--responsive-html-email-template/leemunroe-inlined.html"
+    },
+    {
+      "commit": "60b5b6ddf9600e4b7d7e1ef60e5a3a8f1e56e186",
+      "repository": "leemunroe/responsive-html-email-template",
+      "path": "email.html",
+      "license": "MIT",
+      "coverage": [
+        "responsive",
+        "media-queries"
+      ],
+      "blob": "fdada6d75453736ba15504c96f7dd151ccec174f",
+      "licenseFile": "leemunroe--responsive-html-email-template/LICENSE.txt",
+      "file": "leemunroe--responsive-html-email-template/leemunroe-source.html"
+    },
+    {
+      "commit": "ff8b8d697d687c8e3d0a4e49fcc718dc7568861b",
+      "repository": "InterNations/antwort",
+      "path": "single-column/build.html",
+      "license": "MIT",
+      "coverage": [
+        "single-column",
+        "hybrid"
+      ],
+      "blob": "6b20fc8b7053930e377a577d791739c7a8e6833f",
+      "licenseFile": "InterNations--antwort/LICENSE.txt",
+      "file": "InterNations--antwort/antwort-single-column.html"
+    },
+    {
+      "commit": "ff8b8d697d687c8e3d0a4e49fcc718dc7568861b",
+      "repository": "InterNations/antwort",
+      "path": "two-cols-simple/build.html",
+      "license": "MIT",
+      "coverage": [
+        "two-column",
+        "hybrid"
+      ],
+      "blob": "da992b7321c9fc7c433de750a145e18463c378c6",
+      "licenseFile": "InterNations--antwort/LICENSE.txt",
+      "file": "InterNations--antwort/antwort-two-column.html"
+    },
+    {
+      "commit": "ff8b8d697d687c8e3d0a4e49fcc718dc7568861b",
+      "repository": "InterNations/antwort",
+      "path": "three-cols-images/build.html",
+      "license": "MIT",
+      "coverage": [
+        "three-column",
+        "images"
+      ],
+      "blob": "7eb72e054220b41ce02aa1db5578d02affa043ed",
+      "licenseFile": "InterNations--antwort/LICENSE.txt",
+      "file": "InterNations--antwort/antwort-three-column-images.html"
+    },
+    {
+      "commit": "f0a29dae21533af2c4737ffcb01863fc8c038046",
+      "repository": "konsav/email-templates",
+      "path": "explorational.html",
+      "license": "MIT",
+      "coverage": [
+        "newsletter",
+        "responsive"
+      ],
+      "blob": "2a248395d3590273f03daa61e35faf6ee04d4589",
+      "licenseFile": "konsav--email-templates/LICENSE.txt",
+      "file": "konsav--email-templates/konsav-explorational.html"
+    },
+    {
+      "commit": "f0a29dae21533af2c4737ffcb01863fc8c038046",
+      "repository": "konsav/email-templates",
+      "path": "general.html",
+      "license": "MIT",
+      "coverage": [
+        "general",
+        "responsive"
+      ],
+      "blob": "d8d21cc943d6f0775156c97d78dac18b9eddab19",
+      "licenseFile": "konsav--email-templates/LICENSE.txt",
+      "file": "konsav--email-templates/konsav-general.html"
+    },
+    {
+      "commit": "f0a29dae21533af2c4737ffcb01863fc8c038046",
+      "repository": "konsav/email-templates",
+      "path": "promotional.html",
+      "license": "MIT",
+      "coverage": [
+        "promotion",
+        "responsive"
+      ],
+      "blob": "7096394c2f447b72825d992193218ed8d372f645",
+      "licenseFile": "konsav--email-templates/LICENSE.txt",
+      "file": "konsav--email-templates/konsav-promotional.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "1/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-01",
+        "responsive"
+      ],
+      "blob": "b1876ba2d6fc4d2c1ba9271f8e9fe2d650bf51d3",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-01.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "3/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-03",
+        "responsive"
+      ],
+      "blob": "2bf7b4ddf2aaad52c6d0fc1cba7dd4376f4e0416",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-03.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "7/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-07",
+        "responsive"
+      ],
+      "blob": "7fc8557ad8c16da91c3738e3bd935a23916ce54b",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-07.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "12/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-12",
+        "responsive"
+      ],
+      "blob": "077fb24558a636c6e3364304cc2ce36d67181e65",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-12.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "18/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-18",
+        "responsive"
+      ],
+      "blob": "902f995f995ee8ad2ad53b0a05e3db86df827474",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-18.html"
+    },
+    {
+      "commit": "3018557fe943fb1c3e3367aa52d39b2fca44f725",
+      "repository": "ColorlibHQ/email-templates",
+      "path": "25/index.html",
+      "license": "MIT",
+      "coverage": [
+        "layout-25",
+        "responsive"
+      ],
+      "blob": "82c7537d452a719c919ccd747010b61ee9134c7d",
+      "licenseFile": "ColorlibHQ--email-templates/LICENSE.txt",
+      "file": "ColorlibHQ--email-templates/colorlib-25.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/airmail/invoice.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "invoice",
+        "transactional"
+      ],
+      "blob": "3854f8030326198829b4126ad41ff4a30b321411",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-invoice.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/airmail/survey.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "survey",
+        "transactional"
+      ],
+      "blob": "e194807f67bc1615789bf4b791292947350d09ad",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-survey.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/airmail/upsell.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "upsell",
+        "marketing"
+      ],
+      "blob": "10f3755d0b09740932d53565073538cb11432d54",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-upsell.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/cerberus/fluid.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "fluid",
+        "responsive"
+      ],
+      "blob": "4202dc37041e13771e19e313a7423ff767fd99de",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-cerberus-fluid.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/cerberus/hybrid.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "hybrid",
+        "responsive"
+      ],
+      "blob": "7224579de110ef21dff620f60da07dd1851f94f7",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-cerberus-hybrid.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/cerberus/responsive.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "responsive",
+        "media-queries"
+      ],
+      "blob": "4c7a7df2a7b56520668df6d226f9b8488ce4aaf9",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-cerberus-responsive.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/meow/two-column.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "two-column",
+        "responsive"
+      ],
+      "blob": "0569be4279bbb5f1b888a9913d04a2d042de1e4b",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-meow-two-column.html"
+    },
+    {
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "repository": "sendwithus/templates",
+      "path": "templates/plain-jane/plain.html",
+      "license": "Apache-2.0",
+      "coverage": [
+        "plain-text",
+        "minimal"
+      ],
+      "blob": "0e7a8539d0b0e154c5568c0bbc3797d93afbb440",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-plain-text.html"
+    },
+    {
+      "commit": "a132da8eda6ae273a57177b55e158a15103bc032",
+      "repository": "derekpunsalan/responsive-email",
+      "path": "simple.html",
+      "license": "MIT",
+      "coverage": [
+        "simple",
+        "responsive"
+      ],
+      "blob": "d442be12177e8790e7012c99453ffd0ca37a1b15",
+      "licenseFile": "derekpunsalan--responsive-email/LICENSE.txt",
+      "file": "derekpunsalan--responsive-email/derekpunsalan-simple.html"
+    },
+    {
+      "commit": "af3cec9dd12fbbea0c6e9a1b0bf82a0479726957",
+      "repository": "emailmonday/Cerberus",
+      "path": "cerberus-fluid.html",
+      "license": "MIT",
+      "coverage": [
+        "fluid",
+        "responsive"
+      ],
+      "blob": "42dae51c2989d34c92f60f409b68356acbd44996",
+      "licenseFile": "emailmonday--Cerberus/LICENSE.txt",
+      "file": "emailmonday--Cerberus/cerberus-fluid.html"
+    },
+    {
+      "commit": "af3cec9dd12fbbea0c6e9a1b0bf82a0479726957",
+      "repository": "emailmonday/Cerberus",
+      "path": "cerberus-hybrid.html",
+      "license": "MIT",
+      "coverage": [
+        "hybrid",
+        "responsive"
+      ],
+      "blob": "a9e51c42a2a533429b7df5788813eda27fe40b74",
+      "licenseFile": "emailmonday--Cerberus/LICENSE.txt",
+      "file": "emailmonday--Cerberus/cerberus-hybrid.html"
+    },
+    {
+      "commit": "af3cec9dd12fbbea0c6e9a1b0bf82a0479726957",
+      "repository": "emailmonday/Cerberus",
+      "path": "cerberus-responsive.html",
+      "license": "MIT",
+      "coverage": [
+        "responsive",
+        "media-queries"
+      ],
+      "blob": "2810f0f5ed20638c0afedde44f796f05c53eea3b",
+      "licenseFile": "emailmonday--Cerberus/LICENSE.txt",
+      "file": "emailmonday--Cerberus/cerberus-responsive.html"
+    },
+    {
+      "commit": "af3cec9dd12fbbea0c6e9a1b0bf82a0479726957",
+      "repository": "emailmonday/Cerberus",
+      "path": "archived-versions/version 2/template-without-media-queries.html",
+      "license": "MIT",
+      "coverage": [
+        "fluid",
+        "no-media-queries"
+      ],
+      "blob": "6617e659b8804ac58208d011dd7e3b8e549c6ffc",
+      "licenseFile": "emailmonday--Cerberus/LICENSE.txt",
+      "file": "emailmonday--Cerberus/cerberus-no-media-queries.html"
+    },
+    {
+      "commit": "9bb5611f04b3e9a5e189459b9d43bc873ece5d38",
+      "repository": "forwardemail/email-templates",
+      "path": "index.html",
+      "license": "MIT",
+      "coverage": [
+        "transactional",
+        "utility"
+      ],
+      "blob": "86af69ddb0a33da78750417c52435ac05a9dbac7",
+      "licenseFile": "forwardemail--email-templates/LICENSE.txt",
+      "file": "forwardemail--email-templates/forwardemail-transactional.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "ecommerce-1/index.html",
+      "license": "MIT",
+      "coverage": [
+        "ecommerce",
+        "multi-column"
+      ],
+      "blob": "2937ed37845865986c137fa9d53543cbab18e80a",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-ecommerce-1.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "ecommerce-2/index.html",
+      "license": "MIT",
+      "coverage": [
+        "ecommerce",
+        "responsive"
+      ],
+      "blob": "a32ab8b5637e9dfcfc2008c6e1d9dbd3595aef4c",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-ecommerce-2.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "newsletter-1/index.html",
+      "license": "MIT",
+      "coverage": [
+        "newsletter",
+        "multi-column"
+      ],
+      "blob": "3535cb2866ad8b9da0c2ff784c05f57533f316dc",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-newsletter-1.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "newsletter-2/index.html",
+      "license": "MIT",
+      "coverage": [
+        "newsletter",
+        "responsive"
+      ],
+      "blob": "fd89a9d0fd65139d7036747f0f9ef4e23e600f3f",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-newsletter-2.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "request-reset-password-1/index.html",
+      "license": "MIT",
+      "coverage": [
+        "password-reset",
+        "transactional"
+      ],
+      "blob": "61368dcba36a2d4bbd5011c46ac7a3983b7bed38",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-password-reset-1.html"
+    },
+    {
+      "commit": "91d643e4b40ff1e6bf8bdab1469f3539659f1b6e",
+      "repository": "mysigmail/html-email-templates",
+      "path": "request-reset-password-2/index.html",
+      "license": "MIT",
+      "coverage": [
+        "password-reset",
+        "responsive"
+      ],
+      "blob": "f35411bda2aedeeb16c726705c2f7a7bbee07fa6",
+      "licenseFile": "mysigmail--html-email-templates/LICENSE.txt",
+      "file": "mysigmail--html-email-templates/mysigmail-password-reset-2.html"
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/airmail/welcome.html",
+      "repository": "sendwithus/templates",
+      "blob": "b912425523b4638e84dee6cf9a4ddb231115dfc6",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-welcome.html",
+      "coverage": [
+        "welcome",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/airmail/confirm.html",
+      "repository": "sendwithus/templates",
+      "blob": "9255d6ae4acd18d12833fc50d7dd646f60990345",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-confirm.html",
+      "coverage": [
+        "confirmation",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/airmail/invite.html",
+      "repository": "sendwithus/templates",
+      "blob": "73b6f64332eb89f43a1d49214ce7c7950a245be8",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-invite.html",
+      "coverage": [
+        "invite",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/airmail/progress.html",
+      "repository": "sendwithus/templates",
+      "blob": "723b0c7466d33837875f8aa1621e7703aafbe21e",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-airmail-progress.html",
+      "coverage": [
+        "progress",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/mantra/receipt.html",
+      "repository": "sendwithus/templates",
+      "blob": "b99bc55dbb0ccae8caf37be44fd15c91d0499f4a",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-mantra-receipt.html",
+      "coverage": [
+        "receipt",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/mantra/shipped.html",
+      "repository": "sendwithus/templates",
+      "blob": "ab15b701a0dc93e4be53cc1b11058e3d1f73cd83",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-mantra-shipped.html",
+      "coverage": [
+        "shipping",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/mantra/coupon.html",
+      "repository": "sendwithus/templates",
+      "blob": "b1148e3bac5773d6de45c1bfaf0458cd91741999",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-mantra-coupon.html",
+      "coverage": [
+        "coupon",
+        "marketing"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/meow/digest-left.html",
+      "repository": "sendwithus/templates",
+      "blob": "f33a6ac1d0886136c152792b493354c36046e7cb",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-meow-digest-left.html",
+      "coverage": [
+        "digest",
+        "multi-column"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/meow/digest-right.html",
+      "repository": "sendwithus/templates",
+      "blob": "42152cec09ca3884a519d1399a46bf093b17f7bf",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-meow-digest-right.html",
+      "coverage": [
+        "digest",
+        "multi-column"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/meow/welcome.html",
+      "repository": "sendwithus/templates",
+      "blob": "0b1107a6c1aecf4c883304494771b0584a9987e1",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-meow-welcome.html",
+      "coverage": [
+        "welcome",
+        "transactional"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/meow/coupon.html",
+      "repository": "sendwithus/templates",
+      "blob": "e39f78e351b109ebf95837d1192ad61fd5da6c00",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-meow-coupon.html",
+      "coverage": [
+        "coupon",
+        "marketing"
+      ]
+    },
+    {
+      "license": "Apache-2.0",
+      "commit": "f555e49038ed9ac05a39bf7048a73616f69680ac",
+      "path": "templates/goldstar/birthday.html",
+      "repository": "sendwithus/templates",
+      "blob": "bc9b547088e5de4fcfeb0a7f742bc26c8ed9fe77",
+      "licenseFile": "sendwithus--templates/LICENSE.txt",
+      "file": "sendwithus--templates/sendwithus-goldstar-birthday.html",
+      "coverage": [
+        "birthday",
+        "marketing"
+      ]
+    },
+    {
+      "blob": "7d4af0aa20c76008a938e867149d1b5464b42819",
+      "commit": "15419ff1f4cd0e32ed2c15a4a9182cc47a200a60",
+      "repository": "resend/react-email",
+      "coverage": [
+        "abandoned-cart",
+        "react-components"
+      ],
+      "file": "resend--react-email/react-email-arcane-cart.tsx",
+      "license": "MIT",
+      "path": "apps/demo/emails/04-Arcane/abandoned-cart.tsx",
+      "licenseFile": "resend--react-email/LICENSE.txt"
+    },
+    {
+      "blob": "d94b6c3e44ac4e06584252999b2608f493b0d072",
+      "commit": "15419ff1f4cd0e32ed2c15a4a9182cc47a200a60",
+      "repository": "resend/react-email",
+      "coverage": [
+        "newsletter",
+        "react-components"
+      ],
+      "file": "resend--react-email/react-email-arcane-newsletter.tsx",
+      "license": "MIT",
+      "path": "apps/demo/emails/04-Arcane/newsletter.tsx",
+      "licenseFile": "resend--react-email/LICENSE.txt"
+    },
+    {
+      "blob": "67136c063e697605a4bee5518e9e7020aa8aee96",
+      "commit": "15419ff1f4cd0e32ed2c15a4a9182cc47a200a60",
+      "repository": "resend/react-email",
+      "coverage": [
+        "order-confirmation",
+        "react-components"
+      ],
+      "file": "resend--react-email/react-email-arcane-order.tsx",
+      "license": "MIT",
+      "path": "apps/demo/emails/04-Arcane/order-confirmation.tsx",
+      "licenseFile": "resend--react-email/LICENSE.txt"
+    },
+    {
+      "blob": "47856ea976809633b8e133e12f3693a82e6161ad",
+      "commit": "15419ff1f4cd0e32ed2c15a4a9182cc47a200a60",
+      "repository": "resend/react-email",
+      "coverage": [
+        "welcome",
+        "react-components"
+      ],
+      "file": "resend--react-email/react-email-studio-welcome.tsx",
+      "license": "MIT",
+      "path": "apps/demo/emails/05-Studio/welcome.tsx",
+      "licenseFile": "resend--react-email/LICENSE.txt"
+    },
+    {
+      "blob": "3814aa00dbc982c03c9b8da1c97a4daf4ef2fa68",
+      "commit": "15419ff1f4cd0e32ed2c15a4a9182cc47a200a60",
+      "repository": "resend/react-email",
+      "coverage": [
+        "newsletter",
+        "react-components"
+      ],
+      "file": "resend--react-email/react-email-studio-newsletter.tsx",
+      "license": "MIT",
+      "path": "apps/demo/emails/05-Studio/newsletter.tsx",
+      "licenseFile": "resend--react-email/LICENSE.txt"
+    },
+    {
+      "blob": "044a9b4593079e7ca995c1b105993e509e15a1b8",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "abandoned-cart",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-abandoned-cart.mjml",
+      "license": "MIT",
+      "path": "mjml/abandoned-cart/01-cart-recovery-benefits.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "1657049e51acbd7c49a5186d74bbce3c7f8c0390",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "verification",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-verification.mjml",
+      "license": "MIT",
+      "path": "mjml/account-activation/02-email-verification-security.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "d6ba91ac47910da1015068569f87bc4a8975b79d",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "feedback",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-feedback.mjml",
+      "license": "MIT",
+      "path": "mjml/feedback/01-webinar-thank-you-review.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "162310f37cc3e1d550d54088d975b6350ded0eac",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "newsletter",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-newsletter.mjml",
+      "license": "MIT",
+      "path": "mjml/newsletter/01-weekly-data-analysis.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "585aa9a2a742660f0c01fcb3a26bab95fc2af363",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "product-launch",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-product-launch.mjml",
+      "license": "MIT",
+      "path": "mjml/product-launch/02-teaser-mystery.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "ad8b71c3f685d3533db27e41bea67cd75d69f057",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "receipt",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-post-delivery.mjml",
+      "license": "MIT",
+      "path": "mjml/receipt-invoice/01-review-request-post-delivery.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "508583520e67a66f3f3389535a7f4133e7904b8f",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "reengagement",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-winback.mjml",
+      "license": "MIT",
+      "path": "mjml/reengagement/03-win-back-poll-feedback.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "4acfeeb65c29960d17ffd0f03653449f01907d6a",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "shipping",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-shipping.mjml",
+      "license": "MIT",
+      "path": "mjml/shipping-update/01-card-shipped.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "26b00fee02f9b547b5d62a096c30baef8e4de0a0",
+      "commit": "79d0e3a132c9fc901444d183801dc9a3c77da94e",
+      "repository": "Mailteorite/mjml-email-templates",
+      "coverage": [
+        "upsell",
+        "mjml"
+      ],
+      "file": "Mailteorite--mjml-email-templates/mjml-upsell.mjml",
+      "license": "MIT",
+      "path": "mjml/upsell/01-order-bump-discount.mjml",
+      "licenseFile": "Mailteorite--mjml-email-templates/LICENSE.txt"
+    },
+    {
+      "blob": "392e8150b36558213d3bc797e7f1d411c95d93db",
+      "commit": "9ecb09103cb5f98207bf1d4676d1f7a39b541a0d",
+      "repository": "maizzle/starter-postmark",
+      "coverage": [
+        "welcome",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-postmark/maizzle-postmark-welcome.html",
+      "license": "MIT",
+      "path": "emails/basic-full/welcome.html",
+      "licenseFile": "maizzle--starter-postmark/LICENSE.txt"
+    },
+    {
+      "blob": "edfbc4e99cabc0e70ff38c2015c3fffa33ca5a8e",
+      "commit": "9ecb09103cb5f98207bf1d4676d1f7a39b541a0d",
+      "repository": "maizzle/starter-postmark",
+      "coverage": [
+        "receipt",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-postmark/maizzle-postmark-receipt.html",
+      "license": "MIT",
+      "path": "emails/basic-full/receipt.html",
+      "licenseFile": "maizzle--starter-postmark/LICENSE.txt"
+    },
+    {
+      "blob": "737a4a86fa55ff686f024168e70a394e2d2a7488",
+      "commit": "9ecb09103cb5f98207bf1d4676d1f7a39b541a0d",
+      "repository": "maizzle/starter-postmark",
+      "coverage": [
+        "invitation",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-postmark/maizzle-postmark-invite.html",
+      "license": "MIT",
+      "path": "emails/basic-full/user-invitation.html",
+      "licenseFile": "maizzle--starter-postmark/LICENSE.txt"
+    },
+    {
+      "blob": "0ffb7d7de9202675fe2d3cc65581155663f78aee",
+      "commit": "730aa792662756208079e3c832be77fc52bc6a8d",
+      "repository": "maizzle/starter-litmus",
+      "coverage": [
+        "newsletter",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-litmus/maizzle-litmus-newsletter.html",
+      "license": "MIT",
+      "path": "src/templates/slate/newsletter.html",
+      "licenseFile": "maizzle--starter-litmus/LICENSE.txt"
+    },
+    {
+      "blob": "c2892fb81d93196d2707132e72adc71132738687",
+      "commit": "730aa792662756208079e3c832be77fc52bc6a8d",
+      "repository": "maizzle/starter-litmus",
+      "coverage": [
+        "receipt",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-litmus/maizzle-litmus-receipt.html",
+      "license": "MIT",
+      "path": "src/templates/slate/receipt.html",
+      "licenseFile": "maizzle--starter-litmus/LICENSE.txt"
+    },
+    {
+      "blob": "3c7abba00ff572f1b106cad0e8d8f168eaa3be65",
+      "commit": "730aa792662756208079e3c832be77fc52bc6a8d",
+      "repository": "maizzle/starter-litmus",
+      "coverage": [
+        "stationery",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-litmus/maizzle-litmus-stationery.html",
+      "license": "MIT",
+      "path": "src/templates/slate/stationery.html",
+      "licenseFile": "maizzle--starter-litmus/LICENSE.txt"
+    },
+    {
+      "blob": "73dc95729551f76ee21d3ce9de04e425ca82544d",
+      "commit": "9357d85c6f72bad0f07701e320cfbb672a2fed1f",
+      "repository": "maizzle/starter-amp4email",
+      "coverage": [
+        "amp",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-amp4email/maizzle-amp-accordion.html",
+      "license": "MIT",
+      "path": "build_production/emails/accordion.html",
+      "licenseFile": "maizzle--starter-amp4email/LICENSE.txt"
+    },
+    {
+      "blob": "d101537cc4747cb766b7c3df6317cdb2414e53cf",
+      "commit": "9357d85c6f72bad0f07701e320cfbb672a2fed1f",
+      "repository": "maizzle/starter-amp4email",
+      "coverage": [
+        "amp",
+        "maizzle"
+      ],
+      "file": "maizzle--starter-amp4email/maizzle-amp-carousel.html",
+      "license": "MIT",
+      "path": "build_production/emails/carousel.html",
+      "licenseFile": "maizzle--starter-amp4email/LICENSE.txt"
+    }
+  ]
+}

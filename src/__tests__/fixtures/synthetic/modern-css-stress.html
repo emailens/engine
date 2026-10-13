@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Product update</title>
+    <style>
+      :root { --ink: #182230; --brand: #4f46e5; --gap: 16px; }
+      body { margin: 0; color: var(--ink, #182230); }
+      .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap, 16px); }
+      .card { display: flex; align-items: center; border-radius: 12px; background: linear-gradient(135deg, #f1f5ff, #fff); }
+      .pulse { animation: pulse 1.8s ease-in-out infinite; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .65; } }
+      @supports (display: grid) { .cards { display: grid; } }
+      @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px">
+          <tr><td style="padding:24px;font-family:Arial,sans-serif">
+            <h1>More ways to work</h1>
+            <picture>
+              <source type="image/avif" srcset="https://example.com/images/product.avif">
+              <source type="image/webp" srcset="https://example.com/images/product.webp">
+              <img src="https://example.com/images/product.png" width="552" alt="A preview of the updated product dashboard" style="display:block;max-width:100%;height:auto">
+            </picture>
+            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="1" height="1" alt="">
+            <div class="cards">
+              <div class="card pulse" style="padding:16px"><strong>Shared workspaces</strong></div>
+              <div class="card" style="padding:16px"><strong>Saved views</strong></div>
+            </div>
+            <p>New features are ready in your account.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>

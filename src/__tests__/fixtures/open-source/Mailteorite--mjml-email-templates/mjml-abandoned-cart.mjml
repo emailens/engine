@@ -1,0 +1,218 @@
+<!--
+  Template: Abandoned Cart with Benefits Breakdown
+  File: 02-cart-recovery-benefits.mjml
+  Category: abandoned-cart / cart-recovery
+  
+  Purpose:
+  Re-engage customers who left items in cart by showcasing product benefits and addressing objections.
+  Uses educational approach with detailed features grid + FAQ section to overcome hesitation.
+  
+  When to send:
+  - 2-4 hours after cart abandonment (first reminder)
+  - 24 hours after abandonment (second reminder in series)
+  - For high-value items (>$30) where education drives conversion
+  
+  Personalize:
+  - {{first_name}}
+  - {{product_name}} (e.g., "NYA body cream")
+  - {{product_image}} - hero 16:9 product shot
+  - {{cart_url}} for "Complete my order" CTA
+  - Brand colors (#208e7c primary, #fff6ed background)
+  
+  Tested on:
+  Gmail (web/mobile), Outlook, Apple Mail, iOS Mail
+  
+  Notes:
+  - Marketing email (unsubscribe required - included in footer)
+  - Educational approach vs. discount-driven (keeps brand value high)
+  - 6-point benefits grid reduces perceived risk
+  - FAQ section preemptively handles objections (texture, sensitivity, results)
+  - No urgency/scarcity tactics = softer, trustworthy tone
+  - Works best for premium/luxury products where trust > price
+  - 16:9 hero image optimized for mobile preview
+  - "Reply to this email" = builds personal connection
+  
+  A/B test suggestions:
+  - Subject line: Benefits-focused vs. "You forgot something"
+  - CTA copy: "Complete my order" vs. "Get my cream now"
+  - Add social proof section (reviews/testimonials)
+  
+  Conversion goal:
+  Primary: Recover 8-15% of abandoned carts
+  Secondary: Educate on product value (nurture for future purchase)
+  Tertiary: Reduce support queries via FAQ section
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Arial, sans-serif">
+    <!-- Header with Brand -->
+    <mj-section background-color="#fff6ed" padding="0 0 0 0">
+      <mj-column width="100%" padding="18px 15px" background-color="transparent">
+        <mj-text align="center" color="#208e7c" font-size="26px" font-weight="900" font-family="Arial Black, Arial, sans-serif" padding="0 0 10px 0" line-height="34px">
+          NYA
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Hero Section with 16:9 Product Photo -->
+    <mj-section background-color="#ffffff" padding="0 0 0 0" border-radius="14px">
+      <mj-column width="100%" padding="16px 15px" background-color="transparent">
+        <mj-image src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761314223/uploaded-by-ai/image-1761314223413-83g9fko_user_uploaded.png" alt="NYA Body Cream - Abandoned Cart Hero" width="500px" height="281px" align="center" border-radius="16px" fluid-on-mobile="true" padding="0 0 16px 0"/>
+        <mj-text align="center" color="#111" font-size="25px" font-weight="bold" padding="8px 0 6px 0" line-height="38px">
+          Looking for luxury skin care?<br>
+        </mj-text>
+        <mj-text align="center" color="#927b6a" font-size="17px" padding="6px 0 30px 0" line-height="27px">
+          Your NYA body cream is just a click away.<br>
+          Experience deep hydration, glowing skin, and the confidence that comes with pure self-care.<br>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Product Features Grid -->
+    <mj-section background-color="#ffffff" padding="0 10px 0 10px" border-radius="10px">
+      <mj-group>
+        <mj-column width="50%" padding="12px 6px" background-color="transparent">
+          <mj-text align="left" font-size="15px" color="#208e7c" padding="0 0 18px 12px" font-weight="bold" line-height="23px">
+            ✨ Deep hydration<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              For visibly softer, smoother skin
+            </span><br><br>
+          </mj-text>
+          <mj-text align="left" font-size="15px" color="#f7b96c" padding="0 0 18px 12px" font-weight="bold" line-height="23px">
+            🌿 Clean ingredients<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              Vegan &amp; cruelty-free formulas
+            </span><br><br>
+          </mj-text>
+          <mj-text align="left" font-size="15px" color="#e9b02e" padding="0 0 5px 12px" font-weight="bold" line-height="23px">
+            🌸 Lightweight feel<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              Absorbs instantly—no greasy finish
+            </span>
+          </mj-text>
+        </mj-column>
+        <mj-column width="50%" padding="12px 6px" background-color="transparent">
+          <mj-text align="left" font-size="15px" color="#9e6f48" padding="0 0 18px 12px" font-weight="bold" line-height="23px">
+            🛡️ Protective moisture<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              Shields from dryness all day long
+            </span><br><br>
+          </mj-text>
+          <mj-text align="left" font-size="15px" color="#ca887b" padding="0 0 18px 12px" font-weight="bold" line-height="23px">
+            🌞 Healthy glow<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              Enhances natural radiance
+            </span><br><br>
+          </mj-text>
+          <mj-text align="left" font-size="15px" color="#e68e35" padding="0 0 5px 12px" font-weight="bold" line-height="23px">
+            💚 Sensitive skin-friendly<br>
+            <span style="color:#7a7572; font-weight:400; line-height:20px;">
+              No parabens, no harsh chemicals
+            </span>
+          </mj-text>
+        </mj-column>
+      </mj-group>
+    </mj-section>
+    
+    <!-- Spacing before CTA -->
+    <mj-section background-color="#ffffff" padding="0 0 0 0">
+      <mj-column width="100%" padding="6px 15px" background-color="transparent">
+        <mj-text font-size="10px" line-height="10px">&nbsp;</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA Button -->
+    <mj-section background-color="#ffffff" padding="0 0 16px 0">
+      <mj-column width="100%" padding="20px 20px" background-color="transparent">
+        <mj-button href="#" align="center" background-color="#208e7c" color="#fff" font-weight="bold" border-radius="8px" padding="16px 32px" font-size="17px" inner-padding="11px 30px" font-family="Arial, sans-serif" >
+          Complete my order
+        </mj-button>
+      </mj-column>
+    </mj-section>
+  
+    <!-- Divider -->
+    <mj-section background-color="none" padding="0 0 0 0">
+      <mj-column width="100%">
+        <mj-divider border-color="#ffe2c5" border-width="2px" padding="0"></mj-divider>
+      </mj-column>
+    </mj-section>
+  
+    <!-- FAQ Section -->
+    <mj-section background-color="#ffffff" padding="0 0 0 0">
+      <mj-column width="100%" padding="30px 15px 0 15px" background-color="transparent">
+        <mj-text align="center" color="#222b2e" font-size="20px" font-weight="bold" padding="0 0 14px 0" line-height="32px">
+          Questions? We’ve got answers.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="#ffffff" padding="0 0 18px 0">
+      <mj-group>
+        <mj-column width="50%" padding="8px 8px" background-color="transparent">
+          <mj-text color="#927b6a" font-size="15px" padding="0 0 16px 14px" line-height="23px">
+            <b>Is this safe for sensitive skin?</b><br>
+            Absolutely! Our cream is dermatologically tested and fragrance-free.<br><br>
+          </mj-text>
+          <mj-text color="#927b6a" font-size="15px" padding="0 0 16px 14px" line-height="23px">
+            <b>When will I see results?</b><br>
+            Most users feel softer skin after the first use,<br>
+            with visible improvement in a week.<br><br>
+          </mj-text>
+        </mj-column>
+        <mj-column width="50%" padding="8px 8px" background-color="transparent">
+          <mj-text color="#927b6a" font-size="15px" padding="0 0 16px 14px" line-height="23px">
+            <b>Is it greasy or sticky?</b><br>
+            Not at all! It sinks in quickly with a fresh, light finish.<br><br>
+          </mj-text>
+          <mj-text color="#927b6a" font-size="15px" padding="0 0 16px 14px" line-height="23px">
+            <b>Can I use it every day?</b><br>
+            Yes! Gentle for daily use on all skin types.<br><br>
+          </mj-text>
+        </mj-column>
+      </mj-group>
+    </mj-section>
+    
+    <!-- See All Questions Button -->
+    <mj-section background-color="#ffffff" padding="8px 0 16px 0">
+      <mj-column width="100%" padding="10px 20px" background-color="transparent">
+        <mj-button href="#" align="center" background-color="#fff6ed" color="#208e7c" border-radius="8px" font-size="15px" inner-padding="12px 30px" font-weight="bold" border="1px solid #208e7c">
+          See all questions
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Divider -->
+    <mj-section background-color="none" padding="0 0 0 0">
+      <mj-column width="100%">
+        <mj-divider border-color="#ffe2c5" border-width="2px" padding="0"></mj-divider>
+      </mj-column>
+    </mj-section>
+    
+    <!-- Footer with supportive message and links -->
+    <mj-section background-color="#fff6ed" padding="14px 0 0 0">
+      <mj-column width="100%" padding="14px 25px" background-color="transparent">
+        <mj-text align="center" color="#208e7c" font-size="16px" font-weight="bold" padding="0 0 5px 0" line-height="24px">
+          We’re always here to help.
+        </mj-text>
+        <mj-text align="center" color="#927b6a" font-size="14px" padding="2px 0 0 0" line-height="22px">
+          Reply to this email with any questions&nbsp;<br>or just say hello!
+        </mj-text>
+      </mj-column>
+      <mj-column width="100%" padding="10px 25px" background-color="transparent">
+        <mj-text align="center" color="#a79c90" font-size="13px" padding="0 0 14px 0" line-height="22px">
+          <a href="#" style="color: #208e7c; text-decoration: underline;">View in browser</a> &nbsp;|&nbsp; 
+          <a href="#" style="color: #208e7c; text-decoration: underline;">Unsubscribe</a>
+        </mj-text>
+      </mj-column>
+      <mj-column width="100%" padding="0px 10px 10px 10px" background-color="transparent">
+        <mj-social align="center" font-size="15px" icon-size="27px" mode="horizontal" padding="0 0 12px 0">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://facebook.com/nya"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://twitter.com/nya"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://instagram.com/nya"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png" href="https://pinterest.com/nya"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#a79c90" font-size="12px" padding="8px 0 0 0" line-height="20px">
+          &copy; 2024 NYA &nbsp;|&nbsp; Self-Care, Elevated.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

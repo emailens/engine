@@ -1,0 +1,126 @@
+<!--
+  Template: Card Shipped Confirmation
+  File: 01-card-shipped.mjml
+  Category: shipping-update / order-tracking
+  
+  Purpose:
+  Confirm that a physical greeting card has been mailed and provide tracking info.
+  Reassures customers and sets delivery expectations.
+  
+  When to send:
+  - Immediately after card is dropped in the mail
+  - When postal tracking number is generated
+  - Physical product fulfillment completion
+  
+  Personalize:
+  - {{ship_date}} (e.g., "04/11/2024")
+  - {{order_number}} (e.g., "650065")
+  - {{card_type}} (e.g., "Good Luck")
+  - {{recipient_name}} (e.g., "Smiles Davis")
+  - {{tracking_url}} for "Track my order" button
+  - Brand logo + colors (#005E80 primary, #FFF7D6 secondary)
+  
+  Notes:
+  - Transactional email (shipping confirmation = no unsubscribe required in most jurisdictions)
+  - Warm, friendly tone with emojis fits greeting card brand personality
+  - 3 CTAs hierarchy: Track (primary) → Support (secondary) → Store (tertiary)
+  - Delivery window "2–7 days" manages expectations for postal variability
+  - Help section reduces support tickets by being proactive
+  - Works for any physical card/gift product with slight copy adjustments
+  
+  Conversion goal:
+  Primary: Reduce "where's my order?" support inquiries
+  Secondary: Drive traffic to store for repeat purchases
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Poppins,Arial,sans-serif">
+    <mj-raw>
+      <!-- Header with Brand Logo -->
+    </mj-raw>
+    <mj-section background-color="#FFF7D6" padding="0 0 12px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-image align="center" alt="Brand Logo" border-radius="24px" padding="0px" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761315817/uploaded-by-ai/image-1761315817490-fte10fs_user_uploaded.png" width="110px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <mj-raw>
+      <!-- Hero Section -->
+    </mj-raw>
+    <mj-section background-color="#FFF7D6" border-radius="0px" padding="0 0 32px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-text align="center" border-radius="16px" color="#005E80" font-family="Poppins, Arial, sans-serif" font-size="26px" font-weight="bold" line-height="1.25" padding="8px 0 4px 0">
+          Your card was mailed!
+        </mj-text>
+        <mj-text align="center" color="#234" font-family="Poppins, Arial, sans-serif" font-size="16px" line-height="1.7" padding="6px 0 12px 0">
+          Your card was dropped in the mail today <strong>04/11/2024</strong> and should arrive in 2–7 days (depending on postal speed).<br>
+          Expect a little happy moment soon!
+        </mj-text>
+        <mj-image align="center" alt="Delivery Truck Illustration" height="180px" padding="10px 0 0 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761316021/uploaded-by-ai/uploaded-image_user_uploaded.png" style="aspect-ratio:16/9;object-fit:contain;border-radius:18px;" width="320px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <mj-raw>
+      <!-- Order Summary -->
+    </mj-raw>
+    <mj-section background-color="#ffffff" padding-bottom="0px" padding="0 0 24px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-text align="center" color="#1D2A33" font-family="Poppins, Arial, sans-serif" font-size="22px" font-weight="bold" line-height="1.4" padding="8px 0 2px 0">
+          Order number <span style="color:#005E80;">650065</span>
+        </mj-text>
+        <mj-divider border-color="#FAF3E7" border-width="2px" padding="10px 0"></mj-divider>
+        <mj-text align="center" color="#222" font-family="Poppins, Arial, sans-serif" font-size="16px" line-height="1.7" padding="2px 0 16px 0">
+          1 <span style="color:#005E80; font-weight:bold;">“Good Luck”</span> card to Smiles Davis.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-raw>
+      <!-- CTA Section -->
+    </mj-raw>
+    <mj-section background-color="#ffffff" padding="0 0 8px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-button background-color="#005E80" border-radius="32px" color="#fff" font-family="Poppins, Arial, sans-serif" font-size="15px" href="#" padding="8px 8px 12px 8px">
+          Track my order
+        </mj-button>
+        <mj-button background-color="#FFF7D6" border-radius="32px" border="1.5px solid #005E80" color="#005E80" font-family="Poppins, Arial, sans-serif" font-size="15px" href="mailto:info@postable.com" inner-padding="10px 25px" padding="8px 8px 12px 8px">
+          Contact support
+        </mj-button>
+        <mj-button background-color="#F5F5F5" border-radius="32px" color="#005E80" font-family="Poppins, Arial, sans-serif" font-size="14px" href="#" padding="8px 8px 0 8px">
+          Visit our store
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-raw>
+      <!-- Help Section -->
+    </mj-raw>
+    <mj-section background-color="#E9EBF0" border-radius="0px" padding="0px 0 20px 0">
+      <mj-column background-color="transparent" border-radius="0px" padding="20px 15px" width="100%">
+        <mj-text align="center" color="#005E80" font-family="Poppins, Arial, sans-serif" font-size="20px" font-weight="bold" line-height="1.4" padding="0 0 0 0">
+          Any questions?
+        </mj-text>
+        <mj-text align="center" color="#222" font-family="Poppins, Arial, sans-serif" font-size="15px" line-height="1.8" padding="4px 0 0 0">
+          If you need any help or just want to chat, email us anytime at<br>
+          <a href="mailto:info@postable.com" style="color:#005E80;text-decoration:underline;font-weight:bold;">info@postable.com</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-raw>
+      <!-- Footer Section -->
+    </mj-raw>
+    <mj-section background-color="#F4F4F4" border-radius="0 0 24px 24px" padding="18px 0 0 0">
+      <mj-column background-color="transparent" padding="10px 15px" width="100%">
+        <mj-divider border-color="#E0E0E0" border-width="1px"></mj-divider>
+        <mj-social align="center" font-size="15px" icon-size="30px" mode="horizontal" padding="10px 0">
+          <mj-social-element href="https://facebook.com/postable" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://instagram.com/postable" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://twitter.com/postable" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://pinterest.com/postable" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#888" font-family="Poppins, Arial, sans-serif" font-size="12px" line-height="1.7" padding="6px 0 2px 0">
+          154 Grand Street, New York, NY 10013 &nbsp;|&nbsp;
+          <a href="#" style="color:#005E80;text-decoration:underline;">Unsubscribe</a>
+        </mj-text>
+        <mj-text align="center" color="#CCC" font-family="Poppins, Arial, sans-serif" font-size="10px" line-height="1.65" padding="0 0 8px 0">
+          © 2024 Postable. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

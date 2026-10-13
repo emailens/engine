@@ -38,6 +38,8 @@
     "sync:feature-urls": "bun run scripts/sync-feature-urls.ts",
     "check:freshness": "bun run scripts/check-data-freshness.ts",
     "bench:positions": "bun run scripts/bench-positions.ts",
+    "bench:core": "bun run scripts/bench-core.ts",
+    "bench:sizes": "bun run scripts/bench-size-matrix.ts",
     "test": "bun test",
     "test:render": "RENDER_TESTS=1 bun test src/__tests__/render.e2e.test.ts",
     "prepublishOnly": "bun run build"

@@ -1,0 +1,102 @@
+<!--
+  Template: Product Launch Teaser - Mystery Reveal
+  File: 02-teaser-mystery.mjml
+  Category: product-launch / pre-launch
+  
+  Purpose:
+  Build anticipation and curiosity before a major product/collection launch.
+  Mystery approach with poetic copy to spark intrigue and maximize opt-in for launch notification.
+  
+  When to send:
+  - 7-14 days before major product launch
+  - New collection pre-announcement
+  - Brand refresh or rebrand teaser
+  - Mystery drop / limited edition preview
+  - Series of 2-3 teaser emails (this can be #1 or #2)
+  
+  Personalize:
+  - {{first_name}} (optional, works without)
+  - {{notification_url}} for "Get notified" CTA
+  - {{launch_date}} (optional, can be vague like "soon")
+  - Brand colors (#FDC500 accent, #FDF4EF background, #0F172A text)
+  
+  Notes:
+  - Marketing email (unsubscribe required - include in footer if needed)
+  - Poetic, aspirational tone ("spark delight", "beauty to every corner")
+  - No product reveal = pure mystery & curiosity gap technique
+  - Megaphone icon = announcement metaphor without being literal
+  - "Get notified" CTA = list segmentation for launch day targeting
+  - Soft, warm color palette = premium/lifestyle brand aesthetic
+  - Letter-spacing used strategically for elegant typography
+  - Works best for home decor, fashion, beauty, lifestyle brands
+  
+  Conversion goal:
+  Primary: Maximize "Get notified" click-through (target 15-25% CTR)
+  Secondary: Build anticipation and engagement pre-launch
+  Tertiary: Segment highly-engaged users for VIP early access
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Quicksand, Arial, sans-serif">
+    <!-- Header : logo centré -->
+    <mj-section background-color="#FDF4EF" padding="40px 0 10px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-image align="center" alt="Havenly Logo" padding="0 0 0 0" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761161210/uploaded-by-ai/uploaded-image_user_uploaded.png" width="120px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <!-- Bloc visuel principal avec illustration vectorielle sur mesure -->
+    <mj-section background-color="#FDF4EF" padding="0 0 0 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-image align="center" alt="Minimal Outline Megaphone Flat Vector — Announcement" padding="0 0 10px 0"
+          src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1761163016/uploaded-by-ai/a-visually-striking-and-modern-flat-vector-illu_ai_generated.jpg"
+          width="320px"></mj-image>
+      </mj-column>
+    </mj-section>
+    <!-- Message principal -->
+    <mj-section background-color="#FDF4EF" padding="0 0 0 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-text align="center" color="#0F172A" font-family="Quicksand, Arial, sans-serif" font-size="34px" font-weight="bold" letter-spacing="0.03em" line-height="1.12" padding="10px 0 0 0">
+          Keep your eyes open,
+        </mj-text>
+        <mj-text align="center" color="#0F172A" font-family="Quicksand, Arial, sans-serif" font-size="18px" font-weight="400" letter-spacing="0.14em" line-height="2" padding="18px 0 6px 0">
+          Something new is coming soon…<br>
+          Stay curious. Stay inspired.
+        </mj-text>
+        <mj-text align="center" color="#49455c" font-family="Quicksand, Arial, sans-serif" font-size="17px" font-weight="400" letter-spacing="0.08em" line-height="1.7" padding="18px 0 0 0">
+          A hint of change is floating in the air.<br>
+          At Havenly, surprises are crafted just for you – designed to spark delight and bring beauty to every corner of your world.<br>
+          <span style="color:#FDC500;">Keep your inbox close — you won't want to miss what unfolds next.</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <!-- Section CTA simple -->
+    <mj-section background-color="#FDF4EF" padding="10px 0 10px 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-button align="center" background-color="#FDC500" border-radius="32px" color="#0F172A" font-family="Quicksand, Arial, sans-serif" font-size="16px" font-weight="bold" href="#" inner-padding="13px 32px" padding="10px 0 0 0">
+          Get notified
+        </mj-button>
+      </mj-column>
+    </mj-section>
+    <!-- Footer sobre -->
+    <mj-section background-color="#FDF4EF" padding="30px 0 0 0">
+      <mj-column background-color="transparent" padding="20px 15px" width="100%">
+        <mj-divider border-color="#F6E3D3" border-width="1px" padding="0px 0 15px 0"></mj-divider>
+        <mj-text align="center" color="#B2927A" font-family="Arial, sans-serif" font-size="13px" font-weight="bold" letter-spacing="0.04em" padding="2px 0 12px 0">
+          Besoin d’aide ?
+          <a href="https://havenly.com/faq" style="color:#FDC500; text-decoration:underline;">Voir la FAQ</a>
+          ou
+          <a href="mailto:support@havenly.com" style="color:#FDC500; text-decoration:underline;">écrire à notre équipe</a>
+        </mj-text>
+        <mj-social align="center" font-size="15px" icon-size="28px" mode="horizontal" padding="0 0 12px 0">
+          <mj-social-element href="https://facebook.com/havenly" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://twitter.com/havenly" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://instagram.com/havenly" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png"></mj-social-element>
+          <mj-social-element href="https://pinterest.com/havenly" src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#B2927A" font-family="Arial, sans-serif" font-size="12px" line-height="1.8" padding="2px 0 0 0">
+          © 2024 Havenly, Inc. All rights reserved.<br>
+          <a href="#" style="color:#B2927A; text-decoration: underline;">Mentions légales</a> | <a href="#" style="color:#B2927A; text-decoration: underline;">Confidentialité</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

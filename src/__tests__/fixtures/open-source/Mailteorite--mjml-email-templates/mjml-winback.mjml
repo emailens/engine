@@ -1,0 +1,117 @@
+<!--
+  Template: Win-Back with Anonymous Poll
+  File: 05-win-back-poll-feedback.mjml
+  Category: reengagement / winback
+  
+  Purpose:
+  Re-engage inactive users (120+ days) by collecting feedback via anonymous poll.
+  Gentle, empathetic tone with easy one-click response options and graceful exit option.
+  
+  When to send:
+  - 120+ days of inactivity (no logins/usage)
+  - After 2-3 lighter re-engagement emails failed
+  - Before final "breakup" email in winback series
+  - SaaS products, subscription services, community platforms
+  
+  Personalize:
+  - {{first_name}} or {{user_name}}
+  - {{service_name}} (e.g., "Your Service Name")
+  - {{last_used_feature}} (e.g., "Dashboard Analytics")
+  - {{days_inactive}} (e.g., "120 days")
+  - {{feedback_link_1}} through {{feedback_link_4}} - unique tracking URLs for poll options
+  - {{unsubscribe_link}} - one-click opt-out
+  - Brand colors (#00838f primary teal, #e0f7fa light cyan)
+  
+  Notes:
+  - Marketing email (unsubscribe required - prominently featured)
+  - Empathetic tone: "No hard feelings" = non-guilt approach
+  - Anonymous poll = reduces friction (no form to fill)
+  - 4 pre-defined poll options = covers most churn reasons
+  - One-click unsubscribe = respects user choice, reduces spam complaints
+  - Works for B2B SaaS, B2C apps, membership sites, subscription services
+  - Should be penultimate email before final "breakup" message
+  - Poll responses help inform product roadmap and retention strategy
+-->
+<mjml>
+  <mj-body background-color="none" font-family="Arial, sans-serif">
+
+    <!-- Header Section -->
+    <mj-section background-color="#e0f7fa" padding="30px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#006064" font-size="28px" font-weight="bold" padding="0 0 10px 0">
+          We Miss You at [Your Service Name]! 🌟
+        </mj-text>
+        <mj-image src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1748699925/uploaded-by-ai/a-heartwarming-illustration-depicting-a-sense-of-nostalgia-w.jpg" width="500px" alt="We Miss You illustration" padding="10px 0" />
+        <mj-text align="center" color="#006064" font-size="16px" padding="10px 30px">
+          It’s been a while since you visited us—over 120 days, in fact. We noticed that the last feature you used was <b style="color:#00838f;">[Last Used Feature]</b>. We hope you enjoyed it!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Re-engagement Paragraph -->
+    <mj-section background-color="#ffffff" padding="10px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="left" color="#333333" font-size="17px" padding="20px 30px">
+          We understand life gets busy. If you have a minute, we’d love to hear what’s kept you away. Your feedback helps us make [Your Service Name] a better place for everyone. And if you’ve just outgrown us, that’s okay too—no hard feelings!
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Quick Poll Section -->
+    <mj-section background-color="#b2ebf2" padding="25px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#006064" font-size="20px" font-weight="bold" padding="0 0 15px 0">
+          Quick Poll: What made you step away?
+        </mj-text>
+        <mj-text align="center" color="#00838f" font-size="16px" padding="0 30px 10px 30px">
+          Just one click to let us know—your answer is 100% anonymous and appreciated.
+        </mj-text>
+        <mj-button background-color="#00838f" color="#ffffff" border-radius="24px" href="[Feedback_Link_1]" font-size="16px" padding="10px 5px">
+          Too Busy Lately
+        </mj-button>
+        <mj-button background-color="#00838f" color="#ffffff" border-radius="24px" href="[Feedback_Link_2]" font-size="16px" padding="10px 5px">
+          Didn't Find What I Needed
+        </mj-button>
+        <mj-button background-color="#00838f" color="#ffffff" border-radius="24px" href="[Feedback_Link_3]" font-size="16px" padding="10px 5px">
+          Got What I Wanted
+        </mj-button>
+        <mj-button background-color="#00838f" color="#ffffff" border-radius="24px" href="[Feedback_Link_4]" font-size="16px" padding="10px 5px">
+          Other (Let Us Know)
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Gentle Call to Action -->
+    <mj-section background-color="#ffffff" padding="25px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-text align="center" color="#333333" font-size="16px" padding="20px 30px">
+          Feel like giving <b>[Your Service Name]</b> another try? New features and updates are waiting for you. But if you’d rather not hear from us, unsubscribing is just a click away—no questions asked.
+        </mj-text>
+        <mj-button background-color="#ff5252" color="#fff" font-size="15px" border-radius="18px" href="[Unsubscribe_Link]" padding="10px 5px">
+          One-Click Unsubscribe
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Social & Footer -->
+    <mj-section background-color="#e0f7fa" padding="20px 0">
+      <mj-column width="100%" background-color="transparent" padding="20px 15px">
+        <mj-social font-size="15px" icon-size="30px" mode="horizontal" align="center">
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061171/youtube-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1739470105/twitter-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728425053/linkedin-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061962/instagram-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1728426637/facebook-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740062001/tiktok-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+          <mj-social-element src="https://res.cloudinary.com/dk79hhqvp/image/upload/v1740061496/pinterest-round-outlined.png" href="https://mjml.io/"></mj-social-element>
+        </mj-social>
+        <mj-text align="center" color="#006064" font-size="12px" padding="12px 0 0 0">
+          [Your Service Name] | 123 Example Ave, Your City<br>
+          You’re receiving this because you signed up at [Your Service Name].<br>
+          Questions? <a href="mailto:support@yourservice.com" style="color:#00838f;">Contact us</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

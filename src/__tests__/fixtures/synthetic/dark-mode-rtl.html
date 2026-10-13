@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>تأكيد تحديث الحساب</title>
+    <style>
+      @font-face { font-family: EmailensArabic; src: url("https://example.com/fonts/arabic.woff2"); }
+      :root { --surface: #ffffff; --ink: #172033; --accent: #2457d6; }
+      body { margin: 0; background: var(--surface, #ffffff); color: var(--ink, #172033); font-family: EmailensArabic, Arial, sans-serif; }
+      a { color: var(--accent, #2457d6); }
+      @media (prefers-color-scheme: dark) {
+        .email-shell { background: #151922 !important; color: #f4f6fa !important; }
+        .muted { color: #c1c8d6 !important; }
+      }
+      [data-ogsc] .email-shell { background: #151922 !important; color: #f4f6fa !important; }
+      @media only screen and (max-width: 600px) { .email-shell { width: 100% !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="preheader" style="display:none;max-height:0;overflow:hidden">تم حفظ إعدادات حسابك الجديدة.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td align="center" dir="rtl">
+        <table role="presentation" class="email-shell" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;background:#fff;color:#172033">
+          <tr><td style="padding:32px">
+            <h1>تم تحديث حسابك</h1>
+            <p class="muted">مرحباً، تم تغيير عنوان البريد الإلكتروني المرتبط بحسابك.</p>
+            <p><a href="https://example.com/account">راجع إعدادات الحساب</a></p>
+            <p class="muted">إذا لم تطلب هذا التغيير، تواصل مع فريق الدعم.</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>

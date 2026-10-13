@@ -1,0 +1,36 @@
+<!doctype html>
+<html amp4email lang="en">
+  <head>
+    <meta charset="utf-8">
+    <script async src="https://cdn.ampproject.org/v0.js"></script>
+    <script async custom-element="amp-carousel" src="https://cdn.ampproject.org/v0/amp-carousel-0.1.js"></script>
+    <script async custom-element="amp-form" src="https://cdn.ampproject.org/v0/amp-form-0.1.js"></script>
+    <script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script>
+    <style amp4email-boilerplate>body{visibility:hidden}</style>
+    <style amp-custom>
+      body { margin: 0; font-family: Arial, sans-serif; color: #172033; }
+      .shell { max-width: 600px; margin: 0 auto; }
+      .button { display: inline-block; padding: 12px 20px; background: #2457d6; color: #fff; }
+    </style>
+    <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+  </head>
+  <body>
+    <main class="shell">
+      <h1>Choose your delivery window</h1>
+      <amp-carousel width="600" height="240" layout="responsive" type="slides">
+        <amp-img src="https://example.com/images/delivery-morning.jpg" width="600" height="240" layout="responsive" alt="Morning delivery"></amp-img>
+        <amp-img src="https://example.com/images/delivery-evening.jpg" width="600" height="240" layout="responsive" alt="Evening delivery"></amp-img>
+      </amp-carousel>
+      <form method="post" action-xhr="https://example.com/preferences" target="amp-form-submit-success">
+        <label for="window">Delivery window</label>
+        <select id="window" name="window" required>
+          <option value="morning">Morning</option>
+          <option value="evening">Evening</option>
+        </select>
+        <button class="button" type="submit">Save preference</button>
+        <div submit-success><template type="amp-mustache">Preference saved.</template></div>
+        <div submit-error><template type="amp-mustache">Could not save. Try again.</template></div>
+      </form>
+    </main>
+  </body>
+</html>

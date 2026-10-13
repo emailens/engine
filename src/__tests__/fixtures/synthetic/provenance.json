@@ -1,0 +1,11 @@
+{
+  "purpose": "Emailens-authored synthetic stress fixtures for underrepresented parsing and compatibility patterns. They are intentionally not upstream email designs.",
+  "fixtures": [
+    { "file": "dark-mode-rtl.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["dark-mode", "rtl", "css-variables", "font-face"] },
+    { "file": "hybrid-vml-background.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["outlook-conditional", "vml", "hybrid-layout", "background-image"] },
+    { "file": "modern-css-stress.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["css-variables", "grid", "flexbox", "animation", "picture", "webp", "avif", "data-uri"] },
+    { "file": "amp-interactive.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["amp4email", "form", "select", "carousel", "amp-bind"] },
+    { "file": "template-markers.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["liquid", "handlebars", "conditional", "iteration"] },
+    { "file": "plain-text-minimal.html", "origin": "Emailens-authored synthetic", "license": "MIT", "coverage": ["minimal-html", "text-first", "transactional"] }
+  ]
+}
