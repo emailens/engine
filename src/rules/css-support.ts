@@ -2,8 +2,8 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix, auto-generated from caniemail.com.
- * Last synced: 2026-09-02
- * caniemail last updated: 2026-08-10 15:16:24 +0000
+ * Last synced: 2026-10-08
+ * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
  * 298 features and 14 image formats across 21 email clients.
  *
@@ -4032,8 +4032,8 @@ const CSS_SUPPORT_TABLE = {
   },
   "meta-color-scheme": {
     "gmail-web": "unsupported",
-    "gmail-android": "unsupported",
-    "gmail-ios": "unsupported",
+    "gmail-android": "partial",
+    "gmail-ios": "partial",
     "outlook-web": "unsupported",
     "outlook-windows": "unsupported",
     "outlook-windows-legacy": "unsupported",
@@ -7263,6 +7263,9 @@ export const CSS_SUPPORT_NOTES: Record<
     "yahoo-mail-ios": ["Buggy. Opens a new in-app browser window on yahoo.com with the anchor appended to the URL."],
     "samsung-mail": ["Buggy. Clicking an anchor link does nothing."],
   },
+  "animation": {
+    "superhuman": ["Partial. Blink can run animations; Superhuman may honor OS reduced-motion and disable them."],
+  },
   "aspect-ratio": {
     "protonmail": ["Requires iOS 15."],
   },
@@ -7568,6 +7571,10 @@ export const CSS_SUPPORT_NOTES: Record<
   "max-width": {
     "outlook-windows": ["Partial. Only works on `<table>` elements."],
     "outlook-windows-legacy": ["Partial. Only works on `<table>` elements."],
+  },
+  "meta-color-scheme": {
+    "gmail-android": ["Partial support. Only the value `light only` is supported (see [Google IssueTracker](https://issuetracker.google.com/issues/201441498#comment21)."],
+    "gmail-ios": ["Partial support. Only the value `light only` is supported (see [Google IssueTracker](https://issuetracker.google.com/issues/201441498#comment21)."],
   },
   "min": {
     "gmail-android": ["Partial. Not supported with non Google accounts."],
@@ -8327,7 +8334,7 @@ const IMAGE_SUPPORT_TABLE = {
     "superhuman": "unknown",
   },
   "svg": {
-    "gmail-web": "unsupported",
+    "gmail-web": "partial",
     "gmail-android": "partial",
     "gmail-ios": "partial",
     "outlook-web": "supported",
@@ -8439,8 +8446,9 @@ export const IMAGE_SUPPORT_NOTES: Record<
     "yahoo-mail": ["Only supported in Safari."],
   },
   "svg": {
-    "gmail-android": ["Partially supported. Only works with non Google accounts."],
-    "gmail-ios": ["Partially supported. Only works with non Google accounts."],
+    "gmail-web": ["Partially supported. The image is rendered but rasterized in PNG."],
+    "gmail-android": ["Partially supported. The image is rendered but rasterized in PNG."],
+    "gmail-ios": ["Partially supported. The image is rendered but rasterized in PNG."],
   },
   "tiff": {
     "gmail-web": ["Buggy. An image renders but the colours are incorrect."],
@@ -9084,7 +9092,7 @@ export const FEATURE_LAST_TESTED: Record<string, string> = {
   "max-height": "2021-11-29",
   "max-inline-size": "2024-05-31",
   "max-width": "2019-08-02",
-  "meta-color-scheme": "2023-09-18",
+  "meta-color-scheme": "2026-09-16",
   "min": "2021-05-07",
   "min-block-size": "2024-05-31",
   "min-height": "2021-11-29",
@@ -9220,7 +9228,7 @@ export const FEATURE_LAST_TESTED: Record<string, string> = {
   "jpg": "2020-02-06",
   "mp4": "2021-05-13",
   "png": "2020-02-06",
-  "svg": "2023-01-15",
+  "svg": "2026-09-16",
   "tiff": "2020-02-06",
   "webp": "2021-02-06",
 };
