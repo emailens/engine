@@ -12,6 +12,7 @@ import { parseInlineStyle, serializeStyle, splitStyleDeclarations } from "./styl
 import { backgroundShorthandColor } from "./color-utils";
 import { downlevelCSS } from "./downlevel";
 import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
+import { applyWordBoxModel } from "./word-layout";
 import { MAX_HTML_SIZE } from "./constants";
 import { shouldPreserveSelector, applyTargetingSimulation } from "./rules/targeting-matchers";
 
@@ -876,6 +877,10 @@ function applyTransformDom(
   if (config.additionalChecks && !config.inlineAndStripStyles) {
     warnings.push(...config.additionalChecks($, clientId, html, framework));
   }
+
+  // Word honours several properties on some elements only. After the strip
+  // pass, so it sees what that pass left.
+  if (isWordEngineClient(clientId)) applyWordBoxModel($);
 
   applyTargetingSimulation($, clientId);
 
