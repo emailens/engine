@@ -3,6 +3,31 @@ import { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeT
 
 const mso = (vml: string) => `<!--[if gte mso 9]>${vml}<![endif]-->`;
 
+describe("vmlToCss: a label in a shape laid over an empty roundrect", () => {
+  const button = `<v:roundrect style="height:40px;v-text-anchor:middle; width:172px;" arcsize="8%" stroke="false" fillcolor="rgb(0, 120, 212)"><w:anchorlock/></v:roundrect> <v:shapetype id="t" coordsize="200 200"><v:path v="m 0,0 l 0,200 x e"></v:path></v:shapetype> <v:shape type="#t" href="https://example.com/" style="top: 0px; left: 0px; height: 40px; width: 172px; v-text-anchor: middle"><v:textbox inset="0,0,0,0"><center style="font-size: 16px; color: white">REGISTER NOW</center></v:textbox></v:shape>`;
+
+  test("the label and the link move into the box", () => {
+    const out = vmlToCss(button);
+    expect(out).toMatch(/<div data-vml="roundrect" data-href="https:\/\/example\.com\/"[^>]*>\s*<span[^>]*>REGISTER NOW<\/span><\/div>/);
+    expect(out).not.toMatch(/<v:/);
+  });
+
+  test("a shape of another size is not merged", () => {
+    const out = vmlToCss(button.replace("width: 172px", "width: 300px"));
+    expect(out).toMatch(/<div data-vml="roundrect"[^>]*><\/div>/);
+  });
+});
+
+describe("resolveMsoBranch closer spellings", () => {
+  test("a block closed with <!--[endif]----> is skipped like the canonical form", () => {
+    const html = `<a><!--[if gte mso 9]><img id="mso" width="178"><![endif]--><!--[if !mso]> <!----><img id="web"><!--[endif]----></a><p>after</p>`;
+    const out = resolveMsoBranch(html);
+    expect(out).toContain('id="mso"');
+    expect(out).not.toContain('id="web"');
+    expect(out).toContain("<p>after</p>");
+  });
+});
+
 describe("resolveMsoBranch", () => {
   test("activates the Outlook-only branch", () => {
     const out = resolveMsoBranch(`<div>a</div>${mso("<p>outlook</p>")}`);
@@ -450,6 +475,78 @@ describe("applyMsoHide", () => {
   test("returns the input untouched when nothing is hidden", () => {
     const html = `<div style="color:red">a</div>`;
     expect(applyMsoHide(html)).toBe(html);
+  });
+
+  // Observed on Outlook 2007 to 2019 and Windows 10 Mail (Emailens probe sheet
+  // 07-style-delivery, 2026-10-13): mso-hide:all on a div does not reach a
+  // table nested inside it. Word draws the table.
+  describe("a table inside a hidden div", () => {
+    const TABLE = `<table><tr><td>mobile only</td></tr></table>`;
+    const hiddenDecl = /display\s*:\s*none/;
+    /** The style of the element whose opening tag contains `marker`. */
+    const styleOf = (html: string, marker: string) =>
+      new RegExp(`<[^>]*${marker}[^>]*>`).exec(html)?.[0] ?? "";
+
+    test("is drawn: the wrapper stops being display:none", () => {
+      const out = applyMsoHide(`<div id="w" style="display:none;mso-hide:all">${TABLE}</div>`);
+      expect(styleOf(out, 'id="w"')).not.toMatch(hiddenDecl);
+      expect(out).toContain("<td>mobile only</td>");
+    });
+
+    test("the wrapper's own text stays hidden", () => {
+      const out = applyMsoHide(`<div style="mso-hide:all">preheader text${TABLE}</div>`);
+      expect(out).toMatch(/<span style="display:none!important">preheader text<\/span>/);
+    });
+
+    test("siblings of the table that hold no table stay hidden", () => {
+      const out = applyMsoHide(`<div style="mso-hide:all"><p id="p">note</p>${TABLE}</div>`);
+      expect(styleOf(out, 'id="p"')).toMatch(hiddenDecl);
+    });
+
+    test("a table that carries mso-hide:all itself stays hidden, and the output is unchanged", () => {
+      const html = `<div id="w" style="mso-hide:all"><table style="mso-hide:all"><tr><td>x</td></tr></table></div>`;
+      const out = applyMsoHide(html);
+      expect(styleOf(out, 'id="w"')).toMatch(hiddenDecl);
+      expect(out).not.toContain("<span");
+    });
+
+    test("a table under a second hidden element stays hidden", () => {
+      const out = applyMsoHide(`<div id="w" style="mso-hide:all"><div style="mso-hide:all">${TABLE}</div></div>`);
+      expect(styleOf(out, 'id="w"')).toMatch(hiddenDecl);
+    });
+
+    test("a table reached through an unhidden child is drawn, and that child's other content is hidden", () => {
+      const out = applyMsoHide(`<div id="w" style="mso-hide:all"><div id="mid"><b id="b">x</b>${TABLE}</div></div>`);
+      expect(styleOf(out, 'id="w"')).not.toMatch(hiddenDecl);
+      expect(styleOf(out, 'id="mid"')).not.toMatch(hiddenDecl);
+      expect(styleOf(out, 'id="b"')).toMatch(hiddenDecl);
+    });
+
+    test("a table inside a hidden cell or row is drawn too; a hidden span is left hidden", () => {
+      // Probe sheet 09-follow-ups c21, c22: every Outlook version drew the table.
+      const cell = `<table><tr><td id="c" style="mso-hide:all"><b id="b">x</b>${TABLE}</td></tr></table>`;
+      const cellOut = applyMsoHide(cell);
+      expect(styleOf(cellOut, 'id="c"')).not.toMatch(hiddenDecl);
+      expect(styleOf(cellOut, 'id="b"')).toMatch(hiddenDecl);
+      const row = `<table><tr id="r" style="mso-hide:all"><td id="c">${TABLE}</td></tr></table>`;
+      expect(styleOf(applyMsoHide(row), 'id="r"')).not.toMatch(hiddenDecl);
+      // Not tested on a real client, so unchanged.
+      const span = `<span id="s" style="mso-hide:all">${TABLE}</span>`;
+      expect(styleOf(applyMsoHide(span), 'id="s"')).toMatch(hiddenDecl);
+    });
+
+    test("an email with no hidden div keeps its exact bytes", () => {
+      const html = `<p style="mso-hide:all">a</p>${TABLE}<DIV>b</DIV>`;
+      expect(applyMsoHide(html)).toBe(`<p style="mso-hide:all;display:none!important">a</p>${TABLE}<DIV>b</DIV>`);
+    });
+
+    test("through the Word transform, the table is visible and other clients are untouched", () => {
+      const email = `<html><body><div id="w" style="display:none;mso-hide:all">${TABLE}</div><p>body</p></body></html>`;
+      const word = transformForClient(email, "outlook-windows-legacy").html;
+      expect(styleOf(word, 'id="w"')).not.toMatch(hiddenDecl);
+      const gmail = transformForClient(email, "gmail-web").html;
+      expect(styleOf(gmail, 'id="w"')).toMatch(hiddenDecl);
+    });
   });
 
   test("a correctly hidden preheader stays hidden through the Word transform", () => {

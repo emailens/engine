@@ -1,5 +1,75 @@
 # Changelog
 
+## 0.14.4 - 2026-10-13
+
+A patch. No API changes. `^0.14.0` picks this up. Transformed HTML changes
+for Outlook Classic, and for every client that inlines stylesheet rules, so
+previews and screenshots built on it will move.
+
+Every change below was measured, not recalled: probe emails that isolate one
+declaration per case between colour markers, and four real campaigns, rendered
+on real Outlook 2007, 2010, 2013, 2016 and 2019, Gmail, Outlook.com, Yahoo, AOL,
+Apple Mail and Thunderbird. Each rule in the source names the case it rests on.
+
+### Changed
+
+- **Outlook Classic honours a property on some elements and not others.** A
+  new pass models that:
+  - `padding` does nothing on `div`, `p`, `span` and `a`; it works on cells.
+    `mso-padding-alt` replaces a cell's padding.
+  - `width` and `height` do nothing on `div` and `span`. `margin: auto` does
+    not centre a div and a negative margin does not pull it up.
+  - A `div` or `h2` with no text of its own paints no background. A
+    non-breaking space counts as text.
+  - Borders are capped at 8px. `p` and `h2` have no default margin.
+  - `line-height` in px is a minimum unless `mso-line-height-rule: exactly`
+    is set. `mso-line-height-alt` replaces it.
+  - `text-align: center` on a div centres a table inside it.
+  - A `width` attribute written with `px` is not read. A table floated with
+    `align` keeps a small gutter. A right-to-left table sits on the right. A
+    negative margin does not move a table.
+  - `word-spacing` and `outline` do nothing.
+  - The same rules reach declarations that arrive through a class, id, type
+    or descendant selector.
+- **Outlook Classic sizes an image by its attributes alone.** A CSS width or
+  height is not read, an attribute must be a bare number, and with neither the
+  image is drawn at its natural size. Padding, margin, border and background
+  on the image draw nothing. SVG and WebP are left blank. `<picture>` falls
+  back to its `<img>`.
+- **Outlook Classic drops a declaration it cannot parse.** `rgba()`, `hsl()`,
+  `var()`, and 4- and 8-digit hex are removed before the downlevel pass, which
+  used to turn them into colours Outlook does read.
+- **A font declared with `@font-face` becomes Times New Roman in Outlook
+  Classic.** Outlook 2007 to 2016 skip the rest of the stack. Outlook 2019
+  uses the next family; the single Classic client shows the majority.
+- **`display: none` in Outlook Classic follows the element.** A `div` or a
+  `table` carrying it is drawn in full. A cell, a row and a span stay hidden.
+  A table inside a hidden `div`, cell or row is still drawn, as it is under
+  `mso-hide: all`.
+- **Lists in Outlook Classic** have no space above and one line of space
+  below that `margin: 0` does not remove. A `<br>` straight before a list adds
+  a line.
+- **VML is translated whatever prefix the email binds to the VML namespace**,
+  and lengths in points are read.
+- **A not-Outlook block closed with `<!--[endif]---->` is skipped**, the
+  spelling Dynamics 365 writes. Before, Outlook Classic previews of those emails
+  drew every image and button twice.
+- **A button drawn as an empty `v:roundrect` with its label in a `v:shape`
+  laid over it** becomes one button with the label inside.
+- **Stylesheet rules merge into inline styles in cascade order.** The last
+  declaration wins and the style attribute beats a rule, unless only the rule
+  is `!important`. Before, the first value was kept, so
+  `font-size:16px;font-size:10px` rendered at 16px.
+
+### Not changed
+
+- The support tables, and what is stripped for webmail. The same measurements
+  showed Gmail, Outlook.com, Yahoo and AOL applying properties the tables list
+  as dropped (`position`, `box-shadow`, `gap`, `display: grid`,
+  `linear-gradient`, `opacity`, per client). That rests on one provider's
+  accounts, so it is held on the `fix/webmail-measured-strips` branch until a
+  second source confirms it.
+
 ## 0.14.3 - 2026-10-13
 
 A patch. No API changes. `^0.14.0` picks this up.

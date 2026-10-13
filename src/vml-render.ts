@@ -1,3 +1,5 @@
+import * as cheerio from "cheerio";
+import type { AnyNode, Element } from "domhandler";
 /**
  * Resolve the Outlook branch of an email and translate its VML into CSS a
  * browser can draw.
@@ -49,8 +51,10 @@
 /** Read a length that VML wrote, tolerating a bare number or a px suffix. */
 function px(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const m = value.trim().match(/^(-?[\d.]+)(?:px)?$/i);
-  return m ? parseFloat(m[1]) : undefined;
+  // Points are VML's native unit and what generators emit (`width:103.5pt`).
+  const m = value.trim().match(/^(-?[\d.]+)(px|pt)?$/i);
+  if (!m) return undefined;
+  return m[2]?.toLowerCase() === "pt" ? (parseFloat(m[1]) * 4) / 3 : parseFloat(m[1]);
 }
 
 function styleProps(style: string): Record<string, string> {
@@ -97,12 +101,17 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
  * sees `[if !mso]`, evaluates it false and skips to `[endif]` whichever
  * spelling closed the opener, so each must resolve the same way here.
  *
+ * The closer has a second spelling too. Dynamics 365 writes
+ * `<!--[if !mso]> <!---->` ... `<!--[endif]---->`, an ordinary comment where
+ * the canonical form has `<!--<![endif]-->`. A real campaign built that way
+ * rendered in Outlook 2016 with the block skipped, so both closers end it.
+ *
  * The condition is matched by *containing* a negated mso/vml term rather than
  * starting with one, because `[if (!mso)&(!IE)]` is as common in real email as
  * the bare `[if !mso]`.
  */
 const DOWNLEVEL_REVEALED =
-  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)<!--\s*<!\[endif\]-->/gi;
+  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
 
 /**
  * A downlevel-hidden block: the markup only Outlook reads.
@@ -173,6 +182,97 @@ const MSO_HIDE = /mso-hide\s*:\s*all/i;
  */
 export function applyMsoHide(html: string): string {
   if (!MSO_HIDE.test(html)) return html;
+  return releaseNestedTables(hideMsoHidden(html));
+}
+
+/**
+ * A table inside a `<div>` hidden with `mso-hide:all` is still drawn by Word.
+ *
+ * `mso-hide:all` hides the element's own text, but it does not reach a nested
+ * table: the table needs `mso-hide:all` of its own. This is why a "mobile only"
+ * block that is hidden everywhere else turns up in Outlook, and a preview that
+ * hides it shows the author a clean email that their Outlook readers never see.
+ *
+ * Observed identically on Outlook 2007, 2010, 2013, 2016 and 2019 and on
+ * Windows 10 Mail (Emailens probe sheet 07-style-delivery, 2026-10-13): a
+ * `<div style="display:none;mso-hide:all">` wrapping a table rendered the
+ * table at full size, with or without a stylesheet rule on the wrapper.
+ *
+ * The same holds for a hidden cell and a hidden row: a table inside
+ * `<td style="display:none">` or under `<tr style="display:none">` was drawn
+ * on every version (probe sheet 09-follow-ups c21, c22). A hidden `<span>`
+ * around a table was not tested and is left hidden.
+ *
+ * A browser cannot show a child of a `display:none` parent, so the wrapper is
+ * un-hidden and everything in it except the escaping tables is hidden instead.
+ */
+function releaseNestedTables(html: string): string {
+  if (!/<table/i.test(html) || !/<(?:div|td|th|tr)\b/i.test(html)) return html;
+  const $ = cheerio.load(html, null, /<html[\s>]/i.test(html));
+  const isHidden = (el: AnyNode) =>
+    MSO_HIDE.test($(el).attr("style") ?? "");
+  /** Tables under `wrapper` that carry no mso-hide themselves, nor does anything in between. */
+  const escaping = (wrapper: Element) =>
+    $(wrapper)
+      .find("table")
+      .toArray()
+      .filter(
+        (table) =>
+          !isHidden(table) &&
+          $(table).parentsUntil(wrapper).toArray().every((el) => !isHidden(el)),
+      );
+  const HIDE = "display:none!important";
+  const withoutDisplayNone = (style: string) =>
+    style.replace(/(?:^|;)\s*display\s*:\s*none\s*(?:!important)?\s*(?=;|$)/gi, "").replace(/^;/, "");
+
+  const release = (wrapper: Element) => {
+    const el = $(wrapper);
+    el.attr("style", withoutDisplayNone(el.attr("style") ?? ""));
+    for (const child of el.contents().toArray()) {
+      if (child.type === "text") {
+        if (child.data.trim()) $(child).replaceWith(`<span style="${HIDE}">${$.html(child)}</span>`);
+        continue;
+      }
+      if (child.type !== "tag") continue;
+      if (child.name === "table" && !isHidden(child)) continue;
+      if (isHidden(child)) continue; // already hidden by its own mso-hide
+      if (escaping(child).length > 0) {
+        release(child);
+        continue;
+      }
+      const style = $(child).attr("style") ?? "";
+      $(child).attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}${HIDE}`);
+    }
+  };
+
+  let changed = false;
+  // A hidden row hands its hiding to its cells, which are then wrappers like
+  // any other; the row itself is only a container.
+  $("tr[style]").each((_, row) => {
+    if (!isHidden(row) || escaping(row).length === 0) return;
+    const el = $(row);
+    const rowStyle = el.attr("style") ?? "";
+    el.attr("style", withoutDisplayNone(rowStyle).replace(/(?:^|;)\s*mso-hide\s*:[^;]*/gi, "").replace(/^;/, ""));
+    el.children("td,th").each((_i, cell) => {
+      if (isHidden(cell)) return;
+      const style = $(cell).attr("style") ?? "";
+      $(cell).attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}mso-hide:all;${HIDE}`);
+    });
+    changed = true;
+  });
+  $("div[style], td[style], th[style]").each((_, div) => {
+    if (!isHidden(div)) return;
+    // Only the outermost hidden wrapper; anything nested is reached from it.
+    if ($(div).parents().toArray().some((el) => isHidden(el))) return;
+    if (escaping(div).length === 0) return;
+    release(div);
+    changed = true;
+  });
+  // Untouched emails keep their exact bytes: no parse-and-serialise round trip.
+  return changed ? $.html() : html;
+}
+
+function hideMsoHidden(html: string): string {
   // Each quote style gets its own alternative so the *other* quote may appear
   // inside the value. One character class excluding both cannot cross
   // `font-family:'Segoe UI'`, which is how the canonical preheader is written,
@@ -195,6 +295,13 @@ export function applyMsoHide(html: string): string {
 /** Translate the VML shapes a browser cannot draw into divs it can. */
 export function vmlToCss(html: string): string {
   let out = html;
+
+  // The prefix is whatever the email binds to the VML namespace. `v:` is the
+  // convention, not a rule: a real campaign wrote `<a:roundrect xmlns:a=...>`
+  // and Outlook 2016 drew the button. Rewrite any other prefix to `v:`.
+  for (const [, prefix] of html.matchAll(/xmlns:([\w-]+)\s*=\s*["']urn:schemas-microsoft-com:vml["']/gi)) {
+    if (prefix.toLowerCase() !== "v") out = out.replace(new RegExp(`(</?)${prefix}:`, "gi"), "$1v:");
+  }
 
   // ── v:roundrect → a flex-centred box with a border radius ───────────────
   out = out.replace(
@@ -291,7 +398,31 @@ export function vmlToCss(html: string): string {
     },
   );
 
-  // Property elements have no visual role once their parent shape is gone.
+  // ── an empty roundrect with its label in a shape laid over it ───────────
+  // Dynamics 365 draws a button as two shapes: a filled <v:roundrect> with
+  // nothing in it, then a <v:shape> of the same size positioned over it that
+  // holds the text and the link. Outlook 2016 drew one 172x40 button with the
+  // label inside. Translated separately, the label landed under the box, in a
+  // cell too short for it, and was clipped. The label moves into the box.
+  out = out.replace(
+    /(<div data-vml="roundrect")([^>]*>)\s*<\/div>\s*(?:<v:shapetype\b[\s\S]*?<\/v:shapetype>\s*)?<v:shape\b([^>]*)>([\s\S]*?)<\/v:shape>/gi,
+    (whole, open: string, rest: string, shapeAttrs: string, inner: string) => {
+      const box = styleProps((/style="([^"]*)"/i.exec(rest) ?? [])[1] ?? "");
+      const shape = styleProps(attrs(shapeAttrs).style ?? "");
+      // Only when the shape really sits on the box: same size, or no size of its own.
+      const sameSize = (prop: "width" | "height") => shape[prop] === undefined || px(shape[prop]) === px(box[prop]);
+      if (!sameSize("width") || !sameSize("height")) return whole;
+      const label = inner.replace(/<\/?(?:v:textbox|w:anchorlock|center)[^>]*>/gi, (tag) =>
+        /^<center/i.test(tag) ? tag.replace(/^<center/i, "<span") : /^<\/center/i.test(tag) ? "</span>" : "",
+      ).trim();
+      const href = attrs(shapeAttrs).href;
+      return `${open}${href && !/data-href=/.test(rest) ? ` data-href="${href}"` : ""}${rest}${label}</div>`;
+    },
+  );
+
+  // Property elements have no visual role once their parent shape is gone, and
+  // a shape definition draws nothing by itself.
+  out = out.replace(/<v:shapetype\b[\s\S]*?<\/v:shapetype>/gi, "");
   out = out.replace(/<\/?v:(?:fill|textbox|stroke|shadow|imagedata|path|formulas|handles)[^>]*?\/?>/gi, "");
   return blankLabelsAfterNestedShape(out);
 }
