@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.7 - 2026-10-14
+
+A patch. No API changes. `^0.14.0` picks this up.
+
+- `toPlainText` kept dropping a whitespace-only text node between inline
+  content, so React output like `</a> <!-- -->to catch` came out as
+  `(https://...)to catch`. It is now a single space, as a browser renders it.
+
 ## 0.14.6 - 2026-10-14
 
 A patch. No API changes. `^0.14.0` picks this up. Only the positions on
