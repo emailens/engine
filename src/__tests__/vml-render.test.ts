@@ -582,3 +582,31 @@ describe("applyMsoHide", () => {
     expect(gmail.html).not.toContain("display:none");
   });
 });
+
+describe("vmlToCss: background patterns beyond v:rect + v:fill", () => {
+  const IMG = "https://example.com/bg.jpg";
+
+  test("a fill with opacity 0 paints nothing, so an overlay stays transparent", () => {
+    const out = vmlToCss(`<v:rect style="width:600px;height:300px;"><v:fill opacity="0%" color="#000" /><v:textbox inset="0,0,0,0"><p>Hi</p></v:textbox></v:rect>`);
+    expect(out).not.toContain("background-color:#000");
+  });
+
+  test("a partial opacity is kept rather than painted solid", () => {
+    const out = vmlToCss(`<v:rect style="width:10px;height:10px;"><v:fill opacity="50%" color="#000" /></v:rect>`);
+    expect(out).toContain("color-mix(in srgb, #000 50%, transparent)");
+  });
+
+  test("a v:image under an overlay rect becomes that rect's backdrop", () => {
+    const out = vmlToCss(`<v:image style="width:600px;height:300px;" src="${IMG}" /><v:rect style="position:absolute;width:600px;height:300px;"><v:fill opacity="0%" color="#000" /><v:textbox inset="0,0,0,0"><p>Hi</p></v:textbox></v:rect>`);
+    expect(out).toContain(`<div data-vml="rect" style="background-image:url('${IMG}');`);
+    expect(out).toContain("<p>Hi</p>");
+    expect(out).not.toContain("background-color:#000");
+    expect(out).not.toMatch(/<\/?v:/);
+  });
+
+  test("a v:background paints the body", () => {
+    const out = vmlToCss(`<v:background fill="t"><v:fill type="tile" src="${IMG}" color="#7bceeb" /></v:background><table><tr><td>x</td></tr></table>`);
+    expect(out).toContain(`<style data-vml="background">body{background-color:#7bceeb;background-image:url('${IMG}');background-repeat:repeat}</style>`);
+    expect(out).not.toMatch(/<\/?v:/);
+  });
+});

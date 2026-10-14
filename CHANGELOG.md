@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.14.9 - 2026-10-15
+
+A patch. No API changes. `^0.14.0` picks this up. Only the Outlook Classic
+preview changes.
+
+### Fixed
+
+- **VML backgrounds in Outlook Classic.** Three bulletproof-background
+  patterns rendered without their background:
+  - A `<v:fill>` with `opacity` was painted solid, so the transparent overlay
+    in the `<v:image>` + `<v:rect>` pattern hid the image behind black. An
+    opacity of 0 now paints nothing, and a partial one is kept.
+  - `<v:image>` was not translated. Laid under a rect it becomes that rect's
+    backdrop; on its own it becomes an image.
+  - `<v:background>` was dropped. It now paints the body, tiled or covering
+    per its fill.
+
 ## 0.14.8 - 2026-10-14
 
 A patch. No API changes. `^0.14.0` picks this up. Support levels, warnings and
