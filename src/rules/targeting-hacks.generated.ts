@@ -1,5 +1,5 @@
 // Auto-generated targeting catalog from howtotarget.email (Parcel/Customer.io)
-// Last synced: 2026-09-22T18:21:53.450Z
+// Last synced: 2026-10-14T05:47:11.391Z
 // Total hacks: 77
 //
 // DO NOT EDIT. Engine matchers: src/rules/targeting-matchers.ts

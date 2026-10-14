@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.14.5 - 2026-10-14
 
-Compatibility scores and warnings change for Outlook (New) and, slightly, for
-Outlook Classic. No API changes.
+A patch. No API changes. `^0.14.0` picks this up. Compatibility scores and
+warnings change for Outlook (New) and, slightly, for Outlook Classic, so scores
+built on them will move.
 
 ### Fixed
 
@@ -24,6 +25,9 @@ Outlook Classic. No API changes.
   sharing Word's partial support are removed; they rested on the bad data.
 - **MSO conditional comments are attributed to Outlook Classic only.** The new
   Outlook does not read them.
+- **The Gmail `<style>` fix snippet no longer says Gmail strips `<style>`.**
+  Gmail keeps a head `<style>` block under 16KB; its apps drop it for
+  non-Google accounts, which is the reason to inline.
 
 ### Known
 
