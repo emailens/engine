@@ -195,7 +195,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
   "<style>::gmail::jsx": {
     language: "jsx",
     description:
-      "React Email inlines styles via style props; manual <style> blocks won't survive Gmail",
+      "Gmail keeps a <style> block only in the <head> and under 16KB, and its apps drop it for non-Google accounts; inline style props reach every Gmail reader",
     before: `import { Head } from "@react-email/components";
 
 <Head>
@@ -207,7 +207,7 @@ export const JSX_FIX_DATABASE: Record<string, CodeFix> = {
 <div className="header">
   <h1 className="title">Hello</h1>
 </div>`,
-    after: `{/* Gmail strips <style> blocks. Move styles to inline style props: */}
+    after: `{/* Gmail's apps drop <style> for non-Google accounts. Inline style props reach everyone: */}
 <div style={{ backgroundColor: "#6d28d9", padding: "32px" }}>
   <h1 style={{ color: "#fff", fontSize: "24px", margin: 0 }}>Hello</h1>
 </div>`,

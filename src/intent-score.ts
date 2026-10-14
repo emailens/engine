@@ -26,8 +26,6 @@ import { resolveMsoBranch } from "./vml-render";
  */
 
 const WORD = "outlook-windows-legacy";
-/** New Outlook reads the live document, not the MSO branch, and shares Word's partials. */
-const NEW_OUTLOOK = "outlook-windows";
 const GMAIL = ["gmail-web", "gmail-android", "gmail-ios"];
 
 const FILL_SHAPES = new Set(["v:rect", "v:roundrect", "v:shape", "v:background", "v:group"]);
@@ -52,7 +50,7 @@ export function applyIntent(
   // The intent checks only read these DOMs. Reuse the original live DOM when
   // there is no MSO branch instead of parsing the same HTML again.
   const word$ = wordHtml === html ? live$ : loadHtml(wordHtml);
-  let next = adjustOutlook(word$, live$, warnings, framework);
+  let next = adjustOutlook(word$, warnings, framework);
   next = adjustSharedLosses(html, next, framework);
   next = adjustBody(live$, next);
   return appendKillers(next, html, wordHtml, vml, framework);
@@ -99,15 +97,18 @@ function stripCalls(value: string): string {
   return next.replace(/#[0-9a-f]{3,8}\b/gi, " ");
 }
 
-/** New Outlook reads the live document. An MSO wrapper is not a fallback it can see. */
+/**
+ * Outlook Classic reads the MSO branch. The new Outlook used to be handled here
+ * too, on the belief that it shared Word's partial support; that belief came
+ * from support data mapped to the wrong client (fixed 2026-10-14), and the new
+ * Outlook is built on Outlook on the web, which has none of these quirks.
+ */
 function adjustOutlook(
   word$: CheerioAPI,
-  live$: CheerioAPI,
   warnings: CSSWarning[],
   framework?: Framework,
 ): CSSWarning[] {
   const wordRules = styleRules(word$, WORD);
-  const liveRules = styleRules(live$, NEW_OUTLOOK);
   let next = warnings;
   const apply = (
     $: CheerioAPI,
@@ -140,14 +141,11 @@ function adjustOutlook(
   apply(word$, wordRules, WORD, "float", hit(/float\s*:/i), never, "Outlook Classic drops this float. The MSO branch needs a table with align.", true);
   apply(word$, wordRules, WORD, "display:flex", hit(/display\s*:\s*(?:inline-)?flex\b/i), never, "Outlook Classic receives this flex box. The MSO branch needs a table.", true);
   apply(word$, wordRules, WORD, "display:grid", hit(/display\s*:\s*(?:inline-)?grid\b/i), never, "Outlook Classic receives this grid box. The MSO branch needs a table.", true);
-  apply(live$, liveRules, NEW_OUTLOOK, "max-width", hit(/max-width\s*:/i), (el, style) => maxWidthCovered(live$, el, style), "Outlook only honours max-width on a table. Set it on a table the client actually reads.", false);
-  apply(live$, liveRules, NEW_OUTLOOK, "padding", hit(/(?:^|[^-])padding(?:-(?:top|right|bottom|left))?\s*:/i), (el) => paddingCovered(live$, el, false), "Outlook only keeps padding on table cells, and a row uses the largest vertical padding.", false);
 
-  next = decide(next, WORD, "margin", marginDecision(word$, wordRules), "Outlook Classic drops this margin and nothing else is carrying the space.", framework);
-  return decide(next, NEW_OUTLOOK, "margin", marginDecision(live$, liveRules), "Outlook drops this margin and nothing else is carrying the space.", framework, { createInfo: false });
+  return decide(next, WORD, "margin", marginDecision(word$, wordRules), "Outlook Classic drops this margin and nothing else is carrying the space.", framework);
 }
 
-/** [hit, property, note needle, message, suggestion, skip Word and New Outlook] */
+/** [hit, property, note needle, message, suggestion, skip Word] */
 type SharedLoss = [(live: string) => boolean, string, string, string, string, boolean];
 
 const SHARED_LOSSES: SharedLoss[] = [
@@ -164,7 +162,7 @@ function adjustSharedLosses(html: string, warnings: CSSWarning[], framework?: Fr
   return SHARED_LOSSES.reduce((next, [hit, property, needle, message, suggestion, skipOutlook]) => {
     if (!hit(live)) return next;
     return noteClients(property, needle).reduce((acc, client) => {
-      if (skipOutlook && (client === WORD || client === NEW_OUTLOOK)) return acc;
+      if (skipOutlook && client === WORD) return acc;
       return decide(acc, client, property, "warning", message, framework, { createInfo: false, suggestion });
     }, next);
   }, warnings);

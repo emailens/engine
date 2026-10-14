@@ -37,7 +37,9 @@ function clientsAt(decl: string, severity: "info" | "warning"): string[] {
     .sort();
 }
 
-const OUTLOOK_WORD = ["outlook-windows", "outlook-windows-legacy"];
+// Only Outlook Classic renders with Word. "outlook-windows" is the new Outlook,
+// built on Outlook on the web, and carries none of these caveats.
+const OUTLOOK_WORD = ["outlook-windows-legacy"];
 const YAHOO_AOL = ["aol", "yahoo-mail", "yahoo-mail-android", "yahoo-mail-ios"];
 const sorted = (...groups: string[][]) => groups.flat().sort();
 
@@ -84,7 +86,7 @@ describe("value-aware partial support: the value the note is about", () => {
     // Samsung), only the second note covers percentages and `em`.
     const relativeOnly = ["outlook-windows-legacy", "samsung-mail"];
     expect(partialClients("font-size: 1rem")).toEqual(
-      sorted(relativeOnly, YAHOO_AOL, ["outlook-windows"]),
+      sorted(relativeOnly, YAHOO_AOL),
     );
     expect(partialClients("font-size: 90%")).toEqual(relativeOnly.sort());
     expect(partialClients("font-size: 1.2em")).toEqual(relativeOnly.sort());
@@ -151,7 +153,7 @@ describe("value-aware partial support: the value the note is about", () => {
 
   it("letter-spacing: negatives everywhere, `em` only where the note says so", () => {
     expect(partialClients("letter-spacing: -1px")).toEqual(OUTLOOK_WORD.sort());
-    expect(partialClients("letter-spacing: 0.05em")).toEqual(["outlook-windows"]);
+    expect(partialClients("letter-spacing: 0.05em")).toEqual(["outlook-windows-legacy"]);
   });
 
   it("transition: an omitted property name means `all`, and `all` is the caveat", () => {
@@ -631,7 +633,7 @@ describe("value-aware partial support: both paths, and the public one", () => {
     // having no position at all.
     const mixed = `<!doctype html>\n<html><head><style>\n.a { font-size: 14px; }\n.b { font-size: 1rem; }\n</style></head><body></body></html>`;
     const w = analyzeEmail(mixed, undefined, { positions: true }).find(
-      (x) => x.property === "font-size" && x.client === "outlook-windows",
+      (x) => x.property === "font-size" && x.client === "outlook-windows-legacy",
     );
     expect(w?.severity).toBe("info");
     expect(w?.locs?.map((l) => l.line)).toEqual([4]);
@@ -640,7 +642,7 @@ describe("value-aware partial support: both paths, and the public one", () => {
     // Both declarations trigger: both are listed, in document order.
     const both = `<!doctype html>\n<html><head><style>\n.a { font-size: 2rem; }\n.b { font-size: 1rem; }\n</style></head><body></body></html>`;
     const w2 = analyzeEmail(both, undefined, { positions: true }).find(
-      (x) => x.property === "font-size" && x.client === "outlook-windows",
+      (x) => x.property === "font-size" && x.client === "outlook-windows-legacy",
     );
     expect(w2?.locs?.map((l) => l.line)).toEqual([3, 4]);
 
@@ -658,7 +660,6 @@ describe("value-aware partial support: both paths, and the public one", () => {
       (w) => w.severity === "info" && ["font-size", "display", "background"].includes(w.property),
     );
     expect(info.map((w) => `${w.property}/${w.client}`).sort()).toEqual([
-      "display/outlook-windows",
       "display/outlook-windows-legacy",
     ]);
   });

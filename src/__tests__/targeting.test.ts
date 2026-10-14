@@ -120,7 +120,7 @@ describe("analyzeEmail Targeting Scoping & False Positive Suppression", () => {
     const globalHtml = `<!DOCTYPE html><html><head><style>.btn { border-radius: 8px; }</style></head><body><div class="btn">Button</div></body></html>`;
     const globalWarnings = analyzeEmail(globalHtml);
     const outlookRadiusWarning = globalWarnings.find(
-      (w) => w.client === "outlook-windows" && w.property === "border-radius"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "border-radius"
     );
     expect(outlookRadiusWarning).toBeDefined();
   });
@@ -191,7 +191,7 @@ describe("Selector-Level Granularity (Comma-Separated Selectors)", () => {
     const mixedHtml = `<!DOCTYPE html><html><head><style>.global-btn, u + .body .btn { border-radius: 8px; }</style></head><body><div class="global-btn">Button</div></body></html>`;
     const warnings = analyzeEmail(mixedHtml);
     const outlookRadiusWarning = warnings.find(
-      (w) => w.client === "outlook-windows" && w.property === "border-radius"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "border-radius"
     );
     expect(outlookRadiusWarning).toBeDefined();
   });
@@ -213,7 +213,7 @@ describe("TargetingPolicy Configuration", () => {
   it("progressive policy (default): suppresses false positives and warns on deprecated hacks", () => {
     // False positive suppression for working hack
     const progWarnings = analyzeEmail(targetedHtml);
-    expect(progWarnings.some((w) => w.client === "outlook-windows" && w.property === "border-radius")).toBe(false);
+    expect(progWarnings.some((w) => w.client === "outlook-windows-legacy" && w.property === "border-radius")).toBe(false);
     expect(progWarnings.some((w) => w.property === "css-hack")).toBe(false);
 
     const depReport = checkTargetingHacks(deprecatedHackHtml);
@@ -227,7 +227,7 @@ describe("TargetingPolicy Configuration", () => {
 
     // Does NOT suppress Outlook warning for border-radius despite u + .body
     const outlookWarning = strictWarnings.find(
-      (w) => w.client === "outlook-windows" && w.property === "border-radius"
+      (w) => w.client === "outlook-windows-legacy" && w.property === "border-radius"
     );
     expect(outlookWarning).toBeDefined();
 
@@ -248,7 +248,7 @@ describe("TargetingPolicy Configuration", () => {
   it("lenient policy: suppresses false positives and ignores non-fatal warnings", () => {
     // False positive suppressed
     const lenientWarnings = analyzeEmail(targetedHtml, undefined, { targetingPolicy: "lenient" });
-    expect(lenientWarnings.some((w) => w.client === "outlook-windows" && w.property === "border-radius")).toBe(false);
+    expect(lenientWarnings.some((w) => w.client === "outlook-windows-legacy" && w.property === "border-radius")).toBe(false);
     expect(lenientWarnings.some((w) => w.property === "css-hack")).toBe(false);
 
     // Non-fatal deprecated hack is ignored
@@ -259,13 +259,13 @@ describe("TargetingPolicy Configuration", () => {
   it("integrates targetingPolicy with auditEmail and createSession", () => {
     // auditEmail with strict policy
     const auditStrict = auditEmail(targetedHtml, { targetingPolicy: "strict" });
-    expect(auditStrict.compatibility.warnings.some((w) => w.client === "outlook-windows" && w.property === "border-radius")).toBe(true);
+    expect(auditStrict.compatibility.warnings.some((w) => w.client === "outlook-windows-legacy" && w.property === "border-radius")).toBe(true);
     expect(auditStrict.targeting.warnings.some((w) => w.severity === "info")).toBe(true);
 
     // createSession with strict policy
     const session = createSession(targetedHtml, { targetingPolicy: "strict" });
     const sessionWarnings = session.analyze();
-    expect(sessionWarnings.some((w) => w.client === "outlook-windows" && w.property === "border-radius")).toBe(true);
+    expect(sessionWarnings.some((w) => w.client === "outlook-windows-legacy" && w.property === "border-radius")).toBe(true);
 
     const sessionTargeting = session.checkTargeting();
     expect(sessionTargeting.warnings.some((w) => w.severity === "info")).toBe(true);
@@ -282,7 +282,7 @@ u + .body .btn { border-radius: 8px; }
 </style></head><body><div class="global-box"></div></body></html>`;
 
     const warnings = analyzeEmail(html, undefined, { positions: true });
-    const outlookRadius = warnings.find((w) => w.client === "outlook-windows" && w.property === "border-radius");
+    const outlookRadius = warnings.find((w) => w.client === "outlook-windows-legacy" && w.property === "border-radius");
 
     expect(outlookRadius).toBeDefined();
     // Outlook's warning must only point to the global declaration, never leaking the targeted location
@@ -325,7 +325,7 @@ u + .body .btn:hover { background-color: #0070f3; }
 
     const warnings = analyzeEmail(html);
     // :hover is not supported in Outlook Classic, but it is scoped to Gmail Web
-    const outlookHover = warnings.find((w) => w.client === "outlook-windows" && w.property === ":hover");
+    const outlookHover = warnings.find((w) => w.client === "outlook-windows-legacy" && w.property === ":hover");
     expect(outlookHover).toBeUndefined();
   });
 
@@ -335,8 +335,8 @@ u + .body .grid-layout { display: flex; width: calc(100% - 20px); }
 </style></head><body><div class="body"><div class="grid-layout">Flex</div></div></body></html>`;
 
     const warnings = analyzeEmail(html);
-    const outlookFlex = warnings.find((w) => w.client === "outlook-windows" && w.property === "display:flex");
-    const outlookCalc = warnings.find((w) => w.client === "outlook-windows" && w.property === "calc()");
+    const outlookFlex = warnings.find((w) => w.client === "outlook-windows-legacy" && w.property === "display:flex");
+    const outlookCalc = warnings.find((w) => w.client === "outlook-windows-legacy" && w.property === "calc()");
     expect(outlookFlex).toBeUndefined();
     expect(outlookCalc).toBeUndefined();
   });
@@ -350,8 +350,8 @@ u + .body .grid-layout { display: flex; width: calc(100% - 20px); }
 u + .body .btn { border-radius: 8px; }
 </style></head><body><div class="body"><div class="btn">Button</div></div></body></html>`;
 
-    const globalScore = generateCompatibilityScore(analyzeEmail(globalHtml))["outlook-windows"].score;
-    const targetedScore = generateCompatibilityScore(analyzeEmail(targetedHtml))["outlook-windows"].score;
+    const globalScore = generateCompatibilityScore(analyzeEmail(globalHtml))["outlook-windows-legacy"].score;
+    const targetedScore = generateCompatibilityScore(analyzeEmail(targetedHtml))["outlook-windows-legacy"].score;
 
     // Outlook's score must improve because the unsupported border-radius is no longer evaluated for it
     expect(targetedScore).toBeGreaterThan(globalScore);

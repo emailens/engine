@@ -348,7 +348,8 @@ export const TARGETING_MATCHERS: readonly TargetingMatcher[] = [
     upstreamKey: "4436f65f125bcffb",
     pattern: /<!--\[if\s+(?:mso|ie|[gl]te?\s+mso)/i,
     surface: "html",
-    clientIds: ["outlook-windows-legacy", "outlook-windows"],
+    // Only Word reads conditional comments; the new Outlook is a web client.
+    clientIds: ["outlook-windows-legacy"],
     description: "MSO / IE conditional comments",
     foundIn: "conditional-comment",
     scopesCompatibility: false,

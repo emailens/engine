@@ -39,15 +39,24 @@ const API_URL = "https://www.caniemail.com/api/data.json";
  * reason: the client roster is a product decision, not a data one, and this
  * engine ships the 21 clients emailens markets. Adding one is this map plus an
  * entry in `src/clients.ts`; the type system will not let you do only half.
+ *
+ * One platform may also feed several clients. caniemail has never tested the
+ * new Outlook for Windows, which is built on Outlook on the web, so
+ * `outlook.outlook-com` answers for both `outlook-web` and `outlook-windows`.
+ * Until 2026-10-14 `outlook.windows` (Outlook 2007 to 2019, the Word engine)
+ * mapped to `outlook-windows`, a leftover from before that id was renamed
+ * "Outlook (New)" in 06fc4aa: every resync wrote Word answers into the new
+ * Outlook, 276 of 298 features identical to Classic. It belongs to Classic,
+ * merged worst-wins with the Windows Mail app that also renders with Word.
  */
-const CLIENT_MAP: Record<string, string> = {
+const CLIENT_MAP: Record<string, string | string[]> = {
   "apple-mail.macos": "apple-mail-macos",
   "apple-mail.ios": "apple-mail-ios",
   "gmail.desktop-webmail": "gmail-web",
   "gmail.android": "gmail-android",
   "gmail.ios": "gmail-ios",
-  "outlook.outlook-com": "outlook-web",
-  "outlook.windows": "outlook-windows",
+  "outlook.outlook-com": ["outlook-web", "outlook-windows"],
+  "outlook.windows": "outlook-windows-legacy",
   "yahoo.desktop-webmail": "yahoo-mail",
   "outlook.windows-mail": "outlook-windows-legacy",
   "outlook.ios": "outlook-ios",
@@ -500,25 +509,27 @@ async function main() {
     for (const [canieClientName, platforms] of Object.entries(feature.stats)) {
       for (const [platform, versions] of Object.entries(platforms)) {
         const mapKey = `${canieClientName}.${platform}`;
-        const engineClientId = CLIENT_MAP[mapKey];
-        if (!engineClientId) continue;
+        const mapped = CLIENT_MAP[mapKey];
+        if (!mapped) continue;
         usedClientKeys.add(mapKey);
 
-        const support = getLatestSupport(versions);
-        const previous = clientSupport[engineClientId];
-        const merged = mergeSupport(previous, support);
-        clientSupport[engineClientId] = merged;
+        for (const engineClientId of [mapped].flat()) {
+          const support = getLatestSupport(versions);
+          const previous = clientSupport[engineClientId];
+          const merged = mergeSupport(previous, support);
+          clientSupport[engineClientId] = merged;
 
-        // A note explains one platform's answer, so it may only sit on a cell
-        // that still holds that answer. Merging the levels worst-wins while
-        // unioning the notes put "Supported. …" on unsupported cells and let a
-        // better platform delete the worse one's explanation.
-        const notes = getLatestNotes(versions, feature.notes_by_num);
-        if (support !== merged) continue; // this platform lost; its note goes with it
-        if (previous !== merged) delete clientNotes[engineClientId]; // new, worse winner
-        if (notes.length) {
-          const seen = clientNotes[engineClientId] ?? [];
-          clientNotes[engineClientId] = [...new Set([...seen, ...notes])];
+          // A note explains one platform's answer, so it may only sit on a cell
+          // that still holds that answer. Merging the levels worst-wins while
+          // unioning the notes put "Supported. …" on unsupported cells and let a
+          // better platform delete the worse one's explanation.
+          const notes = getLatestNotes(versions, feature.notes_by_num);
+          if (support !== merged) continue; // this platform lost; its note goes with it
+          if (previous !== merged) delete clientNotes[engineClientId]; // new, worse winner
+          if (notes.length) {
+            const seen = clientNotes[engineClientId] ?? [];
+            clientNotes[engineClientId] = [...new Set([...seen, ...notes])];
+          }
         }
       }
     }
