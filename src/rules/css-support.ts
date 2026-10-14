@@ -17,6 +17,8 @@ import type { SupportLevel } from "../types";
  * - Most clients: caniemail.com API (verified data)
  * - hey-mail: caniemail.com (WebKit-based)
  * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)
+ * - Observed overrides: cells a real-device screenshot contradicted, dated and
+ *   sourced in scripts/observed-overrides.ts; each carries an "Observed" note
  *
  * A client we ship as one entry although caniemail tests it on several
  * platforms (Proton Mail, AOL, Thunderbird) is graded on its worst
@@ -1938,7 +1940,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "align-items": {
-    "gmail-web": "unsupported",
+    "gmail-web": "supported",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "supported",
@@ -2007,7 +2009,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "unknown",
   },
   "animation": {
-    "gmail-web": "unsupported",
+    "gmail-web": "supported",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "unsupported",
@@ -2559,7 +2561,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "unknown",
   },
   "box-shadow": {
-    "gmail-web": "unsupported",
+    "gmail-web": "supported",
     "gmail-android": "partial",
     "gmail-ios": "partial",
     "outlook-web": "supported",
@@ -2570,7 +2572,7 @@ const CSS_SUPPORT_TABLE = {
     "outlook-macos": "supported",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
-    "yahoo-mail": "unsupported",
+    "yahoo-mail": "supported",
     "yahoo-mail-android": "unsupported",
     "yahoo-mail-ios": "unsupported",
     "samsung-mail": "supported",
@@ -3272,7 +3274,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "gap": {
-    "gmail-web": "partial",
+    "gmail-web": "supported",
     "gmail-android": "partial",
     "gmail-ios": "partial",
     "outlook-web": "partial",
@@ -4913,9 +4915,9 @@ const CSS_SUPPORT_TABLE = {
     "outlook-windows-legacy": "partial",
     "outlook-ios": "supported",
     "outlook-android": "supported",
-    "outlook-macos": "supported",
-    "apple-mail-macos": "supported",
-    "apple-mail-ios": "supported",
+    "outlook-macos": "partial",
+    "apple-mail-macos": "partial",
+    "apple-mail-ios": "partial",
     "yahoo-mail": "supported",
     "yahoo-mail-android": "supported",
     "yahoo-mail-ios": "supported",
@@ -5181,10 +5183,10 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "text-shadow": {
-    "gmail-web": "unsupported",
+    "gmail-web": "supported",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
-    "outlook-web": "unsupported",
+    "outlook-web": "supported",
     "outlook-windows": "unsupported",
     "outlook-windows-legacy": "unsupported",
     "outlook-ios": "unsupported",
@@ -5779,7 +5781,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "visibility": {
-    "gmail-web": "unsupported",
+    "gmail-web": "supported",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "supported",
@@ -7244,6 +7246,9 @@ export const CSS_SUPPORT_NOTES: Record<
     "apple-mail-ios": ["Supports `accent-color` but rendering depends on browser support."],
     "samsung-mail": ["Supports `accent-color` but rendering depends on browser support."],
   },
+  "align-items": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): align-items:center centred a short flex item against a tall one."],
+  },
   "amp4email": {
     "gmail-web": ["Supported on compatible browsers. Refer to ‘supported platforms’ links listed below under resources."],
     "yahoo-mail": ["Supported on compatible browsers. Refer to ‘supported platforms’ links listed below under resources."],
@@ -7260,6 +7265,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "samsung-mail": ["Buggy. Clicking an anchor link does nothing."],
   },
   "animation": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): An animation defined with @keyframes in a <style> block ran to its end state."],
     "superhuman": ["Partial. Blink can run animations; Superhuman may honor OS reduced-motion and disable them."],
   },
   "aspect-ratio": {
@@ -7338,8 +7344,10 @@ export const CSS_SUPPORT_NOTES: Record<
     "samsung-mail": ["Partial. Percentages values are not supported."],
   },
   "box-shadow": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): A box-shadow on a table cell rendered with its offset and colour."],
     "gmail-android": ["Partial. Only supported with non Google accounts."],
     "gmail-ios": ["Partial. Only supported with non Google accounts."],
+    "yahoo-mail": ["Observed 2026-10-14 (Emailens real-device probe, Yahoo Mail (Chrome)): A box-shadow on a table cell rendered with its offset and colour."],
   },
   "calc": {
     "gmail-android": ["Partial. Not supported with non Google accounts."],
@@ -7452,7 +7460,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "aol": ["Partial support. `<number>` values are not supported as per CSS Fonts Level 4 where any `<number>` value between 1 and 1000 (inclusive) is a valid value. Only the following numeric values are supported: 100, 200, 300, 400, 500, 600, 700, 800, and 900."],
   },
   "gap": {
-    "gmail-web": ["Partial. Supports column-gap for flexbox."],
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): gap:8px spaced flex and grid items."],
     "gmail-android": ["Partial. Supports column-gap for flexbox."],
     "gmail-ios": ["Partial. Supports column-gap for flexbox."],
     "outlook-web": ["Partial. Supports column-gap for flexbox."],
@@ -7730,6 +7738,9 @@ export const CSS_SUPPORT_NOTES: Record<
     "gmail-android": ["Partial. Not supported with non Google accounts."],
     "gmail-ios": ["Partial. Not supported with non Google accounts."],
     "outlook-windows-legacy": ["Partial. Not supported with multiple values.","Partial. `overline` is not supported."],
+    "outlook-macos": ["Observed 2026-10-14 (Emailens real-device probe, Outlook 2019 for Mac): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
+    "apple-mail-macos": ["Observed 2026-10-14 (Emailens real-device probe, Apple Mail (macOS)): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
+    "apple-mail-ios": ["Observed 2026-10-14 (Emailens real-device probe, Apple Mail (iPhone 13)): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
   },
   "text-decoration-color": {
     "gmail-android": ["Partial. Not supported with non Google accounts."],
@@ -7771,6 +7782,10 @@ export const CSS_SUPPORT_NOTES: Record<
   "text-overflow": {
     "gmail-android": ["Partial. Not supported with non Google accounts."],
     "gmail-ios": ["Partial. Not supported with non Google accounts."],
+  },
+  "text-shadow": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): A red text-shadow rendered behind bold text."],
+    "outlook-web": ["Observed 2026-10-14 (Emailens real-device probe, Outlook.com (Chrome)): A red text-shadow rendered behind bold text."],
   },
   "text-transform": {
     "outlook-windows-legacy": ["Partial. `lowercase` value is not supported."],
@@ -7823,6 +7838,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "aol": ["Property is stripped from style tag"],
   },
   "visibility": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): visibility:hidden hid the word and kept its space."],
     "outlook-ios": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "outlook-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "apple-mail-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
@@ -8056,6 +8072,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "aol": ["`display:inline-flex` is not supported."],
   },
   "display:grid": {
+    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): A three-column grid rendered as three boxes in a row, gaps included."],
     "gmail-android": ["Not supported with non Google accounts."],
     "gmail-ios": ["Not supported with non Google accounts."],
   },
