@@ -262,6 +262,16 @@ interface ClientTransformConfig {
    *  bulletproof pattern exists; a browser preview honours the attribute, so
    *  leaving it in draws a hero the real client cannot draw. */
   stripBackgroundAttribute?: boolean;
+  /** Remove animations from <style> blocks as well as inline: @keyframes rules
+   *  and `animation*` declarations. For clients that keep the <style> block but
+   *  do not run its animations (Outlook.com, Microsoft 365, Word); the inline
+   *  strip alone left a class-applied animation running in the preview. */
+  stripStyleAnimations?: boolean;
+  /** Drop a `text-decoration` that names more than a line (`underline wavy
+   *  #d33`), inline and in <style> blocks. Observed on real Apple Mail, iPhone,
+   *  Outlook for Mac and Outlook 2016 (2026-10-14): the whole declaration is
+   *  ignored, so no line is drawn at all, not a plain one. */
+  dropTextDecorationShorthand?: boolean;
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -521,14 +531,21 @@ function superhumanAdditionalChecks(
 const EMPTY_SET: Set<string> = new Set();
 const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
 const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
+// Real Yahoo Mail webmail drew a box-shadow (2026-10-14). The apps are unobserved.
+const YAHOO_WEB_STRIPPED = new Set([...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"));
+// Properties real Gmail webmail rendered although caniemail lists them as
+// stripped (2026-10-14, Google account, Firefox). Only gmail-web: the apps and
+// third-party accounts are unobserved and keep the caniemail set.
+const GMAIL_WEB_KEEPS = new Set(["box-shadow", "text-shadow", "visibility", "animation", "gap"]);
+const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES].filter((p) => !GMAIL_WEB_KEEPS.has(p)));
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
-    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
+    strippedProperties: GMAIL_WEB_STRIPPED,
     stripMode: "strip",
+    // display:grid rendered in real Gmail webmail (2026-10-14).
     valueStrips: [
-      { prop: "display", pattern: /grid/ },
       { prop: "background", pattern: /linear-gradient|radial-gradient/ },
     ],
     inlineAndStripStyles: true,
@@ -569,6 +586,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     id: "outlook-windows",
     strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
+    stripStyleAnimations: true,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -590,12 +608,15 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripForms: false,
     stripSvg: false,
     stripBackgroundAttribute: true,
+    stripStyleAnimations: true,
+    dropTextDecorationShorthand: true,
     additionalChecks: outlookWindowsAdditionalChecks,
   },
   "outlook-web": {
     id: "outlook-web",
     strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
+    stripStyleAnimations: true,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -621,6 +642,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-macos": {
     id: "outlook-macos",
+    dropTextDecorationShorthand: true,
     // caniemail: the new (WebKit) Outlook for Mac supports position/transform/
     // animation/box-shadow/opacity; only transition is unsupported. It is NOT
     // the Word engine, so do not mirror outlook-web's broader strip set.
@@ -633,6 +655,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "apple-mail-macos": {
     id: "apple-mail-macos",
+    dropTextDecorationShorthand: true,
     strippedProperties: EMPTY_SET,
     stripMode: "strip",
     inlineAndStripStyles: false,
@@ -643,6 +666,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "apple-mail-ios": {
     id: "apple-mail-ios",
+    dropTextDecorationShorthand: true,
     strippedProperties: EMPTY_SET,
     stripMode: "strip",
     inlineAndStripStyles: false,
@@ -653,7 +677,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "yahoo-mail": {
     id: "yahoo-mail",
-    strippedProperties: YAHOO_STRIPPED,
+    strippedProperties: YAHOO_WEB_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -758,6 +782,86 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     additionalChecks: superhumanAdditionalChecks,
   },
 };
+
+/** A text-decoration value that is only line keywords (`underline`, `none`...). */
+const TEXT_DECORATION_LINE = /^(?:none|underline|overline|line-through|blink)(?:\s+(?:underline|overline|line-through|blink))*\s*(?:!important)?$/i;
+const isLineOnly = (value: string) => TEXT_DECORATION_LINE.test(value.trim());
+
+/**
+ * Remove animations from every <style> block: @keyframes rules and
+ * `animation*` declarations. Returns whether anything was removed.
+ */
+function stripStyleBlockAnimations($: cheerio.CheerioAPI): boolean {
+  let removed = false;
+  $("style").each((_, el) => {
+    const css = $(el).text();
+    if (!/animation|keyframes/i.test(css)) return;
+    let ast: csstree.CssNode;
+    try {
+      ast = csstree.parse(css, { parseCustomProperty: true });
+    } catch {
+      return;
+    }
+    csstree.walk(ast, {
+      visit: "Atrule",
+      enter(node, item, list) {
+        if (node.type === "Atrule" && /^(?:-webkit-)?keyframes$/i.test(node.name) && list && item) {
+          list.remove(item);
+          removed = true;
+        }
+      },
+    });
+    csstree.walk(ast, {
+      visit: "Declaration",
+      enter(node, item, list) {
+        if (node.type === "Declaration" && /^(?:-webkit-)?animation(?:-|$)/i.test(node.property) && list && item) {
+          list.remove(item);
+          removed = true;
+        }
+      },
+    });
+    $(el).text(csstree.generate(ast));
+  });
+  return removed;
+}
+
+/**
+ * Drop a text-decoration that names more than a line, inline and in <style>
+ * blocks. Returns whether anything was dropped.
+ */
+function dropTextDecorationShorthands($: cheerio.CheerioAPI): boolean {
+  let dropped = false;
+  $("[style]").each((_, el) => {
+    const props = parseInlineStyle($(el).attr("style") || "");
+    const value = props.get("text-decoration");
+    if (value === undefined || isLineOnly(value)) return;
+    props.delete("text-decoration");
+    $(el).attr("style", serializeStyle(props));
+    dropped = true;
+  });
+  $("style").each((_, el) => {
+    const css = $(el).text();
+    if (!/text-decoration/i.test(css)) return;
+    let ast: csstree.CssNode;
+    try {
+      ast = csstree.parse(css, { parseCustomProperty: true });
+    } catch {
+      return;
+    }
+    csstree.walk(ast, {
+      visit: "Declaration",
+      enter(node, item, list) {
+        if (node.type !== "Declaration" || node.property.toLowerCase() !== "text-decoration" || !list || !item) return;
+        const value = csstree.generate(node.value) + (node.important ? " !important" : "");
+        if (isLineOnly(value)) return;
+        list.remove(item);
+        dropped = true;
+      },
+    });
+    $(el).text(csstree.generate(ast));
+  });
+  return dropped;
+}
 
 // =============================================================================
 // Shared transform engine
@@ -907,6 +1011,27 @@ function applyTransformDom(
         }
       }
     });
+  }
+
+  // 5b. Animations that live in <style> blocks, for clients that keep the
+  // block but never run them.
+  if (config.stripStyleAnimations && stripStyleBlockAnimations($)) {
+    warnings.push(makeWarning({
+      severity: "warning",
+      client: clientId,
+      property: "animation",
+      message: `${clientId} does not run CSS animations.`,
+    }, "animation", clientId, framework));
+  }
+
+  // 5c. A text-decoration with a style or colour in it is ignored whole.
+  if (config.dropTextDecorationShorthand && dropTextDecorationShorthands($)) {
+    warnings.push(makeWarning({
+      severity: "warning",
+      client: clientId,
+      property: "text-decoration",
+      message: `${clientId} ignores a text-decoration that sets a style or colour; no line is drawn.`,
+    }, "text-decoration", clientId, framework));
   }
 
   // 6. Gmail-specific post-strip checks (MSO comments, partial style info)

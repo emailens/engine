@@ -11,6 +11,7 @@
  */
 
 import { SUPERHUMAN_OVERRIDES, SUPERHUMAN_NOTES } from "./superhuman-overrides";
+import { OBSERVED_OVERRIDES, observationNote } from "./observed-overrides";
 import {
   GMAIL_STRIPPED_PROPERTIES,
   GRACEFUL_FEATURES,
@@ -589,6 +590,18 @@ async function main() {
     }
   }
 
+  // Real-device observations win over caniemail, after every feature sharing
+  // a key has been merged, so a worst-wins merge cannot undo one. The note is
+  // replaced, not appended: a note explains the level beside it.
+  for (const [key, cells] of Object.entries(OBSERVED_OVERRIDES)) {
+    const row = rows[key];
+    if (!row) throw new Error(`observed-overrides.ts names "${key}", which caniemail no longer has`);
+    for (const [clientId, o] of Object.entries(cells)) {
+      row.support[clientId] = o.level;
+      row.notes[clientId] = [observationNote(o)];
+    }
+  }
+
   // Add universally-supported properties not in caniemail
   for (const key of ["font-family", "color"]) {
     if (rows[key]) continue;
@@ -752,6 +765,8 @@ function generateTsFile(
   lines.push(` * - Most clients: caniemail.com API (verified data)`);
   lines.push(` * - hey-mail: caniemail.com (WebKit-based)`);
   lines.push(` * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)`);
+  lines.push(` * - Observed overrides: cells a real-device screenshot contradicted, dated and`);
+  lines.push(` *   sourced in scripts/observed-overrides.ts; each carries an "Observed" note`);
   lines.push(` *`);
   lines.push(` * A client we ship as one entry although caniemail tests it on several`);
   lines.push(` * platforms (Proton Mail, AOL, Thunderbird) is graded on its worst`);

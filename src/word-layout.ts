@@ -234,6 +234,15 @@ function declaredFaces($: CheerioAPI): Set<string> {
 const firstFamily = (value: string) => value.split(",")[0].replace(/["']|!important/gi, "").trim().toLowerCase();
 const TIMES = "'Times New Roman',serif";
 
+/** A border that draws: a width other than 0 and a style other than none. */
+function hasBorder(props: Map<string, string>): boolean {
+  for (const prop of ["border", "border-top", "border-right", "border-bottom", "border-left"]) {
+    const value = props.get(prop);
+    if (value && !/\b(?:none|hidden)\b/i.test(value) && !/^\s*0(?:px)?\s*$/.test(value)) return true;
+  }
+  return false;
+}
+
 export function applyWordBoxModel($: CheerioAPI): void {
   const faces = declaredFaces($);
 
@@ -245,7 +254,13 @@ export function applyWordBoxModel($: CheerioAPI): void {
 
     // Padding is honoured on table cells and nowhere else that was tried:
     // div, p, span and a all rendered as if it were absent (01 c01-c08, c26-c28).
-    if (tag === "div" || tag === "p" || tag === "span" || tag === "a") {
+    // The exception is a bordered div or p: Word draws a paragraph border and
+    // keeps the padding as the space inside it. Seen on real Outlook 2016
+    // (2026-10-14): `padding:20px; border:2px solid` with text inside rendered
+    // the 20px inset. The 01 cells had no border. Whether text content matters
+    // as well was not isolated.
+    const bordered = (tag === "div" || tag === "p") && hasBorder(props);
+    if ((tag === "div" || tag === "p" || tag === "span" || tag === "a") && !bordered) {
       for (const prop of PADDING) props.delete(prop);
     }
 

@@ -300,7 +300,9 @@ describe("transformForClient", () => {
     const html = `<html><body><div style="position: absolute; color: red; box-shadow: 1px 1px black;">test</div></body></html>`;
     const result = transformForClient(html, "gmail-web");
     expect(result.html).not.toContain("position");
-    expect(result.html).not.toContain("box-shadow");
+    // Real Gmail webmail draws box-shadow (2026-10-14); the apps still strip it.
+    expect(result.html).toContain("box-shadow");
+    expect(transformForClient(html, "gmail-android").html).not.toContain("box-shadow");
     expect(result.html).toContain("color: red");
   });
 

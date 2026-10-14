@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.14.8 - 2026-10-14
+
+A patch. No API changes. `^0.14.0` picks this up. Support levels, warnings and
+compatibility scores change for Gmail on the web, Yahoo Mail on the web,
+Outlook.com, Apple Mail, Outlook for Mac and Outlook Classic.
+
+### Fixed
+
+- **Observed overrides.** Real-device screenshots of probe emails (14 October
+  2026, 43 clients) contradicted caniemail on several cells. They now override
+  it through `scripts/observed-overrides.ts`, applied after the caniemail sync;
+  each overridden cell's note says what was seen, where and when.
+  - Gmail web: `box-shadow`, `text-shadow`, `visibility`, `align-items`, `gap`
+    and `animation` render, so they are supported and no longer stripped.
+    `display:grid` is kept. The Gmail apps keep caniemail's data.
+  - Yahoo Mail web: `box-shadow` renders and is kept.
+  - Outlook.com: `text-shadow` renders.
+  - Apple Mail (macOS, iOS) and Outlook for Mac: a `text-decoration` naming a
+    style or colour is dropped whole, so they are partial.
+- **Simulation.** Outlook.com, Outlook for Microsoft 365 and Outlook Classic
+  drop `@keyframes` and `animation` from `<style>` as the real clients do.
+  Apple Mail, Outlook for Mac and Outlook Classic drop a `text-decoration`
+  that names a style or colour. Outlook Classic keeps padding on a `<div>` or
+  `<p>` with a visible border.
+
 ## 0.14.7 - 2026-10-14
 
 A patch. No API changes. `^0.14.0` picks this up.

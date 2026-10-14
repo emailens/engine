@@ -13,7 +13,7 @@
  * - CSS property expansion (right/top/bottom)
  */
 import { describe, expect, it, mock, beforeEach } from "bun:test";
-import { analyzeEmail, CSS_SUPPORT } from "../index";
+import { analyzeEmail, CSS_SUPPORT, transformForClient } from "../index";
 import { GMAIL_STRIPPED_PROPERTIES, CSS_SUPPORT_NOTES } from "../rules/css-support";
 import { checkDeliverability } from "../deliverability-checker";
 import type { DnsResolver } from "../deliverability-checker";
@@ -218,13 +218,15 @@ describe("pseudo-selector and pseudo-element detection", () => {
 // ============================================================================
 
 describe("GMAIL_STRIPPED_PROPERTIES consistency", () => {
-  it("no property marked 'supported' in gmail-web should be in GMAIL_STRIPPED", () => {
+  // GMAIL_STRIPPED_PROPERTIES is caniemail's Gmail set and still drives the
+  // apps. gmail-web keeps what real Gmail webmail was seen rendering
+  // (observed-overrides.ts), so the invariant is checked on its transform.
+  it("gmail-web never strips a property CSS_SUPPORT marks supported for it", () => {
     for (const prop of GMAIL_STRIPPED_PROPERTIES) {
-      const level = CSS_SUPPORT[prop]?.["gmail-web"];
-      if (level === "supported") {
-        throw new Error(
-          `"${prop}" is in GMAIL_STRIPPED_PROPERTIES but CSS_SUPPORT says gmail-web: supported`,
-        );
+      if (CSS_SUPPORT[prop]?.["gmail-web"] !== "supported") continue;
+      const out = transformForClient(`<div style="${prop}:1px">x</div>`, "gmail-web").html;
+      if (!out.includes(prop)) {
+        throw new Error(`gmail-web strips "${prop}" but CSS_SUPPORT says gmail-web: supported`);
       }
     }
   });
