@@ -42,7 +42,9 @@ describe("intent score", () => {
     const twin = page(`${mso(roundrect)}${notMso(`<a href="https://example.com">Go</a>`)}`);
     expect(severityOf(fixed, "border-radius")).toBe("info");
     expect(scoreOf(fixed)).toBe(scoreOf(twin));
-    expect(severityOf(fixed, "border-radius", "outlook-windows")).toBe("warning");
+    // The new Outlook is a web client: it renders border-radius, so it has
+    // nothing to report either way.
+    expect(severityOf(fixed, "border-radius", "outlook-windows")).toBeUndefined();
   });
 
   test("border-radius counts on markup Word reads, and a button's roundrect does not clear a card", () => {
@@ -241,19 +243,21 @@ describe("intent score", () => {
     }
   });
 
-  test("New Outlook does not treat an MSO-only fallback as carrying the intent", () => {
+  test("New Outlook does not inherit Word's max-width and padding rules", () => {
+    // Until 2026-10-14 the new Outlook was scored as if it shared Word's
+    // partial support, because its support data came from Outlook 2007-2019.
+    // It is built on Outlook on the web and honours both properties.
     const wrapped = page(
       `${mso(`<table width="600"><tr><td>`)}<div style="max-width:600px">Hi</div>${mso(`</td></tr></table>`)}`,
     );
     const plain = page(`${mso(`<table width="600"><tr><td>`)}<div>Hi</div>${mso(`</td></tr></table>`)}`);
-    expect(severityOf(wrapped, "max-width", "outlook-windows")).toBe("warning");
-    expect(scoreOf(wrapped, "outlook-windows")).toBe(scoreOf(plain, "outlook-windows") - 3);
+    expect(severityOf(wrapped, "max-width", "outlook-windows")).toBeUndefined();
+    expect(scoreOf(wrapped, "outlook-windows")).toBe(scoreOf(plain, "outlook-windows"));
     expect(severityOf(wrapped, "max-width")).toBe("info");
 
     const alt = page(`<table><tr><td style="mso-padding-alt:12px"><a href="https://example.com" style="padding:12px">Go</a></td></tr></table>`);
     expect(severityOf(alt, "padding")).toBe("info");
-    expect(severityOf(alt, "padding", "outlook-windows")).toBe("warning");
-    expect(analyzeEmail(alt).find((w) => w.client === "outlook-windows" && w.property === "padding")?.suggestion).toBeTruthy();
+    expect(severityOf(alt, "padding", "outlook-windows")).toBeUndefined();
   });
 
   test("an elliptical radius is scored on Yahoo and AOL, and a plain one is carried everywhere it is supported", () => {

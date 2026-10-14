@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+Compatibility scores and warnings change for Outlook (New) and, slightly, for
+Outlook Classic. No API changes.
+
+### Fixed
+
+- **Outlook (New) was scored as Outlook 2007 to 2019.** `sync-caniemail.ts`
+  still mapped caniemail's `outlook.windows` platform, which is the Word-engine
+  desktop app, to `outlook-windows`, a leftover from before that id became
+  "Outlook (New)" in March. Every resync wrote Word answers into the new
+  Outlook: 276 of 298 features matched Outlook Classic and 152 differed from
+  Outlook.com. caniemail has never tested the new Outlook, which is built on
+  Outlook on the web, so `outlook-windows` now takes the Outlook.com answers
+  and notes, and `outlook.windows` merges into `outlook-windows-legacy` with
+  the Windows Mail app, worst-wins as before. Outlook Classic picks up 12
+  stricter answers from the desktop data (`width`, `height`, `doctype`, and
+  nine features that were `unknown`). Image formats follow the same mapping:
+  WebP and APNG now fail in Outlook Classic rather than Outlook (New).
+- **Intent scoring no longer applies Word's rules to the new Outlook.** The
+  `max-width`, `padding` and `margin` checks that treated Outlook (New) as
+  sharing Word's partial support are removed; they rested on the bad data.
+- **MSO conditional comments are attributed to Outlook Classic only.** The new
+  Outlook does not read them.
+
+### Known
+
+- Outlook Classic warnings can point at one declaration when they cover
+  several (one of thirteen `border-radius` declarations in the Cerberus
+  newsletter fixture). The bad Outlook (New) data hid this, because its
+  warnings carried the right positions. Tracked as a `test.todo` in
+  `source-positions.test.ts`.
+
 ## 0.14.4 - 2026-10-13
 
 A patch. No API changes. `^0.14.0` picks this up. Transformed HTML changes

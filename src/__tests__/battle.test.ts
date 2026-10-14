@@ -550,7 +550,8 @@ describe("value-aware partial warnings", () => {
 
   it("flags margin: auto only where the client's note says auto is unsupported", () => {
     expect(warnsFor("margin: 0 auto", "gmail-web")).toBe(false); // note: only negative
-    expect(warnsFor("margin: 0 auto", "outlook-windows")).toBe(true); // note: auto unsupported
+    expect(warnsFor("margin: 0 auto", "outlook-windows-legacy")).toBe(true); // note: auto unsupported
+    expect(warnsFor("margin: 0 auto", "outlook-windows")).toBe(false); // the new Outlook is a web client
   });
 
   it("gates position per-client from the caveat note", () => {

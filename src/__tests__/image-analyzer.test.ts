@@ -377,13 +377,13 @@ describe("naming the clients that break", () => {
       .issues.find((i) => i.rule.endsWith("-format"))?.message ?? "";
 
   test("counts agree with the list, and read as a sentence", () => {
-    // APNG breaks in exactly five clients, one over the four the message names
-    // in full. "and 1 others" is the wording that makes a reader distrust the
-    // number beside it.
-    expect(message("a.apng")).toContain("and 1 other (5 of 21 clients)");
-    expect(message("a.apng")).not.toContain("1 others");
+    // Base64 images break in exactly five clients, one over the four the
+    // message names in full. "and 1 others" is the wording that makes a reader
+    // distrust the number beside it.
+    expect(message("data:image/png;base64,iVBORw0KGgo=")).toContain("and 1 other (5 of 21 clients)");
+    expect(message("data:image/png;base64,iVBORw0KGgo=")).not.toContain("1 others");
     // Two names join with "and", no comma, no remainder.
-    expect(message("a.webp")).toContain("Outlook (New) and Outlook for Mac (2 of 21 clients");
+    expect(message("a.webp")).toContain("Outlook Classic and Outlook for Mac (2 of 21 clients");
   });
 
   test("names a format the way a person would write it", () => {
