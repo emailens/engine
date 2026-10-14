@@ -9,6 +9,14 @@ describe("toPlainText", () => {
     expect(toPlainText(html)).toBe("Hello world");
   });
 
+  test("keeps a whitespace-only text node between inline content as a space", () => {
+    // React's output for `<Link>…</Link>{" "}to catch` and `account.{" "}<Link>`
+    const html = `<html><body><p><a href="https://x.dev/s">Set up</a> <!-- -->to catch it.</p><p>Your account.<!-- --> <a href="https://x.dev/u">Unsubscribe</a>.</p></body></html>`;
+    expect(toPlainText(html)).toBe(
+      "Set up (https://x.dev/s) to catch it.\nYour account. Unsubscribe (https://x.dev/u).",
+    );
+  });
+
   test("returns empty string for empty input", () => {
     expect(toPlainText("")).toBe("");
   });

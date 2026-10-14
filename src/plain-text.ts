@@ -39,6 +39,12 @@ export function toPlainText(html: string): string {
       const text = (node as Text).data.replace(/\s+/g, " ");
       if (text.trim()) {
         currentLine += text;
+      } else if (currentLine && !currentLine.endsWith(" ")) {
+        // A whitespace-only node between inline content is a real space, as
+        // in a browser. React emits `</a> <!-- -->to` for `</Link>{" "}to`, so
+        // dropping it ran "(https://…)to" together. Block indentation never
+        // reaches here mid-line: flushLine() has already emptied currentLine.
+        currentLine += " ";
       }
       return;
     }
