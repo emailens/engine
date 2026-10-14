@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.14.6 - 2026-10-14
+
+A patch. No API changes. `^0.14.0` picks this up. Only the positions on
+Outlook Classic warnings change; levels, messages and scores do not.
 
 ### Fixed
 
