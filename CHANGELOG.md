@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.14.7 - 2026-10-14
+
+A patch. No API changes. `^0.14.0` picks this up.
 
 - `toPlainText` kept dropping a whitespace-only text node between inline
   content, so React output like `</a> <!-- -->to catch` came out as
