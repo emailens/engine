@@ -1079,18 +1079,25 @@ describe("accuracy: the positions are actionable", () => {
       edited = edited.slice(0, offset) + edited.slice(offset + length);
     }
 
-    // Outlook Classic is excluded until its positions are fixed: on this
-    // fixture all six of its border-radius warnings point at one declaration
-    // out of thirteen. This passed before 2026-10-14 only because the new
-    // Outlook, wrongly carrying Word's support data, warned on the same
-    // declarations at the right positions and its cuts removed them.
     const after = analyzeEmail(edited, undefined, { positions: true });
-    expect(
-      after.filter(
-        (w) => w.selector && w.property !== "dark-mode-coverage" && w.client !== "outlook-windows-legacy",
-      ).length,
-    ).toBe(0);
+    expect(after.filter((w) => w.selector && w.property !== "dark-mode-coverage").length).toBe(0);
   });
 
-  test.todo("Outlook Classic warnings point at every declaration they cover, not the first one");
+  test("Outlook Classic warnings point at their own selector's declarations", () => {
+    // The Word-branch pass matched its findings back to the first pass by
+    // property and severity alone, so every Classic warning for a property
+    // carried one selector's positions: six border-radius findings here all
+    // pointed at `a[href]`, one declaration of thirteen.
+    const html = readFileSync(join(import.meta.dir, "fixtures", "cerberus-newsletter.html"), "utf8");
+    const classic = analyzeEmail(html, undefined, { positions: true }).filter(
+      (w) => w.client === "outlook-windows-legacy" && w.property === "border-radius",
+    );
+    const offsets = classic.flatMap((w) => (w.locs ?? []).map((l) => l.offset));
+    expect(new Set(classic.map((w) => w.selector)).size).toBe(classic.length);
+    expect(new Set(offsets).size).toBe(offsets.length);
+    expect(offsets.length).toBe([...html.matchAll(/border-radius\s*:/g)].length);
+    for (const w of classic) {
+      for (const l of w.locs ?? []) expect(html.slice(l.offset, l.offset + l.length)).toStartWith("border-radius");
+    }
+  });
 });

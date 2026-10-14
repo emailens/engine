@@ -846,11 +846,32 @@ function withOutlookBranch(
   // Locations come from the first pass, which is the only one anchored to the
   // source the caller holds. A finding that exists only inside `<!--[if !mso]>`
   // is markup Word never reads: keep it as info so it does not score.
+  //
+  // Warnings are one per property and selector, so the match has to include
+  // the selector. Keyed on property and severity alone, every branch warning
+  // for a property took the positions of whichever selector came last: six
+  // border-radius findings in the Cerberus fixture all pointed at one of its
+  // thirteen declarations. A branch warning with no first-pass twin comes
+  // from CSS inside `<!--[if mso]>`, which the first pass never parses; its
+  // offsets are into the resolved branch, not the caller's source, so it
+  // carries no position rather than a wrong one.
   const kept = warnings.filter((w) => w.client !== WORD_ENGINE_CLIENT);
   const firstPassWord = warnings.filter((w) => w.client === WORD_ENGINE_CLIENT);
   const branchProps = new Set(branchWarnings.map((w) => w.property));
-  const byKey = new Map(firstPassWord.map((w) => [`${w.property}:${w.severity}`, w]));
-  const merged = branchWarnings.map((w) => byKey.get(`${w.property}:${w.severity}`) ?? w);
+  const twinKey = (w: CSSWarning) => `${w.property}\u0000${w.selector ?? ""}`;
+  const twins = new Map(firstPassWord.map((w) => [twinKey(w), w]));
+  const merged = branchWarnings.map((w) => {
+    const { line: _line, loc: _loc, locs: _locs, locsTruncated: _truncated, ...rest } = w;
+    const twin = twins.get(twinKey(w));
+    if (!twin) return rest;
+    return {
+      ...rest,
+      ...(twin.line !== undefined ? { line: twin.line } : {}),
+      ...(twin.loc ? { loc: twin.loc } : {}),
+      ...(twin.locs ? { locs: twin.locs } : {}),
+      ...(twin.locsTruncated ? { locsTruncated: true } : {}),
+    };
+  });
   const onlyFallback = firstPassWord
     .filter((w) => !branchProps.has(w.property))
     .map((w) => ({ ...w, severity: "info" as const }));
