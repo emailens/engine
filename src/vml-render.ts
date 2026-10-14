@@ -57,6 +57,22 @@ function px(value: string | undefined): number | undefined {
   return m[2]?.toLowerCase() === "pt" ? (parseFloat(m[1]) * 4) / 3 : parseFloat(m[1]);
 }
 
+/** VML opacity: "50%", "0.5", or 16.16 fixed point ("32768f"). Absent is opaque. */
+function opacity(value: string | undefined): number {
+  if (!value) return 1;
+  const v = value.trim();
+  const n = parseFloat(v);
+  if (Number.isNaN(n)) return 1;
+  const o = v.endsWith("%") ? n / 100 : v.endsWith("f") ? n / 65536 : n;
+  return Math.min(1, Math.max(0, o));
+}
+
+/** A fill colour at the fill's opacity; undefined when fully transparent. */
+function fillColor(color: string | undefined, o: number): string | undefined {
+  if (!color || o === 0) return undefined;
+  return o < 1 ? `color-mix(in srgb, ${color} ${Math.round(o * 100)}%, transparent)` : color;
+}
+
 function styleProps(style: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const decl of style.split(";")) {
@@ -336,6 +352,46 @@ export function vmlToCss(html: string): string {
     },
   );
 
+  // ── v:image under a rect laid over it ───────────────────────────────────
+  // The Email on Acid pattern: a <v:image> paints the picture and an
+  // absolutely positioned <v:rect>, usually with a transparent fill, holds the
+  // text on top. The rect's position is not translated, so carry the image
+  // into the rect as its backdrop instead of leaving it stranded above it.
+  out = out.replace(
+    /<v:image\b([^>]*?)\/?>\s*(?:<\/v:image>\s*)?(?=<v:rect\b)/gi,
+    (_m, rawAttrs: string) => {
+      const src = attrs(rawAttrs).src;
+      return src ? `<v:rect-image src="${src}"/>` : "";
+    },
+  );
+  out = out.replace(/<v:rect-image src="([^"]*)"\/>\s*<v:rect\b/gi, '<v:rect data-vml-image="$1"');
+  // A standalone image is just a picture.
+  out = out.replace(/<v:image\b([^>]*?)\/?>/gi, (_m, rawAttrs: string) => {
+    const a = attrs(rawAttrs);
+    const s = styleProps(a.style ?? "");
+    const size = [px(s.width) ? `width:${px(s.width)}px` : "", px(s.height) ? `height:${px(s.height)}px` : ""].filter(Boolean).join(";");
+    return a.src ? `<img data-vml="image" src="${a.src}" alt="" style="display:block;${size}">` : "";
+  });
+  out = out.replace(/<\/v:image>/gi, "");
+
+  // ── v:background → the body's background ────────────────────────────────
+  out = out.replace(
+    /<v:background\b([^>]*?)(?:\/>|>([\s\S]*?)<\/v:background>)/gi,
+    (_m, rawAttrs: string, inner = "") => {
+      const a = attrs(rawAttrs);
+      const fillTag = inner.match(/<v:fill([^>]*?)\/?>/i);
+      const f = fillTag ? attrs(fillTag[1]) : {};
+      const color = f.color ?? a.fillcolor;
+      const tile = (f.type ?? "tile").toLowerCase() === "tile";
+      const rules = [
+        color ? `background-color:${color}` : "",
+        f.src ? `background-image:url('${f.src}')` : "",
+        f.src ? (tile ? "background-repeat:repeat" : "background-size:cover;background-position:center") : "",
+      ].filter(Boolean).join(";");
+      return rules ? `<style data-vml="background">body{${rules}}</style>` : "";
+    },
+  );
+
   // ── v:rect (+ v:fill, + v:textbox) → a sized box with a background ──────
   out = out.replace(
     /<v:rect([^>]*)>([\s\S]*?)<\/v:rect>/gi,
@@ -348,8 +404,11 @@ export function vmlToCss(html: string): string {
       const fillTag = inner.match(/<v:fill([^>]*?)\/?>/i);
       const f = fillTag ? attrs(fillTag[1]) : {};
       const type = (f.type ?? "solid").toLowerCase();
+      const o = opacity(f.opacity);
       let background = "";
-      if (f.src && type === "tile") {
+      if (!f.src && a["data-vml-image"]) {
+        background = `background-image:url('${a["data-vml-image"]}');background-size:cover;background-position:center;`;
+      } else if (f.src && type === "tile") {
         background = `background-image:url('${f.src}');background-repeat:repeat;`;
       } else if (f.src) {
         background = `background-image:url('${f.src}');background-size:cover;background-position:center;`;
@@ -361,7 +420,9 @@ export function vmlToCss(html: string): string {
           ? `background-image:radial-gradient(${from},${to});`
           : `background-image:linear-gradient(${angle},${from},${to});`;
       }
-      const solid = f.color ?? a.fillcolor;
+      // A fill with opacity="0" is the overlay idiom: Outlook paints nothing,
+      // so the image under it shows. Painting the colour solid hid it.
+      const solid = fillColor(f.color ?? a.fillcolor, o);
 
       const tb = inner.match(/<v:textbox([^>]*)>([\s\S]*?)<\/v:textbox>/i);
       const inset = tb ? attrs(tb[1]).inset : undefined;
