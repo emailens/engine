@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.14.6 - 2026-10-14
+
+A patch. No API changes. `^0.14.0` picks this up. Only the positions on
+Outlook Classic warnings change; levels, messages and scores do not.
+
+### Fixed
+
+- **Outlook Classic warnings point at the right declarations.** Classic's
+  findings come from a second pass over the email's Word branch, and their
+  positions are copied back from the first pass. The match ignored the
+  selector, so every Classic warning for a property took the positions of one
+  selector: in the Cerberus fixture, six `border-radius` warnings all pointed
+  at the same declaration out of thirteen. They now match on property and
+  selector and point at all thirteen. A finding whose CSS exists only inside
+  `<!--[if mso]>` carries no position, instead of offsets into the rewritten
+  branch that do not exist in the caller's source.
+
 ## 0.14.5 - 2026-10-14
 
 A patch. No API changes. `^0.14.0` picks this up. Compatibility scores and
