@@ -211,8 +211,8 @@ describe("intent score", () => {
     expect(analyzeEmail(spaces).find((w) => w.property === "gmail-space-separated-color")?.suggestion).toBeTruthy();
     expect(scoreOf(spaces, GMAIL)).toBe(scoreOf(comma, GMAIL) - 10);
 
-    const braces = page(`<style>@media screen { p { color: #111; }}</style><p>Hi</p>`);
-    const spaced = page(`<style>@media screen { p { color: #111; } }</style><p>Hi</p>`);
+    const braces = page(`<style>@media screen { p { color: #111; }} b { color: #222; }</style><p>Hi</p>`);
+    const spaced = page(`<style>@media screen { p { color: #111; } } b { color: #222; }</style><p>Hi</p>`);
     expect(severityOf(braces, "outlook-double-brace", "outlook-web")).toBe("error");
     expect(scoreOf(braces, "outlook-web")).toBe(scoreOf(spaced, "outlook-web") - 10);
 

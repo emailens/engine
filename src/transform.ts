@@ -544,9 +544,11 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     id: "gmail-web",
     strippedProperties: GMAIL_WEB_STRIPPED,
     stripMode: "strip",
-    // display:grid rendered in real Gmail webmail (2026-10-14).
+    // display:grid rendered in real Gmail webmail (2026-10-14), and an inline
+    // linear-gradient survived in an independent real Gmail inbox (fidelity
+    // baseline 2026-10-13). radial-gradient is unobserved and keeps the strip.
     valueStrips: [
-      { prop: "background", pattern: /linear-gradient|radial-gradient/ },
+      { prop: "background", pattern: /radial-gradient/ },
     ],
     inlineAndStripStyles: true,
     stripExternalStylesheets: true,

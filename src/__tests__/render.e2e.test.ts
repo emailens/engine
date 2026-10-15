@@ -76,8 +76,8 @@ suite("real-render validation (Playwright / Chromium)", () => {
     const html = `<a href="#" style="background: linear-gradient(135deg,#2d1b4e,#4c1d95); color:#f0ece4; padding:14px 36px">Open Dashboard</a>`;
     // Engine warns it lacks a fallback:
     expect(checkVisual(html).issues.some((i) => i.rule === "missing-background-fallback")).toBe(true);
-    // Gmail's transform strips gradient backgrounds; render the result in Blink (Gmail's engine):
-    const stripped = transformForClient(html, "gmail-web").html;
+    // The Gmail app transform strips gradient backgrounds (Gmail webmail keeps them); render the result in Blink:
+    const stripped = transformForClient(html, "gmail-android").html;
     const page = await browser!.newPage();
     await page.setContent(`<!doctype html><html><body>${stripped}</body></html>`);
     const bg = await page.$eval("a", (el) => getComputedStyle(el).backgroundColor);

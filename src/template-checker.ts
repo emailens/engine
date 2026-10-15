@@ -13,6 +13,26 @@ import type { TemplateIssue, TemplateReport } from "./types";
  *
  * @internal Used by audit pipeline with pre-parsed DOM.
  */
+/**
+ * Every variable in `text`, each once. Patterns run in order and a later one
+ * can't match inside an earlier one's span, so `{{name}}` and `${name}` are not
+ * also reported as the single-brace `{name}` they contain.
+ */
+function findVariables(text: string): Array<{ variable: string; label: string; index: number }> {
+  const found: Array<{ variable: string; label: string; index: number }> = [];
+  for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (found.some((f) => start < f.index + f.variable.length && f.index < end)) continue;
+      found.push({ variable: match[0], label, index: start });
+    }
+  }
+  return found;
+}
+
 export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): TemplateReport {
   const issues: TemplateIssue[] = [];
   const seen = new Set<string>();
@@ -29,45 +49,34 @@ export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): T
 
   for (const node of positioned ? textNodes : []) {
     const data: string = node.data ?? "";
-    for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
-      pattern.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = pattern.exec(data)) !== null) {
-        const variable = match[0];
-        const key = `text:${variable}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const loc = locInTextNode(node, match.index, variable.length, source);
-        issues.push({
-          rule: "unresolved-variable",
-          severity: "error",
-          message: `Unresolved ${label} variable "${variable}" found in text content.`,
-          variable,
-          location: "text",
-          ...(loc ? { loc } : {}),
-        });
-      }
-    }
-  }
-
-  const textContent = textNodes.map((n) => n.data ?? "").join("");
-  for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
-    // Reset lastIndex for global regexes
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(textContent)) !== null) {
-      const variable = match[0];
+    for (const { variable, label, index } of findVariables(data)) {
       const key = `text:${variable}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      const loc = locInTextNode(node, index, variable.length, source);
       issues.push({
         rule: "unresolved-variable",
         severity: "error",
         message: `Unresolved ${label} variable "${variable}" found in text content.`,
         variable,
         location: "text",
+        ...(loc ? { loc } : {}),
       });
     }
+  }
+
+  const textContent = textNodes.map((n) => n.data ?? "").join("");
+  for (const { variable, label } of findVariables(textContent)) {
+    const key = `text:${variable}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    issues.push({
+      rule: "unresolved-variable",
+      severity: "error",
+      message: `Unresolved ${label} variable "${variable}" found in text content.`,
+      variable,
+      location: "text",
+    });
   }
 
   // ── Scan attributes (href, src, alt) ──
@@ -79,24 +88,19 @@ export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): T
         const value = $(el).attr(attr);
         if (!value) continue;
 
-        for (const [pattern, label] of TEMPLATE_VARIABLE_PATTERNS) {
-          pattern.lastIndex = 0;
-          let match: RegExpExecArray | null;
-          while ((match = pattern.exec(value)) !== null) {
-            const variable = match[0];
-            const key = `attr:${attr}:${variable}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            const loc = locOfAttr(el, attr);
-            issues.push({
-              rule: "unresolved-variable",
-              severity: "error",
-              message: `Unresolved ${label} variable "${variable}" found in ${attr} attribute.`,
-              variable,
-              location: "attribute",
-              ...(loc ? { loc } : {}),
-            });
-          }
+        for (const { variable, label } of findVariables(value)) {
+          const key = `attr:${attr}:${variable}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const loc = locOfAttr(el, attr);
+          issues.push({
+            rule: "unresolved-variable",
+            severity: "error",
+            message: `Unresolved ${label} variable "${variable}" found in ${attr} attribute.`,
+            variable,
+            location: "attribute",
+            ...(loc ? { loc } : {}),
+          });
         }
       }
     });
