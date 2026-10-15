@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.14.10 - 2026-10-16
+
+A patch. No API changes. `^0.14.0` picks this up. The Gmail on the web
+preview, the `outlook-double-brace` warning and the template variable report
+change.
+
+### Fixed
+
+- **Gradients in the Gmail on the web preview.** `transformForClient(html,
+  "gmail-web")` removed any `background` holding a `linear-gradient`, inline or
+  from `<style>`, so white text on a gradient rendered white on white. An
+  inline `linear-gradient` survives in a real Gmail inbox, and the warnings
+  already called it supported. It is now kept. `radial-gradient` and the Gmail
+  apps are unobserved and keep the strip.
+- **`outlook-double-brace` without anything to lose.** The warning fired on a
+  `}}` that closes the stylesheet, where no rule comes after it. It now needs a
+  rule after the `}}`, in the same `<style>` block or a later one.
+- **Template variables reported twice.** `{{name}}` and `${name}` were also
+  reported as the single-brace `{name}` inside them. Each is reported once.
+
 ## 0.14.9 - 2026-10-15
 
 A patch. No API changes. `^0.14.0` picks this up. Only the Outlook Classic

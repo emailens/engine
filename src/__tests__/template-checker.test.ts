@@ -96,3 +96,20 @@ describe("template-checker", () => {
     expect(nameIssues).toHaveLength(1);
   });
 });
+
+describe("template variables are reported once", () => {
+  const vars = (html: string) => checkTemplateVariables(html).issues.map((i) => i.variable);
+
+  test("{{var}} is not also reported as the {var} inside it", () => {
+    expect(vars(`<a href="{{unsubscribe_url}}">Unsubscribe</a>`)).toEqual(["{{unsubscribe_url}}"]);
+    expect(vars(`<p>Hi {{first_name}}</p>`)).toEqual(["{{first_name}}"]);
+  });
+
+  test("${var} is not also reported as {var}", () => {
+    expect(vars("<p>Hi ${first_name}</p>")).toEqual(["${first_name}"]);
+  });
+
+  test("a bare {merge_field} is still found", () => {
+    expect(vars(`<p>Hi {first_name}</p>`)).toEqual(["{first_name}"]);
+  });
+});

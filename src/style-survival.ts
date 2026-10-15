@@ -210,7 +210,8 @@ export function checkStyleSurvivalFromDom(
   const chainedLocs: SourceLocation[] = [];
   let chainedExample = "";
 
-  $("style").each((_, el) => {
+  const styleTexts = $("style").toArray().map((el) => $(el).text());
+  $("style").each((i, el) => {
     const cssText = $(el).text();
     if (!cssText.trim()) return;
     const anchor = cssBlockAnchor(el, cssText, source);
@@ -233,7 +234,13 @@ export function checkStyleSurvivalFromDom(
       push(spaceColorLocs, cssText.search(/\b(?:rgba?|hsla?)\(/i));
     }
     const brace = cssText.search(DOUBLE_BRACE);
-    if (brace >= 0) {
+    // Only rules after the `}}` are lost, so one closing the last rule costs
+    // nothing. A later <style> block counts as "after" too: whether Outlook
+    // resets between blocks is unobserved, so that case stays reported.
+    const lostRules =
+      brace >= 0 &&
+      (cssText.slice(brace + 2).includes("{") || styleTexts.slice(i + 1).some((t) => t.includes("{")));
+    if (lostRules) {
       hits.doubleBrace++;
       push(doubleBraceLocs, brace);
     }

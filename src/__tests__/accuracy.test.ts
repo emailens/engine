@@ -192,10 +192,11 @@ describe("Gmail Transform Accuracy", () => {
       /(display\s*:\s*grid)/.test(html) === /(display\s*:\s*grid)/.test(source),
     );
 
-    // Gmail strips linear-gradient from background
+    // An inline linear-gradient survived in a real Gmail inbox (fidelity
+    // baseline 2026-10-13), so the transform must leave it as written.
     tracker.check(
-      "Strips linear-gradient",
-      !/(style="[^"]*linear-gradient)/.test(html),
+      "Keeps linear-gradient as written",
+      /linear-gradient/.test(html) === /linear-gradient/.test(source),
     );
 
     // Gmail strips radial-gradient
@@ -229,10 +230,11 @@ describe("Gmail Transform Accuracy", () => {
       /(box-shadow\s*:)/.test(html) === /(box-shadow\s*:)/.test(source),
     );
 
-    // Gmail strips linear-gradient
+    // An inline linear-gradient survived in a real Gmail inbox (fidelity
+    // baseline 2026-10-13), so the transform must leave it as written.
     tracker.check(
-      "Strips linear-gradient",
-      !/(style="[^"]*linear-gradient)/.test(html),
+      "Keeps linear-gradient as written",
+      /linear-gradient/.test(html) === /linear-gradient/.test(source),
     );
 
     // Gmail strips radial-gradient

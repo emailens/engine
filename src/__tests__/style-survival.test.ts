@@ -72,6 +72,16 @@ describe("Outlook.com and Outlook mobile drop everything after `}}` (email-bugs#
     expect(rules(doc(`<style>@media screen{div{color:#fff}\n}\n.foo{background:green}</style>`)))
       .toEqual([]);
   });
+
+  it("stays silent when the `}}` closes the sheet, since no rule comes after it", () => {
+    expect(rules(doc(`<style>.foo{background:green}@media screen{div{color:#fff}}</style>`)))
+      .toEqual([]);
+  });
+
+  it("fires when a later <style> block follows the `}}`", () => {
+    expect(rules(doc(`<style>@media screen{div{color:#fff}}</style><style>.foo{background:green}</style>`)))
+      .toEqual(["outlook-double-brace"]);
+  });
 });
 
 describe("Yahoo and AOL drop everything after an attribute selector holding a semicolon (email-bugs#74)", () => {
