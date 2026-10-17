@@ -83,3 +83,56 @@ describe("VML button label", () => {
     expect(renderOutlookBranch(html)).toContain('<span style="color:#ffffff;">Go</span>');
   });
 });
+
+import { generateFixPrompt } from "../export-prompt";
+import { AI_FIX_SYSTEM_PROMPT } from "../ai-fix";
+
+describe("advice follows the element", () => {
+  const advice = (body: string, property: string) =>
+    analyzeEmail(wrap(body)).find(
+      (w) => w.client === "outlook-windows-legacy" && w.property === property && w.severity !== "info",
+    );
+
+  test("a rounded picture is told to use a VML fill, not a button", () => {
+    const w = advice('<img src="https://x.dev/a.png" width="536" style="width:100%;border-radius:12px" alt="">', "border-radius");
+    expect(w?.suggestion).toContain("v:fill");
+    expect(w?.fix?.after).toContain('type="frame"');
+  });
+
+  test("a rounded card is told to use corner cells when it holds VML", () => {
+    const w = advice('<table style="background:#eee;border-radius:10px"><tr><td>x</td></tr></table>', "border-radius");
+    expect(w?.suggestion).toContain("corner cells");
+    expect(w?.fix?.after).toContain("qy");
+  });
+
+  test("padding on a table gets the move-it-to-the-cell answer, not the <a> trick", () => {
+    const w = advice('<table style="padding:24px"><tr><td>x</td></tr></table>', "padding");
+    expect(w?.suggestion).toContain("<td>");
+    expect(w?.fix).toBeUndefined();
+  });
+
+  test("a long URL is told to use <wbr>, not a zero-width space", () => {
+    const w = analyzeEmail(wrap('<p style="word-break:break-all">https://x.dev/a?b=c</p>')).find((x) => x.property === "word-break");
+    expect(w?.suggestion).toContain("<wbr>");
+  });
+
+  test("a framework keeps its own advice", () => {
+    const html = wrap('<img src="https://x.dev/a.png" style="border-radius:12px" alt="">');
+    const w = analyzeEmail(html, "jsx").find((x) => x.property === "border-radius" && x.client === "outlook-windows-legacy");
+    expect(w?.suggestion ?? "").not.toContain("v:fill type");
+  });
+});
+
+describe("Outlook Classic rules reach every fix prompt", () => {
+  test("in the system prompt", () => {
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("corner cells");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("HALF the shape's shorter side");
+    expect(AI_FIX_SYSTEM_PROMPT).not.toContain("insert &#8203;");
+  });
+
+  test("in the fix prompt the MCP returns, when Outlook Classic has findings", () => {
+    const html = wrap('<table style="border-radius:10px;background:#eee"><tr><td>x</td></tr></table>');
+    const prompt = generateFixPrompt({ originalHtml: html, warnings: analyzeEmail(html), scores: {}, scope: "all", format: "html" });
+    expect(prompt).toContain("## Outlook Classic rules");
+  });
+});

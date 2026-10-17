@@ -3,6 +3,7 @@ import type { ExportPromptOptions } from "./export-prompt";
 import type { AiProvider, AiFixResult, CSSWarning } from "./types";
 import { estimateAiFixTokens } from "./token-utils";
 import { TARGETING_MATCHERS } from "./rules/targeting-matchers";
+import { OUTLOOK_CLASSIC_RULES_TEXT } from "./outlook-rules";
 
 export interface GenerateAiFixOptions extends ExportPromptOptions {
   /** Callback that sends a prompt to an LLM and returns the response text. */
@@ -122,15 +123,15 @@ Rules:
 - Preserve all existing content, text, links, and visual design.
 - For structural issues (fixType: "structural"), you MUST restructure the HTML; CSS-only changes will not work.
 - Common structural patterns:
-  - word-break/overflow-wrap unsupported → insert &#8203; in long tokens, inside a width-constrained <td>. A cell alone does not wrap a URL
   - display:flex/grid → convert to <table> layout (match the original column count and proportions). Outlook needs width attributes, not classes
-  - border-radius on Outlook Classic → a <v:roundrect> that wraps that control, inside <!--[if mso]>. A card that also holds other content still counts. New Outlook does not read VML, so a roundrect does not clear it
   - background-image on Outlook Classic → a shape with <v:fill> or <v:background> that paints that container. A bare <v:rect> does not. New Outlook does not read VML
   - gradients → background-color plus background-image. The background shorthand resets the fallback
   - max-width on Outlook Classic → an ancestor table whose width matches, including the px. A 600 shell does not clear 280px
   - padding on Outlook Classic → put it on a td or th, or on an ancestor cell as mso-padding-alt. New Outlook does not treat mso-padding-alt as a fallback
   - position:absolute → use <table> cells for layout
   - <svg> → replace with <img> pointing to a hosted PNG
+- Outlook Classic (the Word engine). New Outlook does not read VML or conditionals, so none of this clears a New Outlook finding:
+${OUTLOOK_CLASSIC_RULES_TEXT}
 - For CSS-only issues (fixType: "css"), swap properties or add fallbacks.
 - For "Layout & Visual Issues", apply the provided Fix directly: add the background-color fallback beneath a gradient/image, append a web-safe font to the stack, and constrain fixed widths wider than the frame to width:100% with max-width.
 ${targetingFixBullets()}

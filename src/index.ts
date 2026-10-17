@@ -3,6 +3,7 @@ export { transformForClient, transformForAllClients } from "./transform";
 export { analyzeEmail, generateCompatibilityScore } from "./analyze";
 export { simulateDarkMode } from "./dark-mode";
 export { getCodeFix, getSuggestion } from "./fix-snippets";
+export { OUTLOOK_CLASSIC_RULES } from "./outlook-rules";
 export { diffResults } from "./diff";
 export { generateFixPrompt } from "./export-prompt";
 export { generateAiFix, AI_FIX_SYSTEM_PROMPT } from "./ai-fix";

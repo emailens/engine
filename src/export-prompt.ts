@@ -1,5 +1,6 @@
 import type { CSSWarning, OverflowIssue, VisualIssue } from "./types";
 import { getClient, EMAIL_CLIENTS } from "./clients";
+import { OUTLOOK_CLASSIC_RULES_TEXT } from "./outlook-rules";
 
 export type ExportScope = "all" | "current";
 
@@ -139,6 +140,14 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     }
 
     sections.push(issueSection);
+  }
+
+  // 5a. How to fix Outlook Classic. The per-issue suggestions name the
+  // problem; these are the patterns that fix it without breaking the rest.
+  if (filteredWarnings.some((w) => w.client === "outlook-windows-legacy" && w.severity !== "info")) {
+    sections.push(`## Outlook Classic rules
+
+${OUTLOOK_CLASSIC_RULES_TEXT}`);
   }
 
   // 5b. Layout & visual issues (client-agnostic rendering bugs with fixes).

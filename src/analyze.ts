@@ -38,6 +38,7 @@ import {
   detectAtRuleTargetingScope,
   inlineTargetingScope,
 } from "./rules/targeting-matchers";
+import { getElementAdvice } from "./fix-snippets/element-advice";
 import {
   emptyTargetingReport,
   scanCssAstForTargeting,
@@ -784,11 +785,14 @@ export function analyzeDocument(
 ): CompatibilityPass {
   const pass = analyzeEmailFromDom($, framework, source, targetingPolicy, html);
   return {
-    warnings: applyIntent(
-      html,
-      withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+    warnings: withElementAdvice(
+      applyIntent(
+        html,
+        withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+        framework,
+        $,
+      ),
       framework,
-      $,
     ),
     targeting: pass.targeting,
   };
@@ -887,6 +891,24 @@ function withOutlookBranch(
     .filter((w) => !branchProps.has(w.property))
     .map((w) => ({ ...w, severity: "info" as const }));
   return [...kept, ...merged, ...onlyFallback];
+}
+
+/**
+ * Swap property-level advice for element-level advice where there is some (a
+ * rounded button, picture and card are three fixes). HTML only: the
+ * framework files carry their own, more specific, advice.
+ */
+function withElementAdvice(warnings: CSSWarning[], framework?: Framework): CSSWarning[] {
+  if (framework) return warnings;
+  return warnings.map((w) => {
+    if (w.severity === "info") return w;
+    const advice = getElementAdvice(w.property, w.client, w.selector);
+    if (!advice) return w;
+    // An element-level answer replaces the property-level snippet too, which
+    // may be about another element (the <a> padding trick on a <table>).
+    const { fix: _old, ...rest } = w;
+    return { ...rest, suggestion: advice.suggestion, ...(advice.fix ? { fix: advice.fix } : {}) };
+  });
 }
 
 /** React Email's Outlook padding spacer: `<i style="mso-font-width:…">`. */
