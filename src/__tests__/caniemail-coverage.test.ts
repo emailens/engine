@@ -629,9 +629,13 @@ describe("a finding no edit can clear reports at info", () => {
     const elements = [...GRACEFUL_FEATURES].filter((f) =>
       (HTML_ELEMENT_FEATURES as readonly string[]).includes(f),
     );
-    expect(elements).toEqual(["<body>"]);
+    expect(elements).toEqual(["<wbr>", "<body>"]);
+    const sample: Record<string, string> = {
+      "<wbr>": "<html><body><p>a<wbr>b</p></body></html>",
+      "<body>": `<html><body style="background:#eee"><p>x</p></body></html>`,
+    };
     for (const feature of elements) {
-      const html = `<html><body style="background:#eee"><p>x</p></body></html>`;
+      const html = sample[feature];
       const found = analyzeEmail(html).filter((w) => w.property === feature);
       expect([feature, found.length > 0]).toEqual([feature, true]);
       // Not the generic fallback, which would name the element and stop.

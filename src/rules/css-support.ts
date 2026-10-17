@@ -8527,6 +8527,7 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "[dir]",
   "[width]",
   "[height]",
+  "<wbr>",
   "<body>",
 ]);
 

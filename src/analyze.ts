@@ -134,6 +134,9 @@ const HTML_ELEMENT_MESSAGES: Partial<Record<HtmlElementFeature, (clientName: str
   "<svg>": (n) => `${n} does not support inline SVG.`,
   "<video>": (n) => `${n} does not support <video> elements.`,
   "<form>": (n) => `${n} strips form elements.`,
+  "<wbr>": (n) =>
+    `${n} ignores <wbr>: long text there breaks only where it would without it. ` +
+    `Nothing to change; the other clients still use the break points.`,
   "<body>": (n) =>
     `${n} replaces <body> with a <div>, dropping the styles set on it. ` +
     `Repeat the background on a full-width wrapper table; keep it on <body> ` +

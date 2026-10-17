@@ -123,6 +123,9 @@ export const GRACEFUL_FEATURES = [
   // the rule sees.
   "[width]",
   "[height]",
+  // A break opportunity. A client that ignores it wraps exactly as it would
+  // without it, so the tag can only help (long URLs, DKIM keys).
+  "<wbr>",
   // Every framework emits a <body>, and the clients that replace it with a
   // <div> drop the styles on it. The right fix is a full-width wrapper table
   // carrying the same background, and it does not clear the finding, because

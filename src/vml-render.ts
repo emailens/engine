@@ -308,6 +308,70 @@ function hideMsoHidden(html: string): string {
   );
 }
 
+/**
+ * A VML path as SVG path data, split into what is filled and what is stroked
+ * (`nf` and `ns` turn either off for one subpath). Supports the commands
+ * hand-written email VML uses: m, l, c, qx, qy (elliptical quadrants), x, e.
+ * Returns null on anything else, so an unknown path is left alone rather than
+ * drawn wrong.
+ */
+export function vmlPathToSvg(path: string): { fill: string; stroke: string } | null {
+  const tokens = path.trim().split(/[\s,]+/).filter(Boolean);
+  let fill = "";
+  let stroke = "";
+  let sub = "";
+  let noFill = false;
+  let noStroke = false;
+  let x = 0;
+  let y = 0;
+  let i = 0;
+  const num = () => {
+    const n = Number(tokens[i++]);
+    if (Number.isNaN(n)) throw new Error("bad path");
+    return n;
+  };
+  const endSub = () => {
+    if (!sub) return;
+    if (!noFill) fill += sub;
+    if (!noStroke) stroke += sub;
+    sub = "";
+    noFill = false;
+    noStroke = false;
+  };
+  try {
+    while (i < tokens.length) {
+      const cmd = tokens[i++].toLowerCase();
+      if (cmd === "m") { x = num(); y = num(); sub += `M${x} ${y}`; }
+      else if (cmd === "l") { x = num(); y = num(); sub += `L${x} ${y}`; }
+      else if (cmd === "c") {
+        const p = [num(), num(), num(), num(), num(), num()];
+        sub += `C${p.join(" ")}`;
+        x = p[4]; y = p[5];
+      } else if (cmd === "qx" || cmd === "qy") {
+        const nx = num();
+        const ny = num();
+        const dx = nx - x;
+        const dy = ny - y;
+        // The quadrant leaves along x (qx) or y (qy); it turns clockwise when
+        // the end lies clockwise of that first tangent.
+        const tx = cmd === "qx" ? Math.sign(dx) : 0;
+        const ty = cmd === "qy" ? Math.sign(dy) : 0;
+        const sweep = tx * dy - ty * dx > 0 ? 1 : 0;
+        sub += `A${Math.abs(dx)} ${Math.abs(dy)} 0 0 ${sweep} ${nx} ${ny}`;
+        x = nx; y = ny;
+      } else if (cmd === "x") sub += "Z";
+      else if (cmd === "nf") noFill = true;
+      else if (cmd === "ns") noStroke = true;
+      else if (cmd === "e") endSub();
+      else return null;
+    }
+  } catch {
+    return null;
+  }
+  endSub();
+  return { fill, stroke };
+}
+
 /** Translate the VML shapes a browser cannot draw into divs it can. */
 export function vmlToCss(html: string): string {
   let out = html;
@@ -340,11 +404,14 @@ export function vmlToCss(html: string): string {
         : "";
       const stroked = !(a.stroke === "f" || a.stroke === "false");
       const middle = /middle/i.test(s["v-text-anchor"] ?? "");
-      // <w:anchorlock/> and <center> are scaffolding around the label; the
-      // label itself is what a reader sees, so keep only that.
+      // <w:anchorlock/> is scaffolding. <center> is where the label's colour
+      // and font live (white on a dark button), so it becomes a span that
+      // keeps its style rather than vanishing and leaving dark-on-dark text.
       const label = inner
         .replace(/<v:fill[^>]*?\/?>(?:\s*<\/v:fill>)?/gi, "")
-        .replace(/<\/?(?:w:anchorlock|center)[^>]*>/gi, "")
+        .replace(/<\/?w:anchorlock[^>]*>/gi, "")
+        .replace(/<center\b/gi, "<span")
+        .replace(/<\/center>/gi, "</span>")
         .trim();
       const box = [
         w ? `width:${w}px` : "",
@@ -489,6 +556,32 @@ export function vmlToCss(html: string): string {
       ).trim();
       const href = attrs(shapeAttrs).href;
       return `${open}${href && !/data-href=/.test(rest) ? ` data-href="${href}"` : ""}${rest}${label}</div>`;
+    },
+  );
+
+  // ── a <v:shape> drawn by a path → the same path in SVG ──────────────────
+  // How rounded corners are built around content Word cannot put inside a
+  // shape (a card holding a VML button): quarter discs in the corner cells.
+  // Only empty shapes: one holding text is a label, handled above or by the
+  // tag strip below.
+  out = out.replace(
+    /<v:shape\b([^>]*?)(?:\/>|>\s*<\/v:shape>)/gi,
+    (whole, rawAttrs: string) => {
+      const a = attrs(rawAttrs);
+      if (!a.path) return whole;
+      const s = styleProps(a.style ?? "");
+      const w = px(s.width);
+      const h = px(s.height);
+      const [cw, ch] = (a.coordsize ?? `${w ?? 1000},${h ?? 1000}`).split(",").map(Number);
+      const parsed = vmlPathToSvg(a.path);
+      if (!parsed || !w || !h) return whole;
+      const filled = !(a.filled === "f" || a.filled === "false");
+      const stroked = !(a.stroked === "f" || a.stroked === "false" || a.stroke === "f");
+      const fill = filled && parsed.fill ? `<path d="${parsed.fill}" fill="${a.fillcolor ?? "#fff"}"/>` : "";
+      const stroke = stroked && parsed.stroke
+        ? `<path d="${parsed.stroke}" fill="none" stroke="${a.strokecolor ?? "#000"}" stroke-width="${(px(a.strokeweight) ?? 1) * (cw / w)}"/>`
+        : "";
+      return `<svg data-vml="shape" width="${w}" height="${h}" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" style="display:block">${fill}${stroke}</svg>`;
     },
   );
 

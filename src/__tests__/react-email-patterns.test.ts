@@ -39,3 +39,47 @@ describe("React Email building blocks in Outlook Classic", () => {
     expect(outlook("<p hidden>secret</p>").map((w) => w.property)).toContain("[hidden]");
   });
 });
+
+import { renderOutlookBranch, vmlPathToSvg } from "../vml-render";
+
+describe("VML corner shapes", () => {
+  test("quadrants become SVG arcs turning the right way", () => {
+    // Top-left corner: up the left edge, curving right to the top edge.
+    expect(vmlPathToSvg("m 0,10 qy 10,0 l 10,10 x e")?.fill).toBe("M0 10A10 10 0 0 1 10 0L10 10Z");
+    // Bottom-right corner: down the right edge, curving left to the bottom.
+    expect(vmlPathToSvg("m 10,0 qy 0,10 l 0,0 x e")?.fill).toBe("M10 0A10 10 0 0 1 0 10L0 0Z");
+  });
+
+  test("ns and nf split what is filled from what is stroked", () => {
+    const p = vmlPathToSvg("m 0,10 qy 10,0 l 10,10 x ns e m 0,10 qy 10,0 nf e");
+    expect(p?.fill).toBe("M0 10A10 10 0 0 1 10 0L10 10Z");
+    expect(p?.stroke).toBe("M0 10A10 10 0 0 1 10 0");
+  });
+
+  test("an unknown command leaves the path alone", () => {
+    expect(vmlPathToSvg("m 0,0 ar 1,2,3,4 e")).toBeNull();
+  });
+
+  test("Outlook's preview draws a corner shape instead of dropping it", () => {
+    const html =
+      '<table><tr><td><!--[if mso]><v:shape xmlns:v="urn:schemas-microsoft-com:vml" coordsize="10,10" path="m 0,10 qy 10,0 l 10,10 x e" fillcolor="#f3f0e8" stroked="f" style="width:10px;height:10px;"></v:shape><![endif]--></td></tr></table>';
+    const out = renderOutlookBranch(html);
+    expect(out).toContain('<svg data-vml="shape" width="10" height="10"');
+    expect(out).toContain('fill="#f3f0e8"');
+  });
+});
+
+describe("<wbr>", () => {
+  test("a client ignoring a break opportunity is not a warning", () => {
+    const html = wrap('<a href="https://example.com/verify?token=abc">https://example.com/<wbr>verify?<wbr>token=abc</a>');
+    expect(analyzeEmail(html).filter((w) => w.property === "<wbr>" && w.severity !== "info")).toEqual([]);
+  });
+});
+
+describe("VML button label", () => {
+  test("keeps the colour set on its <center>", () => {
+    const html =
+      '<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://x.dev" style="height:52px;width:200px;" arcsize="15%" stroke="f" fillcolor="#1a1a1a"><w:anchorlock/><center style="color:#ffffff;">Go</center></v:roundrect><![endif]-->';
+    expect(renderOutlookBranch(html)).toContain('<span style="color:#ffffff;">Go</span>');
+  });
+});
