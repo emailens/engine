@@ -329,17 +329,28 @@ export function vmlToCss(html: string): string {
       const h = px(s.height) ?? 0;
       // No arcsize means the VML default of 0.2, not a square corner.
       const radius = a.arcsize ? arcsizeToRadius(a.arcsize, w, h) : 0.2 * (Math.min(w, h) / 2);
-      const fill = a.fillcolor ?? "transparent";
+      // A <v:fill> inside paints the shape: an image (the rounded-picture
+      // idiom), or its own colour. Image sizing follows v:rect below.
+      const fillTag = inner.match(/<v:fill([^>]*?)\/?>/i);
+      const f = fillTag ? attrs(fillTag[1]) : {};
+      const tile = (f.type ?? "").toLowerCase() === "tile";
+      const fill = f.color ?? a.fillcolor ?? "transparent";
+      const image = f.src
+        ? `;background-image:url('${f.src}');${tile ? "background-repeat:repeat" : "background-size:cover;background-position:center;background-repeat:no-repeat"}`
+        : "";
       const stroked = !(a.stroke === "f" || a.stroke === "false");
       const middle = /middle/i.test(s["v-text-anchor"] ?? "");
       // <w:anchorlock/> and <center> are scaffolding around the label; the
       // label itself is what a reader sees, so keep only that.
-      const label = inner.replace(/<\/?(?:w:anchorlock|center)[^>]*>/gi, "").trim();
+      const label = inner
+        .replace(/<v:fill[^>]*?\/?>(?:\s*<\/v:fill>)?/gi, "")
+        .replace(/<\/?(?:w:anchorlock|center)[^>]*>/gi, "")
+        .trim();
       const box = [
         w ? `width:${w}px` : "",
         h ? `height:${h}px` : "",
         `border-radius:${radius}px`,
-        `background:${fill}`,
+        `background:${fill}${image}`,
         stroked ? `border:1px solid ${a.strokecolor ?? "#000"}` : "border:none",
         "display:inline-flex",
         "justify-content:center",

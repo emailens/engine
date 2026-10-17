@@ -85,6 +85,20 @@ describe("vmlToCss: roundrect", () => {
     const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;"><center>x</center></v:roundrect>`);
     expect(out).toContain("border-radius:4px");
   });
+
+  test("an image fill paints the shape: the rounded-picture idiom", () => {
+    const out = vmlToCss(`<v:roundrect style="width:260px;height:150px;" arcsize="8%" stroke="f"><v:fill type="frame" src="https://example.com/bowl.jpg" /></v:roundrect>`);
+    expect(out).toContain("background-image:url('https://example.com/bowl.jpg')");
+    expect(out).toContain("background-size:cover");
+    expect(out).toContain("border-radius:6px");
+    expect(out).not.toContain("<v:fill");
+  });
+
+  test("a fill colour wins over fillcolor, like v:rect", () => {
+    const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;" fillcolor="#000"><v:fill color="#336699" /><center>Go</center></v:roundrect>`);
+    expect(out).toContain("background:#336699");
+    expect(out).toContain("Go");
+  });
 });
 
 describe("vmlToCss: rect", () => {
