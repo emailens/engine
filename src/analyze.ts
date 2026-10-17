@@ -25,7 +25,7 @@ import { getCodeFix, getSuggestion, isCodeFixGenericFallback } from "./fix-snipp
 import { parseStyleProperties, getStyleValue, getStyleValues } from "./style-utils";
 import { extractCssVariables, resolveCssValue } from "./css-variables";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
-import { loadHtml, type AnalysisOptions } from "./parse-html";
+import { loadHtml, unwrapJsxRawHtml, type AnalysisOptions } from "./parse-html";
 import { resolveMsoBranch } from "./vml-render";
 import { applyIntent } from "./intent-score";
 
@@ -759,8 +759,10 @@ export function analyzeEmail(
     throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
-  const $ = loadHtml(html, options);
-  return analyzeAllBranches($, html, framework, options?.positions ? html : undefined, options?.targetingPolicy);
+  // React Email raw strings are put back as content, as React Email renders them.
+  const parsed = framework === "jsx" ? unwrapJsxRawHtml(html) : html;
+  const $ = loadHtml(parsed, options);
+  return analyzeAllBranches($, parsed, framework, options?.positions ? parsed : undefined, options?.targetingPolicy);
 }
 
 /** Compatibility warnings plus targeting, from one CSS parse of the live DOM. */

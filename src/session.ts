@@ -29,7 +29,7 @@ import type {
   OverflowReport,
   VisualReport,
 } from "./types";
-import { loadHtml, type AnalysisOptions } from "./parse-html";
+import { loadHtml, unwrapJsxRawHtml, type AnalysisOptions } from "./parse-html";
 import { runAudit, EMPTY_AUDIT } from "./audit";
 import type { AuditOptions, AuditReport } from "./audit";
 
@@ -154,13 +154,15 @@ export function createSession(
     throw new Error(`HTML input exceeds ${MAX_HTML_SIZE / 1024}KB limit.`);
   }
 
-  // Parse once: shared across all read-only analysis operations
-  const $ = loadHtml(html, options);
+  // Parse once: shared across all read-only analysis operations. React Email
+  // raw strings are put back as content, as React Email renders them.
   const framework = options?.framework;
-  const source = options?.positions ? html : undefined;
+  const parsedHtml = framework === "jsx" ? unwrapJsxRawHtml(html) : html;
+  const $ = loadHtml(parsedHtml, options);
+  const source = options?.positions ? parsedHtml : undefined;
   let cachedPass: CompatibilityPass | undefined;
   function documentPass(): CompatibilityPass {
-    cachedPass ??= analyzeDocument($, html, framework, source, options?.targetingPolicy);
+    cachedPass ??= analyzeDocument($, parsedHtml, framework, source, options?.targetingPolicy);
     return cachedPass;
   }
 

@@ -25,6 +25,32 @@ export interface AnalysisOptions extends ParseOptions {
   targetingPolicy?: TargetingPolicy;
 }
 
+/**
+ * React Email source is analysed as HTML, but a `dangerouslySetInnerHTML`
+ * string is not HTML to a parser: it sits in an unquoted attribute, so an
+ * `<!--[if mso]>` inside it is not read as a comment and the `<style>` or VML
+ * after it surfaces as a real element, scored for every client. React Email
+ * renders the string as the element's content, so put it there: the
+ * conditional becomes a comment again and only Outlook's branch sees it.
+ * Only a single string literal is unwrapped; an interpolated template or an
+ * expression is left as it is.
+ */
+export function unwrapJsxRawHtml(source: string): string {
+  if (!source.includes("dangerouslySetInnerHTML")) return source;
+  const literal = String.raw`'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|` + "`[^`$]*`";
+  const element = new RegExp(
+    String.raw`<([A-Za-z][\w.]*)([^<>]*?)\s*dangerouslySetInnerHTML\s*=\s*\{\{\s*__html\s*:\s*(` +
+      literal +
+      String.raw`)\s*,?\s*\}\}([^<>]*?)(?:\/>|>\s*<\/\1\s*>)`,
+    "g",
+  );
+  return source.replace(element, (_m, tag: string, before: string, lit: string, after: string) => {
+    const body = lit.slice(1, -1);
+    const html = lit[0] === "`" ? body : body.replace(/\\(.)/g, (_e, c: string) => (c === "n" ? "\n" : c));
+    return `<${tag}${before}${after.trimEnd()}>${html}</${tag}>`;
+  });
+}
+
 /** Parse HTML, optionally with source positions. */
 export function loadHtml(html: string, options?: ParseOptions): CheerioAPI {
   return options?.positions
