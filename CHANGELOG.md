@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.14.11 - 2026-10-17
+
+A patch. No API changes. `^0.14.0` picks this up. The Outlook Classic preview
+changes.
+
+### Fixed
+
+- **A `<v:fill>` inside a `<v:roundrect>` was ignored.** The Outlook Classic
+  preview drew the rounded shape in `fillcolor` only, so the rounded-picture
+  idiom (`<v:roundrect>` with `<v:fill type="frame" src="...">`) rendered as an
+  empty box where Outlook shows the picture with rounded corners. The fill's
+  image now paints the shape, sized as `<v:rect>` does it, and the fill's
+  `color` takes precedence over `fillcolor`, as it does for `<v:rect>`.
+
 ## 0.14.10 - 2026-10-16
 
 A patch. No API changes. `^0.14.0` picks this up. The Gmail on the web
