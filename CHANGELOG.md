@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.12 - 2026-10-17
+
+A patch. No API changes. `^0.14.0` picks this up. Compatibility warnings and
+scores for React Email source change.
+
+### Fixed
+
+- **CSS inside a React Email `dangerouslySetInnerHTML` string was scored for
+  every client.** React Email reaches Outlook Classic through a raw string,
+  as in `<div dangerouslySetInnerHTML={{ __html: '<!--[if mso]><style>...</style><![endif]-->' }} />`.
+  The string sits in an unquoted attribute, so the parser did not read the
+  conditional as a comment and the `<style>` became a real element: Gmail,
+  Gmail Android, Gmail iOS and Proton Mail lost points for CSS they never see.
+  With `framework: "jsx"`, `createSession` and `analyzeEmail` now put a
+  single-literal raw string back as the element's content, as React Email
+  renders it, so the conditional is a comment again and only Outlook's branch
+  reads it. An interpolated template or an expression is left as it is.
+
 ## 0.14.11 - 2026-10-17
 
 A patch. No API changes. `^0.14.0` picks this up. The Outlook Classic preview
