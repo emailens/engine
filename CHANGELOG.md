@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.15.0 - 2026-10-17
+
+A minor release. New exports, no breaking changes. Scores, suggestions and
+the Outlook Classic preview change. Found by running 24 production React Email
+templates through the engine until every client scored 100 and the Outlook
+branch, drawn, matched the other clients within 2px.
+
+### Added
+
+- **`OUTLOOK_CLASSIC_RULES`**: the patterns that keep a design intact in
+  Outlook Classic (bulletproof buttons, rounded VML picture fills, corner cells
+  for a card that holds VML, arcsize over half the shorter side, a fixed 600px
+  wrapper, padding on cells, no stacked margins, `<wbr>` for long URLs, an
+  `mso-hide` preheader). `AI_FIX_SYSTEM_PROMPT` includes them, and
+  `generateFixPrompt` appends them whenever Outlook Classic has findings, so
+  an agent applying the fix prompt (the MCP's `fix_email`) gets them too.
+- **`vmlPathToSvg`**: the Outlook preview now draws a `<v:shape>` given by a
+  path (`m l c qx qy x e`, `ns`/`nf`), the corner-cell idiom for rounding a
+  card around VML buttons or pictures.
+
+### Changed
+
+- **Advice follows the element** for HTML input. A rounded button, picture and
+  card get three different fixes (bulletproof button, VML fill, corner cells)
+  instead of one "rounded buttons" answer; padding on a `<table>` is told to
+  move to its cell instead of getting the `<a>` hair-space trick; long URLs
+  get `<wbr>` instead of `&#8203;`, which was copied into pasted URLs.
+- **`<wbr>` is graceful**: a client that ignores it wraps as it would without
+  it, so it reports as info.
+
+### Fixed
+
+- **React Email's preheader cost Outlook Classic points.** A `display:none`
+  element is now graded on `display` alone, not on the `overflow`, `opacity`,
+  `max-height` and `max-width` that only exist to hide it.
+- **React Email's `<Button>` was flagged twice in Outlook Classic**: its
+  Outlook-only `mso-font-width` spacers for the `hidden` attribute, and its
+  padding as dropped, though those spacers are what pad it there.
+- **A VML button's label lost its colour in the Outlook preview**, leaving
+  dark text on a dark button. Its `<center>` now keeps its style.
+
 ## 0.14.12 - 2026-10-17
 
 A patch. No API changes. `^0.14.0` picks this up. Compatibility warnings and
