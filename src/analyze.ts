@@ -366,7 +366,9 @@ export function analyzeEmailFromDom(
   // 1b. HTML attributes. Every attribute feature key is its own selector.
   for (const feature of HTML_ATTRIBUTE_FEATURES) {
     if (!isActionable(feature)) continue;
-    const matches = $(feature).toArray();
+    // React Email's button spacers carry `hidden` and live in `<!--[if mso]>`:
+    // Word is the only reader, and it ignoring `hidden` is the point.
+    const matches = $(feature).toArray().filter((el) => !isMsoSpacer($, el));
     if (!matches.length) continue;
     checkPropertySupport(
       feature, addWarning, framework, undefined, undefined, undefined,
@@ -603,7 +605,11 @@ export function analyzeEmailFromDom(
 
   $("[style]").each((_, el) => {
     const style = $(el).attr("style") || "";
-    const props = parseStyleProperties(style);
+    // A hidden element (a preheader) is graded on display alone: the rest of
+    // its styles only exist to hide it harder where display:none falls short.
+    const props = /^none\b/i.test(getStyleValue(style, "display")?.trim() ?? "")
+      ? parseStyleProperties(style).filter((p) => p === "display")
+      : parseStyleProperties(style);
     const selector = describeSelector(el);
     const attrLoc = locOfAttr(el, "style");
     const inlineScope = inlineTargetingScope($(el));
@@ -878,6 +884,12 @@ function withOutlookBranch(
     .filter((w) => !branchProps.has(w.property))
     .map((w) => ({ ...w, severity: "info" as const }));
   return [...kept, ...merged, ...onlyFallback];
+}
+
+/** React Email's Outlook padding spacer: `<i style="mso-font-width:…">`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isMsoSpacer($: cheerio.CheerioAPI, el: any): boolean {
+  return el?.name === "i" && /mso-font-width\s*:/i.test($(el).attr("style") ?? "");
 }
 
 function getFixType(prop: string): FixType {

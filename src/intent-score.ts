@@ -254,6 +254,8 @@ function classify(
   for (const el of $("[style]").toArray()) {
     if (!clientCanSee(inlineTargetingScope($(el)), client)) continue;
     const style = $(el).attr("style") ?? "";
+    // Nothing to lose on an element that is not shown (a preheader).
+    if (/(?:^|;)\s*display\s*:\s*none\b/i.test(style)) continue;
     if (!test(style)) continue;
     mark(elementKey($, el), !cover(el, style));
   }
@@ -415,6 +417,8 @@ function pxLength(value: string): number | null {
 function paddingCovered($: CheerioAPI, el: AnyNode, msoAlt: boolean): boolean {
   const tag = tagName(el);
   if (tag === "td" || tag === "th") return true;
+  // React Email's button: Word gets its width from mso-font-width spacers.
+  if ($(el).find('i[style*="mso-font-width"]').length) return true;
   if (!msoAlt) return false;
   return $(el).parents("td, th").toArray().some((cell) =>
     /mso-padding-alt\s*:/i.test($(cell).attr("style") ?? ""),
