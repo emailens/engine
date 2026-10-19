@@ -26,6 +26,9 @@ responsive and dark-mode CSS to get there.
   placeholder in an `href` (`*|UNSUB|*`, `{{unsubscribe_url}}`) is filled in by
   the sending platform; `unresolvedCount` no longer counts it. Every other
   variable is still an error.
+- **The fix prompt leaves info alone.** `generateFixPrompt` marks its Info
+  group as not problems and tells the agent to keep responsive and dark-mode
+  CSS; it used to say "apply all the fixes listed above", info included.
 - **Suggestions no longer name Outlook to other clients** for `border-radius`,
   `word-break`, `overflow-wrap`, `white-space` and `min-height`.
 

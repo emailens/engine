@@ -93,3 +93,12 @@ test("the Gmail preview drops @font-face, Apple Mail keeps it", () => {
   expect(transformForClient(html, "gmail-web").html).not.toContain("@font-face");
   expect(transformForClient(html, "apple-mail-macos").html).toContain("@font-face");
 });
+
+test("the fix prompt tells an agent to leave info findings alone", async () => {
+  const { generateFixPrompt, generateCompatibilityScore } = await import("../index");
+  const html = doc("<style>@media (max-width:600px){.c{width:100%!important}}</style>", `<table class="c"><tr><td>x</td></tr></table>`);
+  const warnings = analyzeEmail(html);
+  const prompt = generateFixPrompt({ originalHtml: html, warnings, scores: generateCompatibilityScore(warnings) });
+  expect(prompt).toContain("### Info");
+  expect(prompt).toContain("keep responsive (@media) and dark-mode CSS");
+});

@@ -117,6 +117,10 @@ export function generateFixPrompt(options: ExportPromptOptions): string {
     for (const [label, group] of groups) {
       if (group.length === 0) continue;
       issueSection += `\n### ${label}\n`;
+      if (label === "Info") {
+        // Agents told to fix everything deleted @media and dark-mode CSS to clear these.
+        issueSection += `\nNot problems: the email falls back safely where these apply. Do not remove or rewrite code to clear them, and keep responsive (@media) and dark-mode CSS.\n`;
+      }
 
       for (const w of group) {
         const clientName = getClient(w.client)?.name ?? w.client;
