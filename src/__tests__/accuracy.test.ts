@@ -16,7 +16,7 @@
  *    appear in the transformed HTML
  * 3. Score: (correct assertions / total assertions) * 100
  *
- * Target: ≥70% accuracy for each individual test, ≥80% overall.
+ * Every check must pass: a score threshold let failing checks hide.
  */
 
 import { describe, test, expect } from "bun:test";
@@ -98,10 +98,10 @@ describe("Gmail Transform Accuracy", () => {
     const result = transformForClient(source, "gmail-web");
     const html = result.html;
 
-    // Gmail MUST strip <style> blocks
+    // caniemail: Gmail applies a <style> in <head> (partial: not in <body>, 16 KB cap), so the preview keeps the at-rules it cannot inline.
     tracker.check(
-      "Strips <style> blocks",
-      !/<style[\s>]/.test(html),
+      "Keeps a head <style> block",
+      /<style[\s>]/.test(html),
     );
 
     // Gmail should have inlined CSS before stripping <style>
@@ -130,7 +130,8 @@ describe("Gmail Transform Accuracy", () => {
     tracker.check("Keeps padding", /padding/.test(html));
 
     // Gmail keeps text-align
-    tracker.check("Keeps text-align", /text-align/.test(html));
+    // Word layout turns text-align:center on a div into align="center".
+    tracker.check("Keeps text-align", /text-align|\balign="/.test(html));
 
     // Gmail keeps text-transform
     tracker.check("Keeps text-transform", /text-transform/.test(html));
@@ -160,16 +161,16 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*\bposition\s*:)/.test(html),
     );
 
-    // Gmail strips opacity from inline styles
+    // caniemail lists Gmail as supporting opacity, and real Gmail kept it (2026-10-14).
     tracker.check(
-      "Strips opacity",
-      !/(style="[^"]*\bopacity\s*:)/.test(html),
+      "Keeps opacity as written",
+      /\bopacity\s*:/.test(html) === /\bopacity\s*:/.test(source),
     );
 
-    // Gmail strips overflow from inline styles
+    // caniemail lists overflow as partial in Gmail, so the transform keeps it.
     tracker.check(
-      "Strips overflow",
-      !/(style="[^"]*\boverflow\s*:)/.test(html),
+      "Keeps overflow as written",
+      /\boverflow\s*:/.test(html) === /\boverflow\s*:/.test(source),
     );
 
     // Gmail strips transition from inline styles
@@ -207,7 +208,7 @@ describe("Gmail Transform Accuracy", () => {
 
     console.log(`\n--- Gmail Web + Transactional ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   // Newsletter: Craft Weekly (font-face, gradients, grid, shadows, etc.)
@@ -218,7 +219,8 @@ describe("Gmail Transform Accuracy", () => {
     const html = result.html;
 
     // Gmail strips <style>
-    tracker.check("Strips <style> blocks", !/<style[\s>]/.test(html));
+    // caniemail: Gmail applies a <style> in <head> (partial: not in <body>, 16 KB cap).
+    tracker.check("Keeps a head <style> block", /<style[\s>]/.test(html));
 
     // Gmail strips @font-face (was in <style> block)
     tracker.check("No @font-face rules remain", !html.includes("@font-face"));
@@ -255,16 +257,16 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*\bposition\s*:)/.test(html),
     );
 
-    // Gmail strips overflow
+    // caniemail lists overflow as partial in Gmail, so the transform keeps it.
     tracker.check(
-      "Strips overflow",
-      !/(style="[^"]*\boverflow\s*:)/.test(html),
+      "Keeps overflow as written",
+      /\boverflow\s*:/.test(html) === /\boverflow\s*:/.test(source),
     );
 
-    // Gmail strips opacity
+    // caniemail lists Gmail as supporting opacity, and real Gmail kept it (2026-10-14).
     tracker.check(
-      "Strips opacity",
-      !/(style="[^"]*\bopacity\s*:)/.test(html),
+      "Keeps opacity as written",
+      /\bopacity\s*:/.test(html) === /\bopacity\s*:/.test(source),
     );
 
     // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
@@ -313,7 +315,7 @@ describe("Gmail Transform Accuracy", () => {
 
     console.log(`\n--- Gmail Web + Newsletter ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   // Receipt: Haven order confirmation (SVG, grid, flex, shadow, etc.)
@@ -324,7 +326,8 @@ describe("Gmail Transform Accuracy", () => {
     const html = result.html;
 
     // Gmail strips <style>
-    tracker.check("Strips <style> blocks", !/<style[\s>]/.test(html));
+    // caniemail: Gmail applies a <style> in <head> (partial: not in <body>, 16 KB cap).
+    tracker.check("Keeps a head <style> block", /<style[\s>]/.test(html));
 
     // Gmail strips SVG elements
     tracker.check("Strips/replaces SVG elements", !/<svg[\s>]/.test(html));
@@ -362,10 +365,10 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*transition\s*:)/.test(html),
     );
 
-    // Gmail strips overflow
+    // caniemail lists overflow as partial in Gmail, so the transform keeps it.
     tracker.check(
-      "Strips overflow",
-      !/(style="[^"]*\boverflow\s*:)/.test(html),
+      "Keeps overflow as written",
+      /\boverflow\s*:/.test(html) === /\boverflow\s*:/.test(source),
     );
 
     // Gmail strips position
@@ -374,10 +377,10 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*\bposition\s*:)/.test(html),
     );
 
-    // Gmail strips opacity
+    // caniemail lists Gmail as supporting opacity, and real Gmail kept it (2026-10-14).
     tracker.check(
-      "Strips opacity",
-      !/(style="[^"]*\bopacity\s*:)/.test(html),
+      "Keeps opacity as written",
+      /\bopacity\s*:/.test(html) === /\bopacity\s*:/.test(source),
     );
 
     // Gmail strips radial-gradient
@@ -399,7 +402,8 @@ describe("Gmail Transform Accuracy", () => {
     tracker.check("Keeps font-weight", /font-weight/.test(html));
 
     // Gmail keeps text-align
-    tracker.check("Keeps text-align", /text-align/.test(html));
+    // Word layout turns text-align:center on a div into align="center".
+    tracker.check("Keeps text-align", /text-align|\balign="/.test(html));
 
     // Gmail keeps border
     tracker.check("Keeps border properties", /border/.test(html));
@@ -415,7 +419,7 @@ describe("Gmail Transform Accuracy", () => {
 
     console.log(`\n--- Gmail Web + Receipt ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 });
 
@@ -505,14 +509,15 @@ describe("Outlook Classic Transform Accuracy", () => {
     tracker.check("Keeps padding", /padding/.test(html));
 
     // Outlook keeps text-align
-    tracker.check("Keeps text-align", /text-align/.test(html));
+    // Word layout turns text-align:center on a div into align="center".
+    tracker.check("Keeps text-align", /text-align|\balign="/.test(html));
 
     // Outlook keeps width
     tracker.check("Keeps width", /width/.test(html));
 
     console.log(`\n--- Outlook Classic + Transactional ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   test("Template 2 (Newsletter): Outlook Classic", () => {
@@ -605,7 +610,8 @@ describe("Outlook Classic Transform Accuracy", () => {
     tracker.check("Keeps padding", /padding/.test(html));
 
     // Outlook keeps text-align
-    tracker.check("Keeps text-align", /text-align/.test(html));
+    // Word layout turns text-align:center on a div into align="center".
+    tracker.check("Keeps text-align", /text-align|\balign="/.test(html));
 
     // Warnings should flag flex/grid layout issues
     tracker.check(
@@ -634,7 +640,7 @@ describe("Outlook Classic Transform Accuracy", () => {
 
     console.log(`\n--- Outlook Classic + Newsletter ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   test("Template 3 (Receipt): Outlook Classic", () => {
@@ -724,11 +730,12 @@ describe("Outlook Classic Transform Accuracy", () => {
     tracker.check("Keeps width", /\bwidth\s*:/.test(html));
 
     // Outlook keeps text-align
-    tracker.check("Keeps text-align", /text-align/.test(html));
+    // Word layout turns text-align:center on a div into align="center".
+    tracker.check("Keeps text-align", /text-align|\balign="/.test(html));
 
     console.log(`\n--- Outlook Classic + Receipt ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 });
 
@@ -828,7 +835,7 @@ describe("Analyzer Accuracy", () => {
 
     console.log(`\n--- Analyzer + Newsletter ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   test("Correctly identifies issues in receipt template", () => {
@@ -909,7 +916,7 @@ describe("Analyzer Accuracy", () => {
 
     console.log(`\n--- Analyzer + Receipt ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   test("Correctly identifies issues in transactional template", () => {
@@ -984,7 +991,7 @@ describe("Analyzer Accuracy", () => {
 
     console.log(`\n--- Analyzer + Transactional ---`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(70);
+    expect(tracker.summary).not.toContain("✗");
   });
 });
 
@@ -1042,7 +1049,7 @@ describe("Compatibility Score Accuracy", () => {
     console.log(`Outlook Classic: ${outlookScore}`);
     console.log(`Thunderbird: ${tbScore}`);
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(80);
+    expect(tracker.summary).not.toContain("✗");
   });
 
   test("Receipt: scores reflect SVG + grid + flex feature coverage", () => {
@@ -1080,7 +1087,7 @@ describe("Compatibility Score Accuracy", () => {
       console.log(`${id}: ${data.score} (E:${data.errors} W:${data.warnings} I:${data.info})`);
     }
     console.log(tracker.summary);
-    expect(tracker.score).toBeGreaterThanOrEqual(80);
+    expect(tracker.summary).not.toContain("✗");
   });
 });
 
@@ -1098,7 +1105,7 @@ describe("Overall Accuracy Score", () => {
       const out = result.html;
 
       // Core Gmail behaviors
-      tracker.check(`[Gmail/${name}] Strips <style>`, !/<style[\s>]/.test(out));
+      tracker.check(`[Gmail/${name}] Keeps a head <style>`, /<style[\s>]/.test(out));
       tracker.check(`[Gmail/${name}] Keeps color`, /color/.test(out));
       tracker.check(`[Gmail/${name}] Keeps background-color`, /background-color/.test(out));
       tracker.check(`[Gmail/${name}] Keeps font-family`, /font-family/.test(out));
@@ -1107,9 +1114,9 @@ describe("Overall Accuracy Score", () => {
       // Real Gmail webmail draws box-shadow (2026-10-14, observed-overrides.ts).
       tracker.check(`[Gmail/${name}] Keeps box-shadow as written`, /(box-shadow\s*:)/.test(out) === /(box-shadow\s*:)/.test(html));
       tracker.check(`[Gmail/${name}] Strips position`, !/(style="[^"]*\bposition\s*:)/.test(out));
-      tracker.check(`[Gmail/${name}] Strips overflow`, !/(style="[^"]*\boverflow\s*:)/.test(out));
+      tracker.check(`[Gmail/${name}] Keeps overflow as written`, /\boverflow\s*:/.test(out) === /\boverflow\s*:/.test(html));
       tracker.check(`[Gmail/${name}] Strips transition`, !/(style="[^"]*transition\s*:)/.test(out));
-      tracker.check(`[Gmail/${name}] Strips opacity`, !/(style="[^"]*\bopacity\s*:)/.test(out));
+      tracker.check(`[Gmail/${name}] Keeps opacity as written`, /\bopacity\s*:/.test(out) === /\bopacity\s*:/.test(html));
     }
 
     // Run all Outlook transforms
@@ -1132,7 +1139,6 @@ describe("Overall Accuracy Score", () => {
     console.log(`========================================`);
     console.log(tracker.summary);
 
-    // THIS IS THE KEY THRESHOLD: ≥80% means simulation approach is viable
-    expect(tracker.score).toBeGreaterThanOrEqual(80);
+    expect(tracker.summary).not.toContain("✗");
   });
 });

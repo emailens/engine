@@ -24,7 +24,8 @@ describe("analyzeEmail", () => {
       (w) => w.client === "gmail-web" && w.property === "<style>"
     );
     expect(gmailStyleWarning).toBeDefined();
-    expect(gmailStyleWarning!.severity).toBe("warning");
+    // Info like every partial: a <style> lost for real is a style-survival rule.
+    expect(gmailStyleWarning!.severity).toBe("info");
   });
 
   test("detects <link> stylesheets", () => {

@@ -33,6 +33,14 @@ function findVariables(text: string): Array<{ variable: string; label: string; i
   return found;
 }
 
+/**
+ * Links the sending platform writes itself: unsubscribe, preferences, web
+ * version (`*|UNSUB|*`, `{{unsubscribe_url}}`, `%unsubscribe_url%`). Every
+ * email built for an ESP carries one by design, so in an href it is expected,
+ * not a broken link. Any other variable stays an error.
+ */
+const ESP_SYSTEM_LINK = /unsub|opt[-_ ]?out|preference|update_profile|manage|archive|web_?version|view_?in_?browser/i;
+
 export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): TemplateReport {
   const issues: TemplateIssue[] = [];
   const seen = new Set<string>();
@@ -93,10 +101,13 @@ export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): T
           if (seen.has(key)) continue;
           seen.add(key);
           const loc = locOfAttr(el, attr);
+          const espLink = attr === "href" && ESP_SYSTEM_LINK.test(variable);
           issues.push({
             rule: "unresolved-variable",
-            severity: "error",
-            message: `Unresolved ${label} variable "${variable}" found in ${attr} attribute.`,
+            severity: espLink ? "info" : "error",
+            message: espLink
+              ? `${label} placeholder "${variable}" in href: your sending platform fills this link in at send time.`
+              : `Unresolved ${label} variable "${variable}" found in ${attr} attribute.`,
             variable,
             location: "attribute",
             ...(loc ? { loc } : {}),
@@ -106,7 +117,7 @@ export function checkTemplateVariablesFromDom($: CheerioAPI, source?: string): T
     });
   }
 
-  return { unresolvedCount: issues.length, issues };
+  return { unresolvedCount: issues.filter((i) => i.severity !== "info").length, issues };
 }
 
 /**

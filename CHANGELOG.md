@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+Scores rise for most emails. Found by scoring 240 emails written by six coding
+agents (Cursor, 2026-10-19): the warnings that filled the list were resets and
+progressive enhancement, and agents told to fix every warning deleted their
+responsive and dark-mode CSS to get there.
+
+### Changed
+
+- **A reset is not a finding.** A declaration whose value is what a client that
+  ignores the property renders anyway (`outline: none`, `word-spacing: normal`,
+  `height: auto`, `box-sizing: content-box`, `position: static`, ...) no
+  longer warns. A mixed stylesheet still points at the real value.
+  `text-decoration: none` still warns: a link is underlined by default.
+- **Progressive enhancement is info.** `@media`, `@media prefers-color-scheme`
+  and `color-scheme` are graceful: the clients without them fall back to the
+  inline light, desktop layout. Partial `<style>` support (Gmail, Proton Mail,
+  Outlook Classic) is info like every other partial; the ways a `<style>` block
+  is really lost stay style-survival rules.
+- **A longhand its shorthand overrides** later in the same `style` is not
+  graded (React Email's `text-decoration-line:none` before
+  `text-decoration:underline`).
+- **ESP system links are info.** An unsubscribe, preferences or web-version
+  placeholder in an `href` (`*|UNSUB|*`, `{{unsubscribe_url}}`) is filled in by
+  the sending platform; `unresolvedCount` no longer counts it. Every other
+  variable is still an error.
+- **Suggestions no longer name Outlook to other clients** for `border-radius`,
+  `word-break`, `overflow-wrap`, `white-space` and `min-height`.
+
+### Fixed
+
+- **The Gmail preview kept `@font-face`**, so it showed web fonts real
+  Gmail never loads. Clients that ignore `@font-face` now lose it in the
+  transform.
+- **The accuracy test fails on any failed check.** It asserted only a 70%
+  total, behind which the Gmail checks had expected `<style>`, `opacity` and
+  `overflow` to be stripped, which real Gmail does not do.
+
 ## 0.15.0 - 2026-10-17
 
 A minor release. New exports, no breaking changes. Scores, suggestions and

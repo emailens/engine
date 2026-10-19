@@ -355,7 +355,7 @@ u + .body .btn { border-radius: 8px; }
 
     // Outlook's score must improve because the unsupported border-radius is no longer evaluated for it
     expect(targetedScore).toBeGreaterThan(globalScore);
-    expect(targetedScore).toBe(97); // 100 - 3 for <style> element warning
+    expect(targetedScore).toBe(100); // partial <style> support is info, not a warning
   });
 });
 

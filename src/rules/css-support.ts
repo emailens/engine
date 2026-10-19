@@ -8529,6 +8529,12 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "[height]",
   "<wbr>",
   "<body>",
+  // Progressive enhancement: the clients without them fall back to the inline
+  // light, desktop layout, which is the design. Only Outlook Classic and
+  // Thunderbird lack @media, both desktop, so the desktop layout is right there.
+  "@media",
+  "@media prefers-color-scheme",
+  "color-scheme",
 ]);
 
 /** CSS properties that Outlook Word engine ignores */

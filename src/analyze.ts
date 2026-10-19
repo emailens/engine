@@ -335,11 +335,13 @@ export function analyzeEmailFromDom(
             ? { fixIsGenericFallback: true } : {}),
         });
       } else if (support === "partial" && feature === "<style>") {
-        // Special case: <style> partial gets a custom message
+        // Special case: <style> partial gets a custom message. Info, like every
+        // other partial: the ways a <style> block really gets lost (Gmail
+        // dropping the whole block, its 16 KB ceiling) are style-survival rules.
         const sug = getSuggestion("<style>:partial", client.id, framework);
         const fix = getCodeFix("<style>", client.id, framework);
         addWarning({
-          severity: "warning",
+          severity: "info",
           client: client.id,
           property: "<style>",
           message: `${client.name} has partial <style> support (head only, with limitations). Inline styles recommended.`,
@@ -611,9 +613,12 @@ export function analyzeEmailFromDom(
     const style = $(el).attr("style") || "";
     // A hidden element (a preheader) is graded on display alone: the rest of
     // its styles only exist to hide it harder where display:none falls short.
+    // A longhand its own shorthand overrides later in the same attribute is
+    // dead wherever both apply, and absent wherever only the shorthand does:
+    // React Email's `text-decoration-line:none` before `text-decoration`.
     const props = /^none\b/i.test(getStyleValue(style, "display")?.trim() ?? "")
       ? parseStyleProperties(style).filter((p) => p === "display")
-      : parseStyleProperties(style);
+      : parseStyleProperties(style).filter((p, i, all) => !(SHORTHAND_OF[p] && all.lastIndexOf(SHORTHAND_OF[p]) > i));
     const selector = describeSelector(el);
     const attrLoc = locOfAttr(el, "style");
     const inlineScope = inlineTargetingScope($(el));
@@ -1007,6 +1012,76 @@ function scopeOccurrencesForClient(
   };
 }
 
+/**
+ * Initial values: what a client that ignores the property renders anyway.
+ * `outline: none` in a client without `outline` is still no outline, so a
+ * reset like that is not a finding. Only values that equal the UA default on
+ * the elements emails put them on: `text-decoration: none` is absent because a
+ * link is underlined by default, `border-spacing: 0` because a table is not.
+ */
+const RESET_VALUES: Record<string, readonly string[]> = {
+  outline: ["none", "0"],
+  "word-spacing": ["normal", "0"],
+  "letter-spacing": ["normal", "0"],
+  height: ["auto"],
+  width: ["auto"],
+  "box-sizing": ["content-box"],
+  "max-width": ["none"],
+  "min-width": ["0", "auto"],
+  "min-height": ["0", "auto"],
+  "box-shadow": ["none"],
+  "text-shadow": ["none"],
+  overflow: ["visible"],
+  float: ["none"],
+  position: ["static"],
+  opacity: ["1"],
+  transform: ["none"],
+  filter: ["none"],
+  "background-image": ["none"],
+  "word-break": ["normal"],
+  "overflow-wrap": ["normal"],
+  "white-space": ["normal"],
+};
+
+// Not a name-prefix rule: `border` does not reset `border-radius`.
+// ponytail: only the pair seen in the wild (React Email's <Link>); add pairs as they turn up.
+const SHORTHAND_OF: Record<string, string> = {
+  "text-decoration-line": "text-decoration",
+  "text-decoration-color": "text-decoration",
+  "text-decoration-style": "text-decoration",
+};
+
+function isReset(prop: string, value: string): boolean {
+  const v = value.replace(/!\s*important/i, "").trim().toLowerCase();
+  return RESET_VALUES[prop]?.includes(v) ?? false;
+}
+
+/**
+ * Drop the declarations that only restate what an ignoring client does anyway.
+ * Null when nothing is left to report; otherwise the occurrences still worth
+ * pointing at (all of them when the values behind each are unknown).
+ */
+function withoutResets(
+  prop: string,
+  occurrences: Occurrences | undefined,
+  values: string[] | undefined,
+): { occurrences: Occurrences | undefined } | null {
+  if (!RESET_VALUES[prop] || !values?.length) return { occurrences };
+  if (values.every((v) => isReset(prop, v))) return null;
+  const known = occurrences?.values;
+  if (!occurrences || !known || known.length !== occurrences.locs.length) return { occurrences };
+  const keep = known.flatMap((v, i) => (isReset(prop, v) ? [] : [i]));
+  const scopes = occurrences.scopes;
+  return {
+    occurrences: {
+      locs: keep.map((i) => occurrences.locs[i]),
+      values: keep.map((i) => known[i]),
+      ...(scopes ? { scopes: keep.map((i) => scopes[i]) } : {}),
+      ...(occurrences.truncated ? { truncated: true } : {}),
+    },
+  };
+}
+
 function checkPropertySupport(
   prop: string,
   addWarning: (w: CSSWarning) => void,
@@ -1040,6 +1115,8 @@ function checkPropertySupport(
     const support: SupportLevel = supportData[client.id] || "unknown";
     const notes = CSS_SUPPORT_NOTES[prop]?.[client.id];
     if (support === "unsupported") {
+      const live = withoutResets(prop, effectiveOccurrences, clientValues);
+      if (!live) continue;
       const sug = getSuggestion(prop, client.id, framework);
       const fix = getCodeFix(prop, client.id, framework);
       // Ignored, not broken: say so, and do not spend a warning on it.
@@ -1056,7 +1133,7 @@ function checkPropertySupport(
         fixType,
         ...(selector ? { selector } : {}),
         ...(clientReportedLine !== undefined ? { line: clientReportedLine } : {}),
-        ...(effectiveOccurrences ? occurrenceFields(effectiveOccurrences) : {}),
+        ...(live.occurrences ? occurrenceFields(live.occurrences) : {}),
         ...(framework && (sug.isGenericFallback || (fix && isCodeFixGenericFallback(prop, client.id, framework)))
           ? { fixIsGenericFallback: true } : {}),
       });

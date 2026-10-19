@@ -54,7 +54,7 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── border-radius ─────────────────────────────────────────────────────
   "border-radius":
-    "Use VML for rounded corners in Outlook, or accept square corners.",
+    "Corners render square here. Accept them, or put the rounded shape in an image if the corner matters.",
   "border-radius::outlook":
     "Use VML (Vector Markup Language) for rounded buttons in Outlook.",
 
@@ -92,16 +92,20 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
 
   // ── word-break ────────────────────────────────────────────────────────
   "word-break":
-    "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
+    "Long words and URLs will not break here. Put <wbr> after / ? & = and every ~16 characters of the long text instead.",
   "word-break::outlook":
     "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
 
   // ── overflow-wrap ─────────────────────────────────────────────────────
   "overflow-wrap":
+    "Long words and URLs will not break here. Put <wbr> after / ? & = and every ~16 characters of the long text instead.",
+  "overflow-wrap::outlook":
     "Outlook Windows does not wrap a URL on word-break, word-wrap, or overflow-wrap. Insert &#8203; in a cell that has a width.",
 
   // ── white-space ───────────────────────────────────────────────────────
   "white-space":
+    "Use &nbsp; between words that must stay on one line.",
+  "white-space::outlook":
     "Outlook only supports 'normal' and 'nowrap'. Use &nbsp; for non-breaking spaces.",
 
   // ── text-overflow ─────────────────────────────────────────────────────
@@ -120,6 +124,8 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
   "min-width":
     "Outlook ignores min-width. Use a fixed width attribute on <td> or <table>.",
   "min-height":
+    "Use a fixed height on the cell or a spacer image instead of min-height.",
+  "min-height::outlook":
     "Outlook ignores min-height. Use a fixed height or a spacer image.",
   "max-height":
     "Outlook ignores max-height. Truncate content server-side or use a fixed height.",

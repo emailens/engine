@@ -338,16 +338,18 @@ describe("value-aware partial support: nothing else moves", () => {
   });
 
   it("reports every unsupported client for every gated property, benign value or not", () => {
+    // Benign for the partial caveats but never an initial value: a reset like
+    // letter-spacing:normal is dropped on purpose (graceful-findings.test.ts).
     const BENIGN: Record<string, string> = {
       background: "#ffffff",
       "border-radius": "8px",
       display: "none",
       "font-size": "14px",
       "font-weight": "400",
-      "letter-spacing": "normal",
+      "letter-spacing": "1px",
       margin: "16px",
       overflow: "hidden",
-      position: "static",
+      position: "relative",
       "text-align": "center",
       transition: "opacity 0.3s ease",
     };

@@ -99,7 +99,11 @@ function mergeInline(state: Inlined, declText: string): string {
   return serializeStyle(out);
 }
 
-function inlineStyles($: cheerio.CheerioAPI): string {
+/**
+ * `keepFontFace` is false for a client that ignores @font-face (Gmail): its
+ * preview must not load a web font the real inbox never shows.
+ */
+function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true): string {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
     styleBlocks.push($(el).text());
@@ -124,6 +128,10 @@ function inlineStyles($: cheerio.CheerioAPI): string {
       enter(node: csstree.CssNode) {
         if (node.type !== "Atrule") return;
         const name = node.name.toLowerCase();
+        if (name === "font-face" && !keepFontFace) {
+          node.block = null;
+          return this.skip;
+        }
         if (name === "media" || name === "supports" || name === "keyframes" || name === "-webkit-keyframes" || name === "font-face") {
           // Add !important to declarations inside @media/@supports so they override inline styles
           if (name === "media" || name === "supports") {
@@ -894,7 +902,7 @@ function applyTransformDom(
 
   // 1b. Inline + strip <style> if needed
   if (config.inlineAndStripStyles) {
-    const preserved = inlineStyles($);
+    const preserved = inlineStyles($, CSS_SUPPORT["@font-face"]?.[clientId] !== "unsupported");
     $("style").remove();
     if (preserved.trim()) {
       const head = $("head");
