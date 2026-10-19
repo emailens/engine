@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.16.0 - 2026-10-19
+
+A minor release. No API changes; scores and severities change. Scores rise for
+most emails: across 343 emails (production templates, open-source fixtures,
+agent-written benchmark) the worst-client score rose by 7 on average and 18 at
+most, none fell, and no new warning or error appeared. If you gate CI on a
+score threshold (the GitHub Action, the CLI), the same email now passes more
+easily; if you chart scores over time, expect a step up on upgrade.
 
 Scores rise for most emails. Found by scoring 240 emails written by six coding
 agents (Cursor, 2026-10-19): the warnings that filled the list were resets and
