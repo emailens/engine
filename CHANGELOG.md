@@ -22,7 +22,16 @@ score changes, because it was wrong; every other email scores as before.
     textured button, which keeps its colour and label and loses the texture;
   - the preview paints only the fill colour, as three of the five versions do.
 
-`v:rect` backgrounds are unchanged, as in 0.16.1.
+Confirmed with a probe sheet sent twice to real Outlook 2007, 2010, 2013,
+2016 and 2019: `<v:imagedata>` in a `v:roundrect` drew on all five (2007
+squares the corners), and a `<v:fill>` picture in the same shape showed only
+its colour on 2013, 2016 and 2019 for PNG, JPG and tiled fills. In one run
+Outlook 2019 drew the same image URL as a `v:rect` background in the same
+screenshot, so the image had loaded: the shape is what fails, not timing.
+
+`v:rect` backgrounds are unchanged, as in 0.16.1. On these devices they drew
+on 2007 and 2010, on 2019 once in two runs, and never on 2013 and 2016, which
+contradicts field reports; they stay unflagged until that is resolved.
 
 ## 0.16.1 - 2026-10-20
 

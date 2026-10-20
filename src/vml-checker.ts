@@ -185,13 +185,16 @@ function checkLooseText(
  * hero and two product cards as `<v:roundrect>` holding
  * `<v:fill type="frame" src color="#FFFFFF">`. Outlook 2007 and 2010 drew all
  * three pictures; Outlook 2013, 2016 and 2019 drew three white boxes, the
- * fill's colour. Earlier that day probe emails gave the same result on 2016
- * and 2019 for frame, tile and sized fills, from two image hosts, while
- * `<v:imagedata>` in the same shape drew the picture with its corners.
+ * fill's colour. Probe sheet 11-vml-pictures, sent twice the same day, gave
+ * the same on every version for PNG and JPG frame fills and a tiled button,
+ * while `<v:imagedata>` in the same shape drew on all five (2007 with square
+ * corners). Not a capture-timing artefact: in one run Outlook 2019 drew the
+ * same image URL as a `<v:rect>` background while leaving it blank in the
+ * roundrect, in the same screenshot.
  *
- * ponytail: roundrect only. A `<v:rect>` background fill left blank on the
- * same devices too, but that contradicts how widely the pattern works in the
- * field, so it stays unflagged until it is measured again.
+ * ponytail: roundrect only. A `<v:rect>` background fill was drawn by 2007 and
+ * 2010, by 2019 once in two runs, and never by 2013 and 2016 on these devices.
+ * The field reports it working, so it stays unflagged until that is resolved.
  */
 function checkFillPicture(
   issues: VmlIssue[],
@@ -222,8 +225,8 @@ function checkFillPicture(
     message: `<v:roundrect> paints its picture with <v:fill src>, which Outlook 2013, 2016 and 2019 leave blank.`,
     detail:
       `${measured} The reader gets an empty box where the image should be. Paint the picture with ` +
-      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: Outlook 2016 and 2019 draw it, ` +
-      `rounded corners included. Keep <v:fill> for a plain colour.`,
+      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: Outlook 2007 to 2019 all draw ` +
+      `it, with rounded corners from 2010 on. Keep <v:fill> for a plain colour.`,
   } : {
     rule: "vml-roundrect-fill-picture",
     severity: "warning",
