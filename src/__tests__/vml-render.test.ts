@@ -643,3 +643,36 @@ describe("vmlToCss: background patterns beyond v:rect + v:fill", () => {
     expect(out).not.toMatch(/<\/?v:/);
   });
 });
+
+// Probe sheet 12-top-rounded-picture, real devices, 2026-10-20: a v:shape whose
+// path is rounded at the top and square at the bottom, holding v:imagedata,
+// showed the picture clipped to that path on Outlook 2010 to 2019 (2007 drew
+// it square). The preview draws what most versions draw.
+describe("vmlToCss: a picture clipped to a v:shape path", () => {
+  const hero =
+    `<v:shape xmlns:v="urn:schemas-microsoft-com:vml" coordsize="566,377" path="m 0,377 l 0,20 qy 20,0 l 546,0 qx 566,20 l 566,377 x e" stroked="f" style="width:566px;height:377px;">` +
+    `<v:imagedata src="https://emailens.dev/showcase/table.jpg" /></v:shape>`;
+
+  test("draws the picture, clipped to the path, at the shape's size", () => {
+    const out = vmlToCss(hero);
+    expect(out).toContain('data-vml="shape"');
+    expect(out).toContain('width="566" height="377"');
+    expect(out).toContain('<image href="https://emailens.dev/showcase/table.jpg"');
+    expect(out).toMatch(/<clipPath id="vml-clip-0"><path d="M[^"]+"\/><\/clipPath>/);
+    expect(out).toContain('clip-path="url(#vml-clip-0)"');
+    expect(out).not.toContain("<v:");
+  });
+
+  test("two pictures get distinct clip paths", () => {
+    const out = vmlToCss(hero + hero);
+    expect(out).toContain('url(#vml-clip-0)');
+    expect(out).toContain('url(#vml-clip-1)');
+  });
+
+  test("an empty corner shape still renders as a filled path", () => {
+    const corner = `<v:shape xmlns:v="urn:schemas-microsoft-com:vml" coordsize="20,20" path="m 0,20 qy 20,0 l 20,20 x e" fillcolor="#FFFFFF" stroked="f" style="width:20px;height:20px;"></v:shape>`;
+    const out = vmlToCss(corner);
+    expect(out).toContain('fill="#FFFFFF"');
+    expect(out).not.toContain("<image");
+  });
+});

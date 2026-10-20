@@ -23,7 +23,7 @@ const button: Advice = {
 
 const picture: Advice = {
   suggestion:
-    "Give Outlook Classic a VML copy: a <v:roundrect> holding <v:imagedata src> (not a v:fill, which real Outlook 2016 and 2019 leave blank) at the picture's rendered width and height, in a font-size:0;line-height:0 wrapper. arcsize is the radius over half the shorter side.",
+    "Give Outlook Classic a VML copy: a <v:roundrect> holding <v:imagedata src> (not a v:fill, which real Outlook 2016 and 2019 leave blank) at the picture's rendered width and height, in a font-size:0;line-height:0 wrapper. arcsize is the radius over half the shorter side. Rounded on some corners only (border-radius: 12px 12px 0 0, a card's hero): a <v:shape> with a path rounded only there, holding the same <v:imagedata>, flush at the top of the card; real Outlook 2010 to 2019 clip the picture to the path.",
   fix: {
     language: "html",
     description: "Rounded picture in Outlook Classic",

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.16.3 - 2026-10-20
+
+A patch. No API or score changes.
+
+### Added
+
+- **Pictures rounded on some corners only.** A card's hero is usually rounded
+  at the top and square at the bottom, which a `v:roundrect` cannot draw (it
+  rounds all four corners), so fixes stacked a row of corner pieces above a
+  fully rounded picture and left a band of the card's colour over it. Probe
+  sheet `12-top-rounded-picture`, sent to real Outlook 2007 to 2019 on
+  2026-10-20: a `v:shape` whose path is rounded only at the top, holding
+  `<v:imagedata>`, showed the picture clipped to that path on 2010, 2013, 2016
+  and 2019 (2007 drew it square). A `<v:fill>` picture in the same shape was
+  blank on 2013.
+  - The Outlook Classic rules (`OUTLOOK_CLASSIC_RULES`, used by AI Fix, the
+    CLI and the MCP) and the element advice teach the construction, flush at
+    the top of the card in place of the top corner row.
+  - The Outlook Classic preview draws a `v:shape` holding `<v:imagedata>`: the
+    picture clipped to the path, stretched to the shape. It used to draw
+    nothing for it.
+
 ## 0.16.2 - 2026-10-20
 
 A patch that completes the 0.16.1 fix for rounded pictures. 0.16.1 taught
