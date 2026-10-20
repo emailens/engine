@@ -93,10 +93,11 @@ describe("advice follows the element", () => {
       (w) => w.client === "outlook-windows-legacy" && w.property === property && w.severity !== "info",
     );
 
-  test("a rounded picture is told to use a VML fill, not a button", () => {
+  test("a rounded picture is told to use v:imagedata, not a fill or a button", () => {
     const w = advice('<img src="https://x.dev/a.png" width="536" style="width:100%;border-radius:12px" alt="">', "border-radius");
-    expect(w?.suggestion).toContain("v:fill");
-    expect(w?.fix?.after).toContain('type="frame"');
+    expect(w?.suggestion).toContain("v:imagedata");
+    expect(w?.fix?.after).toContain('<v:imagedata src="https://example.com/hero.png" />');
+    expect(w?.fix?.after).not.toContain("<v:fill");
   });
 
   test("a rounded card is told to use corner cells when it holds VML", () => {

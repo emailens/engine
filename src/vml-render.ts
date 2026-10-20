@@ -397,11 +397,17 @@ export function vmlToCss(html: string): string {
       // idiom), or its own colour. Image sizing follows v:rect below.
       const fillTag = inner.match(/<v:fill([^>]*?)\/?>/i);
       const f = fillTag ? attrs(fillTag[1]) : {};
+      // <v:imagedata> paints the picture over the shape, stretched to it: the
+      // form real Outlook 2016 and 2019 draw (they leave a frame fill blank).
+      const imageData = inner.match(/<v:imagedata([^>]*?)\/?>/i);
+      const imageSrc = imageData ? attrs(imageData[1]).src : undefined;
       const tile = (f.type ?? "").toLowerCase() === "tile";
       const fill = f.color ?? a.fillcolor ?? "transparent";
-      const image = f.src
-        ? `;background-image:url('${f.src}');${tile ? "background-repeat:repeat" : "background-size:cover;background-position:center;background-repeat:no-repeat"}`
-        : "";
+      const image = imageSrc
+        ? `;background-image:url('${imageSrc}');background-size:100% 100%;background-repeat:no-repeat`
+        : f.src
+          ? `;background-image:url('${f.src}');${tile ? "background-repeat:repeat" : "background-size:cover;background-position:center;background-repeat:no-repeat"}`
+          : "";
       const stroked = !(a.stroke === "f" || a.stroke === "false");
       const middle = /middle/i.test(s["v-text-anchor"] ?? "");
       // <w:anchorlock/> is scaffolding. <center> is where the label's colour
@@ -409,6 +415,7 @@ export function vmlToCss(html: string): string {
       // keeps its style rather than vanishing and leaving dark-on-dark text.
       const label = inner
         .replace(/<v:fill[^>]*?\/?>(?:\s*<\/v:fill>)?/gi, "")
+        .replace(/<v:imagedata[^>]*?\/?>(?:\s*<\/v:imagedata>)?/gi, "")
         .replace(/<\/?w:anchorlock[^>]*>/gi, "")
         .replace(/<center\b/gi, "<span")
         .replace(/<\/center>/gi, "</span>")
