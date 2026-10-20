@@ -177,6 +177,66 @@ function checkLooseText(
   }, locAt(source, open.offset, open.length)));
 }
 
+/**
+ * Flag a rounded picture painted with `<v:fill src>` instead of
+ * `<v:imagedata src>`.
+ *
+ * Measured on real devices, 2026-10-20 (run Ew6-pjNhJfaS): one email drew its
+ * hero and two product cards as `<v:roundrect>` holding
+ * `<v:fill type="frame" src color="#FFFFFF">`. Outlook 2007 and 2010 drew all
+ * three pictures; Outlook 2013, 2016 and 2019 drew three white boxes, the
+ * fill's colour. Probe sheet 11-vml-pictures, sent twice the same day, gave
+ * the same on every version for PNG and JPG frame fills and a tiled button,
+ * while `<v:imagedata>` in the same shape drew on all five (2007 with square
+ * corners). Not a capture-timing artefact: in one run Outlook 2019 drew the
+ * same image URL as a `<v:rect>` background while leaving it blank in the
+ * roundrect, in the same screenshot.
+ *
+ * ponytail: roundrect only. A `<v:rect>` background fill was drawn by 2007 and
+ * 2010, by 2019 once in two runs, and never by 2013 and 2016 on these devices.
+ * The field reports it working, so it stays unflagged until that is resolved.
+ */
+function checkFillPicture(
+  issues: VmlIssue[],
+  seen: Map<string, VmlIssue>,
+  open: VmlTag,
+  inner: string,
+  source: string | undefined,
+): void {
+  if (/<v:imagedata\b/i.test(inner)) return;
+  const fill = inner.match(/<v:fill\b([^>]*)>/i);
+  if (!fill || attr(fill[1], "src") === undefined) return;
+
+  // A picture-only shape (the rounded-picture idiom) becomes an empty box. A
+  // shape with a label (a button with a texture behind it) keeps its colour
+  // and label and loses only the texture, so it is a warning, not an error.
+  const label = inner
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;|\s/g, "");
+  const picture = label === "";
+  const measured =
+    `Measured on real Outlook: 2007 and 2010 draw the picture, but 2013, 2016 and 2019 show only the ` +
+    `fill's colour.`;
+
+  add(issues, seen, `fillpicture:${open.name}`, withLoc(picture ? {
+    rule: "vml-roundrect-fill-picture",
+    severity: "error",
+    message: `<v:roundrect> paints its picture with <v:fill src>, which Outlook 2013, 2016 and 2019 leave blank.`,
+    detail:
+      `${measured} The reader gets an empty box where the image should be. Paint the picture with ` +
+      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: Outlook 2007 to 2019 all draw ` +
+      `it, with rounded corners from 2010 on. Keep <v:fill> for a plain colour.`,
+  } : {
+    rule: "vml-roundrect-fill-picture",
+    severity: "warning",
+    message: `<v:roundrect> has a <v:fill src> picture behind its label, which Outlook 2013, 2016 and 2019 do not draw.`,
+    detail:
+      `${measured} The shape and its label still render, on the plain fill colour, so pick a colour that ` +
+      `works on its own: that is what most Outlook readers see.`,
+  }, locAt(source, open.offset, open.length)));
+}
+
 
 /**
  * The table tags a ghost wrapper is built from. Outlook ignores `max-width`, so
@@ -323,6 +383,7 @@ export function checkVml(html: string, options?: { positions?: boolean }): VmlRe
           const open = openShapes[idx];
           const inner = html.slice(open.offset + open.length, tag.offset);
           checkLooseText(issues, seen, open, inner, source);
+          if (name === "roundrect") checkFillPicture(issues, seen, open, inner, source);
         }
         if (idx === -1) {
           add(issues, seen, `stray:${name}`, withLoc({

@@ -86,12 +86,23 @@ describe("vmlToCss: roundrect", () => {
     expect(out).toContain("border-radius:4px");
   });
 
-  test("an image fill paints the shape: the rounded-picture idiom", () => {
-    const out = vmlToCss(`<v:roundrect style="width:260px;height:150px;" arcsize="8%" stroke="f"><v:fill type="frame" src="https://example.com/bowl.jpg" /></v:roundrect>`);
-    expect(out).toContain("background-image:url('https://example.com/bowl.jpg')");
-    expect(out).toContain("background-size:cover");
-    expect(out).toContain("border-radius:6px");
+  // Real Outlook 2013, 2016 and 2019 show a picture fill in a roundrect as its
+  // colour only; 2007 and 2010 draw it (run Ew6-pjNhJfaS, 2026-10-20). The
+  // preview shows the majority: the colour, no picture.
+  test("a picture in a v:fill shows only the fill colour, as Outlook 2013 to 2019 draw it", () => {
+    const out = vmlToCss(`<v:roundrect style="width:566px;height:377px;" arcsize="5%" stroke="f" fillcolor="#FFFFFF"><v:fill type="frame" src="https://emailens.dev/showcase/table.jpg" color="#FFFFFF" /></v:roundrect>`);
+    expect(out).not.toContain("background-image");
+    expect(out).not.toContain("table.jpg");
+    expect(out).toContain("background:#FFFFFF");
+    expect(out).toContain("width:566px");
+    expect(out).toContain("height:377px");
     expect(out).not.toContain("<v:fill");
+  });
+
+  test("a tiled picture fill is not drawn either", () => {
+    const out = vmlToCss(`<v:roundrect style="width:260px;height:150px;" arcsize="8%" stroke="f"><v:fill type="tile" src="https://example.com/bowl.jpg" color="#EEEEEE" /></v:roundrect>`);
+    expect(out).not.toContain("background-image");
+    expect(out).toContain("background:#EEEEEE");
   });
 
   test("v:imagedata paints the picture over a roundrect, stretched to it", () => {

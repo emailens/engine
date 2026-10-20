@@ -371,3 +371,28 @@ describe("intent score", () => {
     }
   });
 });
+
+describe("intent score: a rounded picture painted with v:fill", () => {
+  // The Winter Table's hero as sent: blank on real Outlook 2013 to 2019
+  // (run Ew6-pjNhJfaS, 2026-10-20). It scored 100 for Outlook Classic before.
+  const pic = (inner: string) =>
+    page(
+      mso(`<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" arcsize="5%" stroke="f" fillcolor="#FFFFFF" style="width:566px;height:377px;">${inner}</v:roundrect>`) +
+        notMso(`<img src="https://emailens.dev/showcase/table.jpg" width="566" height="377" alt="Table" style="display:block;border-radius:12px">`),
+    );
+  const fill = pic(`<v:fill type="frame" src="https://emailens.dev/showcase/table.jpg" color="#FFFFFF" />`);
+  const imagedata = pic(`<v:imagedata src="https://emailens.dev/showcase/table.jpg" />`);
+
+  test("is an error for Outlook Classic and lowers its score", () => {
+    expect(severityOf(fill, "vml-roundrect-fill-picture")).toBe("error");
+    expect(scoreOf(fill)).toBeLessThan(scoreOf(imagedata));
+  });
+
+  test("the v:imagedata form is not flagged", () => {
+    expect(severityOf(imagedata, "vml-roundrect-fill-picture")).toBeUndefined();
+  });
+
+  test("no other client is touched", () => {
+    expect(severityOf(fill, "vml-roundrect-fill-picture", GMAIL)).toBeUndefined();
+  });
+});

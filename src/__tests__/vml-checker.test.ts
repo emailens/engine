@@ -311,3 +311,56 @@ describe("checkVml: ghost tables (G-03)", () => {
     expect(report.issues.some((i) => i.rule === "ghost-table-unbalanced")).toBe(true);
   });
 });
+
+// Real devices, 2026-10-20 (run Ew6-pjNhJfaS): a <v:roundrect> painted with
+// <v:fill type="frame" src> drew the picture on Outlook 2007 and 2010 and a
+// white box (the fill colour) on 2013, 2016 and 2019. <v:imagedata> in the
+// same shape draws on every version.
+describe("checkVml: a rounded picture painted with v:fill", () => {
+  // The hero of the email the run photographed, as it was sent.
+  const HERO =
+    `<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" arcsize="5%" stroke="f" fillcolor="#FFFFFF" style="width:566px;height:377px;v-text-anchor:top;">` +
+    `<v:fill type="frame" src="https://emailens.dev/showcase/table.jpg" color="#FFFFFF" />` +
+    `<w:anchorlock/><center style="color:#ffffff;">&nbsp;</center></v:roundrect>`;
+
+  test("flags the picture fill as an error, on the shape", () => {
+    const issue = checkVml(mso(HERO)).issues.find((i) => i.rule === "vml-roundrect-fill-picture");
+    expect(issue?.severity).toBe("error");
+    expect(issue?.message).toContain("<v:roundrect>");
+    expect(issue?.detail).toContain("v:imagedata");
+  });
+
+  test("flags tile and sized fills too", () => {
+    for (const fill of [`type="tile" src="a.jpg"`, `type="frame" size="100%,100%" src="a.jpg"`]) {
+      const vml = `<v:roundrect style="width:260px;height:150px;" arcsize="8%" stroke="f"><v:fill ${fill} /></v:roundrect>`;
+      expect(rules(mso(vml))).toContain("vml-roundrect-fill-picture");
+    }
+  });
+
+  // sendwithus airmail: a green button with a tiled texture and a label. The
+  // texture is lost on 2013 to 2019; the button and label still render.
+  test("a textured button with a label is a warning, not an error", () => {
+    const vml =
+      `<v:roundrect style="height:38px;v-text-anchor:middle;width:190px;" arcsize="11%" strokecolor="#407429" fill="t">` +
+      `<v:fill type="tile" src="https://example.com/button-background.png" color="#41CC00" />` +
+      `<w:anchorlock/><center style="color:#ffffff;">My Order</center></v:roundrect>`;
+    const issue = checkVml(mso(vml)).issues.find((i) => i.rule === "vml-roundrect-fill-picture");
+    expect(issue?.severity).toBe("warning");
+    expect(issue?.detail).toContain("fill colour");
+  });
+
+  test("says nothing when the picture is v:imagedata", () => {
+    const vml = `<v:roundrect style="width:566px;height:377px;" arcsize="5%" stroke="f"><v:imagedata src="https://emailens.dev/showcase/table.jpg" /></v:roundrect>`;
+    expect(rules(mso(vml))).not.toContain("vml-roundrect-fill-picture");
+  });
+
+  test("says nothing about a colour-only fill (a button)", () => {
+    const vml = `<v:roundrect style="width:200px;height:44px;" arcsize="10%" stroke="f"><v:fill type="solid" color="#3F5D4B" /><center>Go</center></v:roundrect>`;
+    expect(rules(mso(vml))).not.toContain("vml-roundrect-fill-picture");
+  });
+
+  test("leaves a v:rect background alone (not measured as broken in the field)", () => {
+    const vml = `<v:rect style="width:600px;height:300px;"><v:fill type="frame" src="hero.jpg" color="#333333" /><v:textbox inset="0,0,0,0"><p>Hi</p></v:textbox></v:rect>`;
+    expect(rules(mso(vml))).not.toContain("vml-roundrect-fill-picture");
+  });
+});

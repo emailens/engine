@@ -393,21 +393,23 @@ export function vmlToCss(html: string): string {
       const h = px(s.height) ?? 0;
       // No arcsize means the VML default of 0.2, not a square corner.
       const radius = a.arcsize ? arcsizeToRadius(a.arcsize, w, h) : 0.2 * (Math.min(w, h) / 2);
-      // A <v:fill> inside paints the shape: an image (the rounded-picture
-      // idiom), or its own colour. Image sizing follows v:rect below.
+      // A <v:fill> inside paints the shape its colour. A picture in that fill
+      // (src) is not drawn: on real Outlook 2013, 2016 and 2019 the shape shows
+      // only the fill's colour, and only 2007 and 2010 draw the picture
+      // (run Ew6-pjNhJfaS, 2026-10-20: the same email's hero and two cards
+      // were pictures on 2007 and 2010, white boxes on the three later
+      // versions). One simulated client stands for all five, so it shows the
+      // majority. checkVml flags the markup (vml-roundrect-fill-picture).
       const fillTag = inner.match(/<v:fill([^>]*?)\/?>/i);
       const f = fillTag ? attrs(fillTag[1]) : {};
       // <v:imagedata> paints the picture over the shape, stretched to it: the
-      // form real Outlook 2016 and 2019 draw (they leave a frame fill blank).
+      // form every version draws, rounded corners included.
       const imageData = inner.match(/<v:imagedata([^>]*?)\/?>/i);
       const imageSrc = imageData ? attrs(imageData[1]).src : undefined;
-      const tile = (f.type ?? "").toLowerCase() === "tile";
       const fill = f.color ?? a.fillcolor ?? "transparent";
       const image = imageSrc
         ? `;background-image:url('${imageSrc}');background-size:100% 100%;background-repeat:no-repeat`
-        : f.src
-          ? `;background-image:url('${f.src}');${tile ? "background-repeat:repeat" : "background-size:cover;background-position:center;background-repeat:no-repeat"}`
-          : "";
+        : "";
       const stroked = !(a.stroke === "f" || a.stroke === "false");
       const middle = /middle/i.test(s["v-text-anchor"] ?? "");
       // <w:anchorlock/> is scaffolding. <center> is where the label's colour
