@@ -177,6 +177,45 @@ function checkLooseText(
   }, locAt(source, open.offset, open.length)));
 }
 
+/**
+ * Flag a rounded picture painted with `<v:fill src>` instead of
+ * `<v:imagedata src>`.
+ *
+ * Measured on real devices, 2026-10-20 (run Ew6-pjNhJfaS): one email drew its
+ * hero and two product cards as `<v:roundrect>` holding
+ * `<v:fill type="frame" src color="#FFFFFF">`. Outlook 2007 and 2010 drew all
+ * three pictures; Outlook 2013, 2016 and 2019 drew three white boxes, the
+ * fill's colour. Earlier that day probe emails gave the same result on 2016
+ * and 2019 for frame, tile and sized fills, from two image hosts, while
+ * `<v:imagedata>` in the same shape drew the picture with its corners.
+ *
+ * ponytail: roundrect only. A `<v:rect>` background fill left blank on the
+ * same devices too, but that contradicts how widely the pattern works in the
+ * field, so it stays unflagged until it is measured again.
+ */
+function checkFillPicture(
+  issues: VmlIssue[],
+  seen: Map<string, VmlIssue>,
+  open: VmlTag,
+  inner: string,
+  source: string | undefined,
+): void {
+  if (/<v:imagedata\b/i.test(inner)) return;
+  const fill = inner.match(/<v:fill\b([^>]*)>/i);
+  if (!fill || attr(fill[1], "src") === undefined) return;
+
+  add(issues, seen, `fillpicture:${open.name}`, withLoc({
+    rule: "vml-roundrect-fill-picture",
+    severity: "error",
+    message: `<v:roundrect> paints its picture with <v:fill src>, which Outlook 2013, 2016 and 2019 leave blank.`,
+    detail:
+      `Measured on real Outlook: 2007 and 2010 draw the picture, but 2013, 2016 and 2019 show only the ` +
+      `fill's colour, so the reader gets an empty box where the image should be. Paint the picture with ` +
+      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: every version draws it, rounded ` +
+      `corners included. Keep <v:fill> for a plain colour.`,
+  }, locAt(source, open.offset, open.length)));
+}
+
 
 /**
  * The table tags a ghost wrapper is built from. Outlook ignores `max-width`, so
@@ -323,6 +362,7 @@ export function checkVml(html: string, options?: { positions?: boolean }): VmlRe
           const open = openShapes[idx];
           const inner = html.slice(open.offset + open.length, tag.offset);
           checkLooseText(issues, seen, open, inner, source);
+          if (name === "roundrect") checkFillPicture(issues, seen, open, inner, source);
         }
         if (idx === -1) {
           add(issues, seen, `stray:${name}`, withLoc({

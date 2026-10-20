@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+Scores change for one pattern only: a rounded picture painted with
+`<v:fill src>`. Emails without it score exactly as before.
+
+### Fixed
+
+- **A rounded picture painted with `<v:fill src>` is flagged, and previews
+  blank.** Measured on real devices on 2026-10-20: one email drew its hero and
+  two product cards as a `v:roundrect` holding
+  `<v:fill type="frame" src="…" color="#FFFFFF">`. Outlook 2007 and 2010 drew
+  the three pictures; Outlook 2013, 2016 and 2019 drew three white boxes, the
+  fill's colour. The Outlook Classic preview used to draw the picture and the
+  email scored 100 for Outlook Classic. Now:
+  - `checkVml` reports `vml-roundrect-fill-picture` (error), which lowers the
+    Outlook Classic score, with `<v:imagedata src>` as the fix;
+  - the preview paints only the fill colour, as three of the five versions do.
+
+`v:rect` backgrounds are unchanged, as in 0.16.1.
+
 ## 0.16.1 - 2026-10-20
 
 A patch. No API or score changes.
