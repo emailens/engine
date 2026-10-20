@@ -568,6 +568,31 @@ export function vmlToCss(html: string): string {
     },
   );
 
+  // ── a <v:shape> path holding <v:imagedata> → the picture clipped to it ──
+  // The picture rounded on some corners only (a card's hero, rounded at the
+  // top, square at the bottom). Real Outlook 2010 to 2019 clip the picture to
+  // the path (probe sheet 12-top-rounded-picture, 2026-10-20); 2007 draws it
+  // square, and one simulated client shows the majority. Stretched to the
+  // shape, as v:imagedata is in a roundrect.
+  let clipId = 0;
+  out = out.replace(
+    /<v:shape\b([^>]*)>((?:(?!<\/v:shape>)[\s\S])*?<v:imagedata\b[\s\S]*?)<\/v:shape>/gi,
+    (whole, rawAttrs: string, inner: string) => {
+      const a = attrs(rawAttrs);
+      const imageData = inner.match(/<v:imagedata([^>]*?)\/?>/i);
+      const src = imageData ? attrs(imageData[1]).src : undefined;
+      if (!a.path || !src) return whole;
+      const s = styleProps(a.style ?? "");
+      const w = px(s.width);
+      const h = px(s.height);
+      const parsed = vmlPathToSvg(a.path);
+      if (!parsed?.fill || !w || !h) return whole;
+      const [cw, ch] = (a.coordsize ?? `${w},${h}`).split(",").map(Number);
+      const id = `vml-clip-${clipId++}`;
+      return `<svg data-vml="shape" width="${w}" height="${h}" viewBox="0 0 ${cw} ${ch}" preserveAspectRatio="none" style="display:block"><defs><clipPath id="${id}"><path d="${parsed.fill}"/></clipPath></defs><image href="${src}" x="0" y="0" width="${cw}" height="${ch}" preserveAspectRatio="none" clip-path="url(#${id})"/></svg>`;
+    },
+  );
+
   // ── a <v:shape> drawn by a path → the same path in SVG ──────────────────
   // How rounded corners are built around content Word cannot put inside a
   // shape (a card holding a VML button): quarter discs in the corner cells.
