@@ -94,6 +94,14 @@ describe("vmlToCss: roundrect", () => {
     expect(out).not.toContain("<v:fill");
   });
 
+  test("v:imagedata paints the picture over a roundrect, stretched to it", () => {
+    const out = vmlToCss(`<v:roundrect style="width:600px;height:300px;" arcsize="8%" stroked="f"><v:imagedata src="https://example.com/bowl.jpg" /></v:roundrect>`);
+    expect(out).toContain("background-image:url('https://example.com/bowl.jpg')");
+    expect(out).toContain("background-size:100% 100%");
+    expect(out).toContain("border-radius:12px");
+    expect(out).not.toContain("<v:imagedata");
+  });
+
   test("a fill colour wins over fillcolor, like v:rect", () => {
     const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;" fillcolor="#000"><v:fill color="#336699" /><center>Go</center></v:roundrect>`);
     expect(out).toContain("background:#336699");

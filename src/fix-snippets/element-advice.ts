@@ -23,12 +23,12 @@ const button: Advice = {
 
 const picture: Advice = {
   suggestion:
-    "Give Outlook Classic a VML copy: a <v:roundrect> with <v:fill type=\"frame\" src> at the picture's rendered width and height, in a font-size:0;line-height:0 wrapper. arcsize is the radius over half the shorter side.",
+    "Give Outlook Classic a VML copy: a <v:roundrect> holding <v:imagedata src> (not a v:fill, which real Outlook 2016 and 2019 leave blank) at the picture's rendered width and height, in a font-size:0;line-height:0 wrapper. arcsize is the radius over half the shorter side.",
   fix: {
     language: "html",
     description: "Rounded picture in Outlook Classic",
     before: `<img src="https://example.com/hero.png" width="536" style="width:100%;border-radius:12px" alt="">`,
-    after: `<!--[if mso]><div style="font-size:0;line-height:0;"><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" arcsize="9%" stroke="f" style="width:536px;height:268px;"><v:fill type="frame" src="https://example.com/hero.png" /></v:roundrect></div><![endif]-->
+    after: `<!--[if mso]><div style="font-size:0;line-height:0;"><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" arcsize="9%" stroke="f" style="width:536px;height:268px;"><v:imagedata src="https://example.com/hero.png" /></v:roundrect></div><![endif]-->
 <!--[if !mso]><!--><img src="https://example.com/hero.png" width="536" style="width:100%;border-radius:12px" alt=""><!--<![endif]-->`,
   },
 };
