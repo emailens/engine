@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (0.16.2)
+## 0.16.2 - 2026-10-20
 
 A patch that completes the 0.16.1 fix for rounded pictures. 0.16.1 taught
 `<v:imagedata>` and drew it, but an email that already used `<v:fill src>`
