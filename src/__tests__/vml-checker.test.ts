@@ -337,6 +337,18 @@ describe("checkVml: a rounded picture painted with v:fill", () => {
     }
   });
 
+  // sendwithus airmail: a green button with a tiled texture and a label. The
+  // texture is lost on 2013 to 2019; the button and label still render.
+  test("a textured button with a label is a warning, not an error", () => {
+    const vml =
+      `<v:roundrect style="height:38px;v-text-anchor:middle;width:190px;" arcsize="11%" strokecolor="#407429" fill="t">` +
+      `<v:fill type="tile" src="https://example.com/button-background.png" color="#41CC00" />` +
+      `<w:anchorlock/><center style="color:#ffffff;">My Order</center></v:roundrect>`;
+    const issue = checkVml(mso(vml)).issues.find((i) => i.rule === "vml-roundrect-fill-picture");
+    expect(issue?.severity).toBe("warning");
+    expect(issue?.detail).toContain("fill colour");
+  });
+
   test("says nothing when the picture is v:imagedata", () => {
     const vml = `<v:roundrect style="width:566px;height:377px;" arcsize="5%" stroke="f"><v:imagedata src="https://emailens.dev/showcase/table.jpg" /></v:roundrect>`;
     expect(rules(mso(vml))).not.toContain("vml-roundrect-fill-picture");

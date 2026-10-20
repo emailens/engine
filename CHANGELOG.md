@@ -16,8 +16,10 @@ score changes, because it was wrong; every other email scores as before.
   the three pictures; Outlook 2013, 2016 and 2019 drew three white boxes, the
   fill's colour. The Outlook Classic preview used to draw the picture and the
   email scored 100 for Outlook Classic. Now:
-  - `checkVml` reports `vml-roundrect-fill-picture` (error), which lowers the
-    Outlook Classic score, with `<v:imagedata src>` as the fix;
+  - `checkVml` reports `vml-roundrect-fill-picture`, which lowers the Outlook
+    Classic score: an error for a picture-only shape (an empty box, fixed with
+    `<v:imagedata src>`), a warning for a shape with a label, such as a
+    textured button, which keeps its colour and label and loses the texture;
   - the preview paints only the fill colour, as three of the five versions do.
 
 `v:rect` backgrounds are unchanged, as in 0.16.1.

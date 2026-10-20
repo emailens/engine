@@ -204,15 +204,33 @@ function checkFillPicture(
   const fill = inner.match(/<v:fill\b([^>]*)>/i);
   if (!fill || attr(fill[1], "src") === undefined) return;
 
-  add(issues, seen, `fillpicture:${open.name}`, withLoc({
+  // A picture-only shape (the rounded-picture idiom) becomes an empty box. A
+  // shape with a label (a button with a texture behind it) keeps its colour
+  // and label and loses only the texture, so it is a warning, not an error.
+  const label = inner
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;|\s/g, "");
+  const picture = label === "";
+  const measured =
+    `Measured on real Outlook: 2007 and 2010 draw the picture, but 2013, 2016 and 2019 show only the ` +
+    `fill's colour.`;
+
+  add(issues, seen, `fillpicture:${open.name}`, withLoc(picture ? {
     rule: "vml-roundrect-fill-picture",
     severity: "error",
     message: `<v:roundrect> paints its picture with <v:fill src>, which Outlook 2013, 2016 and 2019 leave blank.`,
     detail:
-      `Measured on real Outlook: 2007 and 2010 draw the picture, but 2013, 2016 and 2019 show only the ` +
-      `fill's colour, so the reader gets an empty box where the image should be. Paint the picture with ` +
-      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: every version draws it, rounded ` +
-      `corners included. Keep <v:fill> for a plain colour.`,
+      `${measured} The reader gets an empty box where the image should be. Paint the picture with ` +
+      `<v:imagedata src="..."/> inside the same <v:roundrect> instead: Outlook 2016 and 2019 draw it, ` +
+      `rounded corners included. Keep <v:fill> for a plain colour.`,
+  } : {
+    rule: "vml-roundrect-fill-picture",
+    severity: "warning",
+    message: `<v:roundrect> has a <v:fill src> picture behind its label, which Outlook 2013, 2016 and 2019 do not draw.`,
+    detail:
+      `${measured} The shape and its label still render, on the plain fill colour, so pick a colour that ` +
+      `works on its own: that is what most Outlook readers see.`,
   }, locAt(source, open.offset, open.length)));
 }
 
