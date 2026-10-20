@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.16.2)
 
-Scores change for one pattern only: a rounded picture painted with
-`<v:fill src>`. Emails without it score exactly as before.
+A patch that completes the 0.16.1 fix for rounded pictures. 0.16.1 taught
+`<v:imagedata>` and drew it, but an email that already used `<v:fill src>`
+still previewed the picture and scored 100 for Outlook Classic. Only that
+score changes, because it was wrong; every other email scores as before.
 
 ### Fixed
 
