@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.16.1 - 2026-10-20
+
+A patch. No API or score changes.
+
+### Fixed
+
+- **Rounded pictures in Outlook Classic use `<v:imagedata>`.** On real
+  Outlook 2016 and 2019, a `<v:fill type="frame">` inside a `v:roundrect`
+  shows only its fallback colour, never the picture, whatever the host; a
+  `<v:imagedata>` in the same shape draws it with the rounded corners. The
+  Outlook Classic rules (`OUTLOOK_CLASSIC_RULES`, used by AI Fix, the CLI
+  and the MCP) and the element advice now teach `v:imagedata`.
+- **The Outlook Classic preview draws `<v:imagedata>`** in a `v:roundrect`,
+  stretched to the shape as Word does. It used to drop it, so a correct
+  rounded picture previewed as an empty shape.
+
+Backgrounds keep `v:fill`: a `v:imagedata` can't sit behind text. The same
+devices left `v:fill` backgrounds blank too, which contradicts how widely
+they work in the field, so they are unchanged until that is checked.
+
 ## 0.16.0 - 2026-10-19
 
 A minor release. No API changes; scores and severities change. Scores rise for
