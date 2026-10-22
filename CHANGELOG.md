@@ -2,8 +2,24 @@
 
 ## 0.16.4 - 2026-10-22
 
-A patch that completes 0.16.0: findings with a safe fallback are info. Only
-Outlook Classic scores change, and only upward.
+A patch that completes 0.16.0: findings with a safe fallback are info, and a
+revision that deletes design can now be seen. Only Outlook Classic scores
+change, and only upward.
+
+### Added
+
+- **`checkDesignRetention(before, after)` and `designFeatures(html)`.** The
+  compatibility score rewards not using what a client drops, so deleting a
+  feature scores exactly like giving it a fallback. In the coding-agent
+  benchmark every model that linted its emails also deleted design to get
+  there: across six models, round-3 emails kept 51 to 81% of the features
+  their own first drafts had. This compares a revision with the version before
+  it and lists what it removed: rounded corners, responsive and dark-mode
+  `@media` rules, Outlook.com `[data-ogsc]` rules, gradients, background
+  images, shadows, web fonts, Outlook VML, images, links. A feature is
+  reported when it is gone, or cut to half or less by at least two. Counts come
+  from the raw source, comments included, so deleting VML counts. Additive; no
+  existing output changes.
 
 ### Changed
 

@@ -41,6 +41,7 @@ export { checkVml } from "./vml-checker";
 export { renderOutlookBranch, resolveMsoBranch, vmlToCss, applyMsoHide, arcsizeToRadius } from "./vml-render";
 export { checkVisual } from "./visual-checker";
 export { checkDesignConsistency } from "./design-consistency";
+export { checkDesignRetention, designFeatures, type DesignRemoval } from "./design-retention";
 export { auditEmail } from "./audit";
 export { toPlainText } from "./plain-text";
 export { createSession } from "./session";
