@@ -47,17 +47,15 @@ describe("intent score", () => {
     expect(severityOf(fixed, "border-radius", "outlook-windows")).toBeUndefined();
   });
 
-  test("border-radius counts on markup Word reads, and a button's roundrect does not clear a card", () => {
-    const broken = page(`<a href="https://example.com" style="border-radius:6px">Go</a>`);
+  test("an uncovered border-radius is info: square corners are Outlook Classic's fallback", () => {
+    // As a warning, agents told to fix warnings deleted the radius everywhere.
+    const square = page(`<a href="https://example.com" style="border-radius:6px">Go</a>`);
     const plain = page(`<a href="https://example.com">Go</a>`);
-    expect(severityOf(broken, "border-radius")).toBe("warning");
-    expect(scoreOf(broken)).toBe(scoreOf(plain) - 3);
-
-    const card = page(
-      `${mso(roundrect)}${notMso(`<a style="border-radius:6px">Go</a>`)}<div style="border-radius:8px">Card</div>`,
-    );
-    expect(severityOf(card, "border-radius")).toBe("warning");
-    expect(scoreOf(card)).toBeLessThan(scoreOf(page(`${mso(roundrect)}${notMso(`<a style="border-radius:6px">Go</a>`)}`)));
+    expect(severityOf(square, "border-radius")).toBe("info");
+    expect(scoreOf(square)).toBe(scoreOf(plain));
+    const w = analyzeEmail(square).find((x) => x.client === WORD && x.property === "border-radius");
+    expect(w?.message).toContain("square");
+    expect(w?.suggestion).toContain("VML");
   });
 
   test("background image, position, repeat and origin clear when a v:fill covers that container", () => {
@@ -295,11 +293,12 @@ describe("intent score", () => {
     const card = page(`<div style="border-radius:8px">${roundrect}<p>Card</p></div>`);
     const both = page(`<a style="border-radius:6px">${roundrect}</a><div style="border-radius:8px">Card</div>`);
     expect(severityOf(button, "border-radius")).toBe("info");
-    expect(severityOf(card, "border-radius")).toBe("warning");
+    // Both are info now; the message says which one a roundrect carries.
+    expect(severityOf(card, "border-radius")).toBe("info");
     const found = analyzeEmail(both).filter((w) => w.client === WORD && w.property === "border-radius");
-    expect(found.find((w) => w.selector === "a")?.severity).toBe("info");
-    expect(found.find((w) => w.selector === "div")?.severity).toBe("warning");
-    expect(scoreOf(both)).toBe(scoreOf(page(`<a>${roundrect}</a><div>Card</div>`)) - 3);
+    expect(found.find((w) => w.selector === "a")?.message).not.toContain("square");
+    expect(found.find((w) => w.selector === "div")?.message).toContain("square");
+    expect(scoreOf(both)).toBe(scoreOf(page(`<a>${roundrect}</a><div>Card</div>`)));
   });
 
   test("a bare v:rect does not clear a background, and a shorthand url counts", () => {

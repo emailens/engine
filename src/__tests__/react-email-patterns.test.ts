@@ -90,7 +90,7 @@ import { AI_FIX_SYSTEM_PROMPT } from "../ai-fix";
 describe("advice follows the element", () => {
   const advice = (body: string, property: string) =>
     analyzeEmail(wrap(body)).find(
-      (w) => w.client === "outlook-windows-legacy" && w.property === property && w.severity !== "info",
+      (w) => w.client === "outlook-windows-legacy" && w.property === property,
     );
 
   test("a rounded picture is told to use v:imagedata, not a fill or a button", () => {
@@ -132,7 +132,8 @@ describe("Outlook Classic rules reach every fix prompt", () => {
   });
 
   test("in the fix prompt the MCP returns, when Outlook Classic has findings", () => {
-    const html = wrap('<table style="border-radius:10px;background:#eee"><tr><td>x</td></tr></table>');
+    // border-radius alone is info since 0.16.4, so use a finding that still scores.
+    const html = wrap('<a href="https://x.dev" style="padding:12px 24px">Go</a>');
     const prompt = generateFixPrompt({ originalHtml: html, warnings: analyzeEmail(html), scores: {}, scope: "all", format: "html" });
     expect(prompt).toContain("## Outlook Classic rules");
   });

@@ -27,7 +27,7 @@ import { extractCssVariables, resolveCssValue } from "./css-variables";
 import { MAX_HTML_SIZE, MAX_WARNING_LOCATIONS } from "./constants";
 import { loadHtml, unwrapJsxRawHtml, type AnalysisOptions } from "./parse-html";
 import { resolveMsoBranch } from "./vml-render";
-import { applyIntent } from "./intent-score";
+import { applyIntent, SQUARE_CORNERS } from "./intent-score";
 
 /** The one client that reads conditional comments. */
 const WORD_ENGINE_CLIENT = "outlook-windows-legacy";
@@ -906,7 +906,8 @@ function withOutlookBranch(
 function withElementAdvice(warnings: CSSWarning[], framework?: Framework): CSSWarning[] {
   if (framework) return warnings;
   return warnings.map((w) => {
-    if (w.severity === "info") return w;
+    // Square corners are info, but the VML answer still belongs to them.
+    if (w.severity === "info" && w.message !== SQUARE_CORNERS) return w;
     const advice = getElementAdvice(w.property, w.client, w.selector);
     if (!advice) return w;
     // An element-level answer replaces the property-level snippet too, which

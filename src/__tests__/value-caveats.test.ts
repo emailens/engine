@@ -69,7 +69,9 @@ describe("value-aware partial support: ordinary values are silent", () => {
 
   for (const decl of ORDINARY) {
     it(`reports nothing for ${decl}`, () => {
-      expect(partialClients(decl)).toEqual([]);
+      // Outlook Classic's square-corner note is unsupported-as-info, not partial.
+      const square = decl.startsWith("border-radius") ? OUTLOOK_WORD : [];
+      expect(partialClients(decl)).toEqual(square);
     });
   }
 });
@@ -118,8 +120,9 @@ describe("value-aware partial support: the value the note is about", () => {
   });
 
   it("border-radius: only the elliptical `/` shorthand", () => {
+    // Outlook Classic squares every radius anyway, which is info (intent-score.ts).
     expect(warnedClients("border-radius: 27% 73% 70% 30% / 30% 34% 66% 70%")).toEqual(
-      sorted(OUTLOOK_WORD, YAHOO_AOL),
+      sorted(YAHOO_AOL),
     );
   });
 
@@ -330,11 +333,11 @@ describe("value-aware partial support: the gate cannot silence a client", () => 
 
 describe("value-aware partial support: nothing else moves", () => {
   it("does not touch a property a client does not support at all", () => {
-    // border-radius is unsupported in Outlook's Word engine whatever the value,
-    // and that is a warning, not partial support.
+    // border-radius is unsupported in Outlook's Word engine whatever the value.
+    // That is the square-corner fallback (intent-score.ts), not partial support.
     const outlook = inline("border-radius: 8px").filter((w) => w.property === "border-radius");
     expect(outlook.map((w) => w.client).sort()).toEqual(OUTLOOK_WORD.sort());
-    expect(outlook.every((w) => w.severity === "warning")).toBe(true);
+    expect(outlook.every((w) => /square/.test(w.message))).toBe(true);
   });
 
   it("reports every unsupported client for every gated property, benign value or not", () => {
@@ -355,7 +358,8 @@ describe("value-aware partial support: nothing else moves", () => {
     };
     for (const prop of VALUE_CAVEAT_PROPS) {
       const expected = Object.entries(CSS_SUPPORT[prop] ?? {})
-        .filter(([, level]) => level === "unsupported")
+        // Square corners are Outlook Classic's fallback: info, not a warning.
+        .filter(([client, level]) => level === "unsupported" && !(prop === "border-radius" && client === "outlook-windows-legacy"))
         .map(([client]) => client)
         .sort();
       const actual = inline(`${prop}: ${BENIGN[prop]}`)

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.16.4 - 2026-10-22
+
+A patch that completes 0.16.0: findings with a safe fallback are info. Only
+Outlook Classic scores change, and only upward.
+
+### Changed
+
+- **A `border-radius` no `v:roundrect` covers is info in Outlook Classic, not
+  a warning.** Square corners are Outlook Classic's fallback, not breakage.
+  In the coding-agent email benchmark (six models, twenty emails each, linting
+  with the MCP), four of six models cleared this warning by deleting the
+  radius, so their emails went square in every client to fix one. The finding
+  now says the corners show square there and to keep the radius; it still
+  carries the element advice (`v:roundrect` for a button, `<v:imagedata>` for
+  a picture, corner cells for a card) for where the shape matters. A radius a
+  `v:roundrect` covers stays info with the "fallback carries this" message,
+  as before.
+  - Over 463 emails (this repo's fixtures, the app's templates and the
+    benchmark), against 0.16.3: 194 `border-radius` warnings become info,
+    nothing else is added or dropped, no score goes down, mean +1.2 and at
+    most +3. The elliptical `/` shorthand still warns in Yahoo and AOL.
+  - A fix prompt for an email whose only Outlook Classic finding is a corner
+    radius no longer appends the Outlook Classic rules, since nothing there
+    needs fixing.
+
 ## 0.16.3 - 2026-10-20
 
 A patch. No API or score changes.

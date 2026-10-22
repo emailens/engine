@@ -30,6 +30,9 @@ const GMAIL = ["gmail-web", "gmail-android", "gmail-ios"];
 
 const FILL_SHAPES = new Set(["v:rect", "v:roundrect", "v:shape", "v:background", "v:group"]);
 const COVERED = "A fallback this client can see carries this.";
+/** Uncovered border-radius in Outlook Classic: info, but still carries element advice. */
+export const SQUARE_CORNERS =
+  "Outlook Classic shows these corners square. Keep the radius for every other client; add a v:roundrect only where the rounded shape matters (a pill button, a round avatar).";
 
 type Decision = "warning" | "info" | "skip";
 
@@ -131,6 +134,13 @@ function adjustOutlook(
   const wordFill = (el: AnyNode) => coveredByFill(word$, el);
 
   apply(word$, wordRules, WORD, "border-radius", hit(/border-radius\s*:/i), (el) => coveredByRoundrect(word$, el), "Outlook Classic drops this corner radius, and no v:roundrect covers it.", true);
+  // Square corners are Outlook Classic's fallback, not breakage. As a warning,
+  // agents told to fix warnings deleted the radius for every client instead.
+  next = next.map((w) =>
+    w.client === WORD && w.property === "border-radius" && w.severity === "warning"
+      ? { ...w, severity: "info" as const, message: SQUARE_CORNERS }
+      : w,
+  );
   apply(word$, wordRules, WORD, "background-image", backgroundLayer("image"), wordFill, "Outlook Classic drops this background image, and no v:fill covers it.", true);
   apply(word$, wordRules, WORD, "background-position", backgroundLayer("position"), wordFill, "Outlook Classic drops background-position, and no v:fill covers it.", true);
   apply(word$, wordRules, WORD, "background-repeat", backgroundLayer("repeat"), wordFill, "Outlook Classic drops background-repeat, and no v:fill covers it.", true);

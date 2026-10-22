@@ -343,17 +343,17 @@ u + .body .grid-layout { display: flex; width: calc(100% - 20px); }
 
   it("demonstrates compatibility score recovery when moving an unsupported property into a targeted scope", () => {
     const globalHtml = `<!DOCTYPE html><html><head><style>
-.btn { border-radius: 8px; }
+.btn { box-shadow: 0 1px 2px #000; }
 </style></head><body><div class="btn">Button</div></body></html>`;
 
     const targetedHtml = `<!DOCTYPE html><html><head><style>
-u + .body .btn { border-radius: 8px; }
+u + .body .btn { box-shadow: 0 1px 2px #000; }
 </style></head><body><div class="body"><div class="btn">Button</div></div></body></html>`;
 
     const globalScore = generateCompatibilityScore(analyzeEmail(globalHtml))["outlook-windows-legacy"].score;
     const targetedScore = generateCompatibilityScore(analyzeEmail(targetedHtml))["outlook-windows-legacy"].score;
 
-    // Outlook's score must improve because the unsupported border-radius is no longer evaluated for it
+    // Outlook's score must improve because the unsupported box-shadow is no longer evaluated for it
     expect(targetedScore).toBeGreaterThan(globalScore);
     expect(targetedScore).toBe(100); // partial <style> support is info, not a warning
   });
