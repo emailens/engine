@@ -100,10 +100,17 @@ describe("advice follows the element", () => {
     expect(w?.fix?.after).not.toContain("<v:fill");
   });
 
-  test("a rounded card is told to use corner cells when it holds VML", () => {
+  test("a rounded card is told to use corner cells, built as real Outlook draws them", () => {
     const w = advice('<table style="background:#eee;border-radius:10px"><tr><td>x</td></tr></table>', "border-radius");
     expect(w?.suggestion).toContain("corner cells");
-    expect(w?.fix?.after).toContain("qy");
+    // Real Outlook 2016 cut a v:textbox's text and drew corners off a box
+    // whose edge cell had no width (2026-10-22/23).
+    expect(w?.suggestion).not.toContain("works");
+    const after = w?.fix?.after ?? "";
+    expect(after).toContain("qy");
+    expect(after).not.toContain("v:textbox");
+    expect(after).toContain('<td width="556" height="10"');
+    expect(after.match(/<td width="10" height="10" style="font-size:0;line-height:0;mso-line-height-rule:exactly">/g)).toHaveLength(4);
   });
 
   test("padding on a table gets the move-it-to-the-cell answer, not the <a> trick", () => {
@@ -129,6 +136,13 @@ describe("Outlook Classic rules reach every fix prompt", () => {
     expect(AI_FIX_SYSTEM_PROMPT).toContain("corner cells");
     expect(AI_FIX_SYSTEM_PROMPT).toContain("HALF the shape's shorter side");
     expect(AI_FIX_SYSTEM_PROMPT).not.toContain("insert &#8203;");
+  });
+
+  test("teach what real Outlook 2016 did, not the text box it cut", () => {
+    expect(AI_FIX_SYSTEM_PROMPT).not.toContain("wrap its content in <v:roundrect");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("the edge cell W-2r");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("Never write it as * { … }");
+    expect(AI_FIX_SYSTEM_PROMPT).toContain("Word reads only the first class");
   });
 
   test("in the fix prompt the MCP returns, when Outlook Classic has findings", () => {

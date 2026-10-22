@@ -40,6 +40,24 @@ change, and only upward.
   - A fix prompt for an email whose only Outlook Classic finding is a corner
     radius no longer appends the Outlook Classic rules, since nothing there
     needs fixing.
+- **The Outlook Classic rules stop teaching three things real Outlook
+  breaks.** Found on real Outlook 2016 screenshots of fixes written from these
+  rules (Emailens AI Fix bench, 2026-10-22/23); `OUTLOOK_CLASSIC_RULES` and the
+  element advice reach AI Fix, the CLI and the MCP.
+  - A rounded container is corner cells, never content wrapped in a
+    `<v:roundrect>` with a `<v:textbox style="mso-fit-shape-to-text:true">`:
+    Outlook drew the shape at a fixed height and cut the text past it (a
+    testimonial lost its quote below the stars).
+  - Corner cells give every cell of a corner row a width attribute (the edge
+    cell W-2r) and each corner cell `font-size:0;line-height:0;
+    mso-line-height-rule:exactly`. Without the edge cell's width Outlook drew
+    the right corner partway along the box; the card example in the element
+    advice had exactly that, and fixes copied it. The example is corrected.
+  - A new font rule: one Outlook-only rule for `td, th, p, a, span, div, li,
+    h1, h2, h3` with the stack's web-safe family, never `* { … }` (which drew
+    Times New Roman), and a font class first in the element's class list,
+    because Word reads only the first class (a `class="mobile_mt-10 serif"`
+    heading lost its Georgia rule).
 
 ## 0.16.3 - 2026-10-20
 
