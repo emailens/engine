@@ -117,6 +117,26 @@ describe("Word box model", () => {
     expect(tag(out, 'id="c"')).toContain("Times New Roman");
   });
 
+  test("a rule that wins the family keeps a @font-face `*` rule from drawing Times (AI Fix real-device round, 2026-10-22)", () => {
+    // React Email's <Font>, then the Outlook-only element rule a fix adds.
+    const head =
+      `<style>@font-face{font-family:'Inter';src:url(x.woff2)} * { font-family: 'Inter', Arial, sans-serif; }</style>` +
+      `<!--[if mso]><style>td, p, a { font-family: Arial, sans-serif !important; }</style><![endif]-->`;
+    const out = word(`<p id="p">x</p><a id="a" href="#">x</a><span id="s">x</span>`, head);
+    expect(tag(out, 'id="p"')).not.toContain("Times New Roman");
+    expect(tag(out, 'id="a"')).not.toContain("Times New Roman");
+    // Nothing else names a family for a span: the face rule still wins there.
+    expect(tag(out, 'id="s"')).toContain("Times New Roman");
+  });
+
+  test("a later rule of the same weight wins the family; an earlier one does not", () => {
+    const face = `@font-face{font-family:'Inter';src:url(x.woff2)}`;
+    const after = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Inter, Arial; } p { font-family: Arial; }</style>`);
+    const before = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Arial; } p { font-family: Inter, Arial; }</style>`);
+    expect(tag(after, 'id="p"')).not.toContain("Times New Roman");
+    expect(tag(before, 'id="p"')).toContain("Times New Roman");
+  });
+
   test("an image is sized by bare-number attributes and nothing else (06 c04-c09, c21)", () => {
     const img = (attrs: string) => tag(word(`<img id="t" ${attrs} src="x.png">`), 'id="t"');
     // The attribute wins over CSS, percentage or not.

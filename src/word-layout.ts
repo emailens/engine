@@ -102,6 +102,55 @@ function topLevelRules(css: string): { selector: string; body: string }[] {
   return rules;
 }
 
+/** CSS specificity of a simple selector, as one comparable number. */
+function specificity(selector: string): number {
+  const ids = (selector.match(/#[\w-]+/g) ?? []).length;
+  const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
+  const types = (
+    selector.replace(/#[\w-]+|\.[\w-]+|\[[^\]]*\]|::?[\w-]+(?:\([^)]*\))?/g, " ").match(/(?:^|[\s+~>])[a-z][\w-]*/gi) ?? []
+  ).length;
+  return ids * 10_000 + classes * 100 + types;
+}
+
+/**
+ * The elements whose stylesheet font-family comes from a rule naming an
+ * @font-face family, once every font rule has been weighed the CSS way:
+ * `!important` first, then specificity, then the later rule. React Email's
+ * <Font> writes `* { font-family: 'Inter', Arial }` beside its @font-face; an
+ * Outlook-only `td, p, a { font-family: Arial !important }` wins over it, and
+ * a real Outlook 2016 drew those elements in Arial (AI Fix real-device round,
+ * 2026-10-22). Only the rule that wins can send Word to Times New Roman.
+ */
+function fontFaceWinners($: CheerioAPI, faces: Set<string>): Set<Element> {
+  const best = new Map<Element, { weight: number; face: boolean }>();
+  let order = 0;
+  $("style").each((_, block) => {
+    for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
+      const family = parseInlineStyle(body.replace(/!important/gi, "")).get("font-family");
+      if (family === undefined) continue;
+      const important = /font-family\s*:[^;]*!important/i.test(body);
+      const face = faces.has(firstFamily(family));
+      order++;
+      for (const one of selector.split(",")) {
+        if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
+        let matched: Element[];
+        try {
+          matched = $(one).toArray() as Element[];
+        } catch {
+          continue;
+        }
+        // Order breaks ties inside a specificity, specificity inside importance.
+        const weight = (important ? 1e12 : 0) + specificity(one.trim()) * 1e5 + order;
+        for (const el of matched) {
+          const was = best.get(el);
+          if (!was || weight > was.weight) best.set(el, { weight, face });
+        }
+      }
+    }
+  });
+  return new Set([...best].filter(([, w]) => w.face).map(([el]) => el));
+}
+
 /** Selector forms Word was measured to ignore (probe sheet 07-style-delivery, c04, c06-c09, c11, c14). */
 const IGNORED_BY_WORD = /\[|>|:first-child|:nth-child|:not\(|::?before|\.[\w-]+\.[\w-]/;
 
@@ -116,6 +165,7 @@ function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
     const sep = style.trim() === "" || /;\s*$/.test(style) ? "" : ";";
     $(el).attr("style", `${style}${sep}${declarations}`);
   };
+  const faceWins = fontFaceWinners($, faces);
   $("style").each((_, block) => {
     for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
       const props = parseInlineStyle(body.replace(/!important/gi, ""));
@@ -135,8 +185,9 @@ function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
         }
         for (const el of matched) {
           const tag = el.tagName?.toLowerCase();
-          // An inline family is the more specific one and was handled above.
-          if (timesFamily && !/font-family/i.test($(el).attr("style") ?? ""))
+          // An inline family is the more specific one and was handled above,
+          // and another rule can win the family (fontFaceWinners).
+          if (timesFamily && faceWins.has(el) && !/font-family/i.test($(el).attr("style") ?? ""))
             override(el, `font-family:${TIMES}!important`);
           // `display:none` from a class hides neither a div nor a table: a
           // div holding a table and a div holding only text were both drawn
