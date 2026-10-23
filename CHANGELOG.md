@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.16.5 - 2026-10-23
+
+A fix to the Outlook Classic preview. Scores do not change.
+
+### Fixed
+
+- **Text a winning font rule sets is no longer drawn in Times New Roman.**
+  A stylesheet rule naming an `@font-face` family sends Word to Times New
+  Roman, and the preview stamped Times on every element the rule matched,
+  even where another rule won the family. React Email's `<Font>` writes
+  `* { font-family: 'Inter', Arial }` beside its `@font-face`; an
+  Outlook-only `td, p, a { font-family: Arial, sans-serif !important }`
+  overrides it, and a real Outlook 2016 drew those elements in Arial. The
+  preview now weighs every font rule the CSS way (`!important`, then
+  specificity, then the later rule) and draws Times only where the
+  `@font-face` rule wins.
+
 ## 0.16.4 - 2026-10-22
 
 A patch that completes 0.16.0: findings with a safe fallback are info, and a
