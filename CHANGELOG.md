@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.16.6 - 2026-10-23
+
+A false positive removed. Scores change only upward, and only for emails that
+already repeat their body background.
+
+### Fixed
+
+- **A body background repeated with `!important`, or by its own rule, is no
+  longer reported lost.** `body-background` fired in 15 clients when a
+  `<style>` rule for `body` carried `!important` (the comparison kept it, so
+  `#f4f4f4 !important` never equalled a wrapper's `#f4f4f4`), or when the same
+  rule also painted the full-width wrapper, as the Outlook.com dark-mode
+  pattern `[data-ogsc] body, [data-ogsc] .wrapper { … }` does. Found in the
+  coding-agent benchmark: Gemini 3.8 had already added the wrapper and audited
+  each email about six more times on the warning; with the fix four of its
+  five emails are clean.
+
 ## 0.16.5 - 2026-10-23
 
 A fix to the Outlook Classic preview. Scores do not change.
