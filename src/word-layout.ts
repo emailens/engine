@@ -121,18 +121,23 @@ function specificity(selector: string): number {
  * a real Outlook 2016 drew those elements in Arial (AI Fix real-device round,
  * 2026-10-22). Only the rule that wins can send Word to Times New Roman.
  */
-function fontFaceWinners($: CheerioAPI, faces: Set<string>): Set<Element> {
-  const best = new Map<Element, { weight: number; face: boolean }>();
+function fontFaceWinners($: CheerioAPI, faces: Faces): Map<Element, string> {
+  const best = new Map<Element, { weight: number; family: string | null }>();
   let order = 0;
   $("style").each((_, block) => {
     for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
       const family = parseInlineStyle(body.replace(/!important/gi, "")).get("font-family");
       if (family === undefined) continue;
       const important = /font-family\s*:[^;]*!important/i.test(body);
-      const face = faces.has(firstFamily(family));
+      const drawn = wordFamily(family, faces);
       order++;
       for (const one of selector.split(",")) {
         if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
+        // Word ignores `*`: text that only `*` gives a family keeps Word's
+        // default, Times New Roman. React Email's <Font> writes
+        // `* { font-family: 'Inter', Arial }`, and on a real Outlook 2016 the
+        // text with no family of its own came out in Times (2026-10-23).
+        const family = one.trim() === "*" ? TIMES : drawn;
         let matched: Element[];
         try {
           matched = $(one).toArray() as Element[];
@@ -143,12 +148,14 @@ function fontFaceWinners($: CheerioAPI, faces: Set<string>): Set<Element> {
         const weight = (important ? 1e12 : 0) + specificity(one.trim()) * 1e5 + order;
         for (const el of matched) {
           const was = best.get(el);
-          if (!was || weight > was.weight) best.set(el, { weight, face });
+          if (!was || weight > was.weight) best.set(el, { weight, family });
         }
       }
     }
   });
-  return new Set([...best].filter(([, w]) => w.face).map(([el]) => el));
+  const out = new Map<Element, string>();
+  for (const [el, w] of best) if (w.family) out.set(el, w.family);
+  return out;
 }
 
 /** Selector forms Word was measured to ignore (probe sheet 07-style-delivery, c04, c06-c09, c11, c14). */
@@ -159,22 +166,25 @@ const IGNORED_BY_WORD = /\[|>|:first-child|:nth-child|:not\(|::?before|\.[\w-]+\
  * Adds an inline `!important` override to each matched element where Word
  * would not have honoured the property.
  */
-function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
+function overrideStylesheetRules($: CheerioAPI, faces: Faces): void {
   const override = (el: Element, declarations: string) => {
     const style = $(el).attr("style") ?? "";
     const sep = style.trim() === "" || /;\s*$/.test(style) ? "" : ";";
     $(el).attr("style", `${style}${sep}${declarations}`);
   };
-  const faceWins = fontFaceWinners($, faces);
+  const drawnBy = fontFaceWinners($, faces);
+  // The family Word draws instead, for an element no inline family covers.
+  for (const [el, family] of drawnBy)
+    if ($(el).closest("body").length && !/font-family/i.test($(el).attr("style") ?? ""))
+      override(el, `font-family:${family}!important`);
   $("style").each((_, block) => {
     for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
       const props = parseInlineStyle(body.replace(/!important/gi, ""));
       const hasPadding = PADDING.some((prop) => props.has(prop));
       const hasSize = props.has("width") || props.has("height");
       const hasBackground = props.has("background") || props.has("background-color");
-      const timesFamily = faces.has(firstFamily(props.get("font-family") ?? ""));
       const hides = props.get("display") === "none";
-      if (!hasPadding && !hasSize && !hasBackground && !timesFamily && !hides) continue;
+      if (!hasPadding && !hasSize && !hasBackground && !hides) continue;
       for (const one of selector.split(",")) {
         if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
         let matched: Element[];
@@ -185,10 +195,6 @@ function overrideStylesheetRules($: CheerioAPI, faces: Set<string>): void {
         }
         for (const el of matched) {
           const tag = el.tagName?.toLowerCase();
-          // An inline family is the more specific one and was handled above,
-          // and another rule can win the family (fontFaceWinners).
-          if (timesFamily && faceWins.has(el) && !/font-family/i.test($(el).attr("style") ?? ""))
-            override(el, `font-family:${TIMES}!important`);
           // `display:none` from a class hides neither a div nor a table: a
           // div holding a table and a div holding only text were both drawn
           // (07-style-delivery c19; 09-follow-ups c25).
@@ -271,19 +277,40 @@ export function prepareWordSource(html: string): string {
   return markHiddenCells(dropWordUnknownColors(html));
 }
 
-/** Families the email declares with @font-face. */
-function declaredFaces($: CheerioAPI): Set<string> {
-  const faces = new Set<string>();
+/** Families the email declares with @font-face, each with its mso-font-alt (null when it has none). */
+type Faces = Map<string, string | null>;
+function declaredFaces($: CheerioAPI): Faces {
+  const faces: Faces = new Map();
   $("style").each((_, block) => {
     for (const [, body] of ($(block).html() ?? "").matchAll(/@font-face\s*\{([^}]*)\}/gi)) {
-      const family = parseInlineStyle(body).get("font-family");
-      if (family) faces.add(firstFamily(family));
+      const props = parseInlineStyle(body);
+      const family = props.get("font-family");
+      const alt = props.get("mso-font-alt")?.replace(/["']/g, "").trim() || null;
+      if (family) faces.set(firstFamily(family), alt ?? faces.get(firstFamily(family)) ?? null);
     }
   });
   return faces;
 }
 const firstFamily = (value: string) => value.split(",")[0].replace(/["']|!important/gi, "").trim().toLowerCase();
 const TIMES = "'Times New Roman',serif";
+
+/**
+ * The family Word draws for a font-family value, or null when it reads the
+ * value as written. Measured on real Outlook 2016 (AI Fix real-device round,
+ * 2026-10-23), with React Email faces that declare `mso-font-alt: 'Arial'`:
+ * - a first family declared by a face draws in that face's mso-font-alt
+ *   (`Geist, Inter, Arial` came out in Arial), and in Times New Roman when
+ *   the face has none (a campaign's `'Roboto', Arial`, Outlook 2007-2016);
+ * - a value with `system-ui` in it is dropped whole, so the text falls to
+ *   Word's default, Times New Roman (`Inter, system-ui, Arial`).
+ */
+function wordFamily(value: string, faces: Faces): string | null {
+  if (/(^|,)\s*system-ui\s*(,|$)/i.test(value.replace(/!important/gi, ""))) return TIMES;
+  const first = firstFamily(value);
+  if (!faces.has(first)) return null;
+  const alt = faces.get(first);
+  return alt ? `'${alt}'` : TIMES;
+}
 
 /** A border that draws: a width other than 0 and a style other than none. */
 function hasBorder(props: Map<string, string>): boolean {
@@ -303,6 +330,15 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const props = parseInlineStyle($(el).attr("style") || "");
     const before = serializeStyle(props);
 
+    // A padding or margin in rem is dropped: Word does not read the unit.
+    // Every gap React Email's Tailwind wrote in rem (padding-top:5rem on a
+    // section cell, margin-top:4rem on a card) was gone on real Outlook 2016
+    // and 2019, while its px paddings stayed (studio-abandoned-cart and
+    // barebone-welcome, AI Fix real-device rounds, 2026-10-22).
+    for (const prop of [...PADDING, ...MARGIN]) {
+      if (/\d(?:\.\d+)?rem\b/i.test(props.get(prop) ?? "")) props.delete(prop);
+    }
+
     // Padding is honoured on table cells and nowhere else that was tried:
     // div, p, span and a all rendered as if it were absent (01 c01-c08, c26-c28).
     // The exception is a bordered div or p: Word draws a paragraph border and
@@ -314,6 +350,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if ((tag === "div" || tag === "p" || tag === "span" || tag === "a") && !bordered) {
       for (const prop of PADDING) props.delete(prop);
     }
+
+    // An intrinsic width keyword is not read: the width attribute, if any,
+    // sizes the box. React Email's social row is `<table width="100%"
+    // style="width:fit-content">`: compact in a browser, the full 600px
+    // column on real Outlook 2016 (2026-10-23).
+    if (/^(?:fit|max|min)-content$/i.test((props.get("width") ?? "").replace(/!important/i, "").trim())) props.delete("width");
 
     if (tag === "div" || tag === "span") {
       // A width or height on a div or span is ignored: the box is as wide as
@@ -349,7 +391,8 @@ export function applyWordBoxModel($: CheerioAPI): void {
     // simulated client stands for all five, and it shows the majority, which
     // is also the outcome an author most needs to see.
     const family = props.get("font-family");
-    if (family !== undefined && faces.has(firstFamily(family))) props.set("font-family", TIMES);
+    const drawn = family === undefined ? null : wordFamily(family, faces);
+    if (drawn) props.set("font-family", drawn);
 
     // `mso-line-height-alt` replaces the line-height, as mso-padding-alt does
     // the padding. A real campaign set `line-height:1.50;
@@ -529,6 +572,27 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // declares itself still wins. Other headings were not measured.
   // After the inline pass, which would otherwise delete the overrides it adds.
   overrideStylesheetRules($, faces);
+
+  // A table cell starts left-aligned: the alignment of the cell around its
+  // table does not reach in, as a browser carries text-align down. On real
+  // Outlook 2016 and 2019 (AI Fix real-device round, 2026-10-23), text
+  // centred only by an outer `<td align="center" style="text-align:center">`
+  // came out on the left inside the nested table's cell, while text with
+  // its own text-align stayed centred. A cell with an align, a text-align of
+  // its own or a class (a class rule may set it) is left as written, and so
+  // is a cell whose own row or table sets the alignment.
+  $("body td").each((_, node) => {
+    const cell = $(node);
+    if (cell.attr("align") !== undefined || cell.attr("class")) return;
+    const style = cell.attr("style") ?? "";
+    if (/text-align\s*:/i.test(style)) return;
+    // Its own row or table does reach it: a table styled text-align:center
+    // centred its cells' text on the same devices (the testimonial card).
+    const row = cell.closest("tr");
+    const table = cell.closest("table");
+    if (row.attr("align") !== undefined || [row, table].some((n) => /text-align\s*:/i.test(n.attr("style") ?? ""))) return;
+    cell.attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}text-align:left`);
+  });
 
   const reset = "<style>p,h2{margin:0}</style>";
   const head = $("head");

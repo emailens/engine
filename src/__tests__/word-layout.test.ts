@@ -129,6 +129,61 @@ describe("Word box model", () => {
     expect(tag(out, 'id="s"')).toContain("Times New Roman");
   });
 
+  test("a face's mso-font-alt is what Word draws for it (AI Fix real-device round, 2026-10-23)", () => {
+    // React Email's <Font>: studio-abandoned-cart on a real Outlook 2016.
+    const face = `<style>@font-face{font-family:'Geist';mso-font-alt:'Arial';src:url(x.woff2)}</style>`;
+    const out = word(`<p id="p" style="font-family:Geist,Inter,Arial,sans-serif">x</p>`, face);
+    expect(tag(out, 'id="p"')).toContain("'Arial'");
+    expect(tag(out, 'id="p"')).not.toContain("Times New Roman");
+  });
+
+  test("a stack with system-ui is dropped whole, to Times (barebone-welcome, real Outlook 2016)", () => {
+    const face = `<style>@font-face{font-family:'Inter';mso-font-alt:'Arial';src:url(x.woff2)}</style>`;
+    const out = word(`<h1 id="h" style="font-family:Inter,system-ui,Arial,sans-serif">x</h1>`, face);
+    expect(tag(out, 'id="h"')).toContain("Times New Roman");
+  });
+
+  test("Word ignores `*`: text only it gives a family is in Times, whatever the face's alt", () => {
+    const head = `<style>@font-face{font-family:'Inter';mso-font-alt:'Arial';src:url(x.woff2)} * { font-family: 'Inter', Arial, sans-serif; }</style>`;
+    const out = word(`<p id="p">x</p><p id="q" style="font-family:Inter,Arial">x</p>`, head);
+    expect(tag(out, 'id="p"')).toContain("Times New Roman");
+    // Its own family wins over `*`: the face's alt.
+    expect(tag(out, 'id="q"')).toContain("'Arial'");
+    // Nothing in the head is touched.
+    expect(out).not.toMatch(/<meta[^>]*font-family/);
+  });
+
+  test("padding and margin in rem are dropped; px stay (real Outlook 2016 and 2019, 2026-10-22)", () => {
+    const out = word(
+      `<table><tr><td id="a" style="padding-top:5rem;padding-left:32px">x</td></tr></table><table id="b" style="margin-top:4rem;margin-bottom:12px"><tr><td>x</td></tr></table>`,
+    );
+    expect(tag(out, 'id="a"')).not.toContain("5rem");
+    expect(tag(out, 'id="a"')).toMatch(/padding-left:\s*32px/);
+    expect(tag(out, 'id="b"')).not.toContain("4rem");
+    expect(tag(out, 'id="b"')).toMatch(/margin-bottom:\s*12px/);
+  });
+
+  test("a nested table's cell starts left: the outer cell's centring does not reach in (real Outlook 2016/2019)", () => {
+    const out = word(
+      `<table><tr><td align="center" style="text-align:center"><table><tr><td id="inner"><p>x</p></td></tr></table><p id="own" style="text-align:center">y</p></td></tr></table>`,
+    );
+    expect(tag(out, 'id="inner"')).toMatch(/text-align:\s*left/);
+    // The outer cell keeps its own alignment; text in it is still centred.
+    expect(tag(out, "align=\"center\"")).toMatch(/text-align:\s*center/);
+    expect(tag(out, 'id="own"')).toMatch(/text-align:\s*center/);
+  });
+
+  test("a table styled text-align:center still centres its own cells (the testimonial card, real Outlook 2016)", () => {
+    const out = word(`<table style="text-align:center"><tr><td id="c"><p>x</p></td></tr></table>`);
+    expect(tag(out, 'id="c"')).not.toContain("text-align:left");
+  });
+
+  test("width:fit-content is not read: the width attribute sizes the table (real Outlook 2016)", () => {
+    const out = word(`<table id="t" width="100%" style="width:fit-content;margin:0 auto"><tr><td>x</td></tr></table>`);
+    expect(tag(out, 'id="t"')).not.toContain("fit-content");
+    expect(tag(out, 'id="t"')).toContain('width="100%"');
+  });
+
   test("a later rule of the same weight wins the family; an earlier one does not", () => {
     const face = `@font-face{font-family:'Inter';src:url(x.woff2)}`;
     const after = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Inter, Arial; } p { font-family: Arial; }</style>`);

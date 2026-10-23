@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.16.7 - 2026-10-23
+
+The Outlook Classic preview, corrected against real Outlook 2016 and 2019
+screenshots of two React Email templates and an AI Fix. Scores do not change.
+
+### Fixed
+
+- **Padding and margin in `rem` are dropped.** Word does not read the unit:
+  every gap Tailwind wrote in rem was gone on real Outlook, while px stayed.
+- **A face's `mso-font-alt` is the font drawn.** `Geist, Inter, Arial` with
+  React Email's `@font-face { mso-font-alt: 'Arial' }` came out in Arial, not
+  Times New Roman. A face with no alt still draws Times.
+- **A font stack with `system-ui` is dropped whole**, so the text is in
+  Word's default, Times New Roman.
+- **Word ignores the `*` selector.** Text that only `* { font-family }`
+  styles is in Times New Roman.
+- **A table cell starts left-aligned.** An outer cell's centring does not
+  reach into a nested table; the cell's own `align` or `text-align`, or its
+  own row or table's alignment, still does.
+- **`width: fit-content` (and `max-content`, `min-content`) is not read**:
+  the `width` attribute sizes the box, so React Email's social row spreads
+  across the column as it does in Outlook.
+
 ## 0.16.6 - 2026-10-23
 
 A false positive removed. Scores change only upward, and only for emails that
