@@ -78,29 +78,31 @@ Every finding may include source positions, so a result can be pointed at, annot
 
 ## Supported Email Clients
 
+Each client links to its support page on emailens.dev, built from this package's data. Every feature across all 21 clients: [emailens.dev/email-css](https://emailens.dev/email-css).
+
 | Client | ID |
 |---|---|
-| Gmail | `gmail-web` |
-| Gmail Android | `gmail-android` |
-| Gmail iOS | `gmail-ios` |
-| Outlook 365 | `outlook-web` |
-| Outlook (New) | `outlook-windows` |
-| Outlook Classic | `outlook-windows-legacy` |
-| Outlook iOS | `outlook-ios` |
-| Outlook Android | `outlook-android` |
-| Outlook for Mac | `outlook-macos` |
-| Apple Mail | `apple-mail-macos` |
-| Apple Mail iOS | `apple-mail-ios` |
-| Yahoo Mail | `yahoo-mail` |
-| Yahoo Mail Android | `yahoo-mail-android` |
-| Yahoo Mail iOS | `yahoo-mail-ios` |
-| Samsung Mail | `samsung-mail` |
-| Thunderbird | `thunderbird` |
-| HEY Mail | `hey-mail` |
-| Proton Mail | `protonmail` |
-| AOL Mail | `aol` |
-| Fastmail | `fastmail` |
-| Superhuman | `superhuman` |
+| [Gmail](https://emailens.dev/email-css/clients/gmail-web) | `gmail-web` |
+| [Gmail Android](https://emailens.dev/email-css/clients/gmail-android) | `gmail-android` |
+| [Gmail iOS](https://emailens.dev/email-css/clients/gmail-ios) | `gmail-ios` |
+| [Outlook 365](https://emailens.dev/email-css/clients/outlook-web) | `outlook-web` |
+| [Outlook (New)](https://emailens.dev/email-css/clients/outlook-windows) | `outlook-windows` |
+| [Outlook Classic](https://emailens.dev/email-css/clients/outlook-windows-legacy) | `outlook-windows-legacy` |
+| [Outlook iOS](https://emailens.dev/email-css/clients/outlook-ios) | `outlook-ios` |
+| [Outlook Android](https://emailens.dev/email-css/clients/outlook-android) | `outlook-android` |
+| [Outlook for Mac](https://emailens.dev/email-css/clients/outlook-macos) | `outlook-macos` |
+| [Apple Mail](https://emailens.dev/email-css/clients/apple-mail-macos) | `apple-mail-macos` |
+| [Apple Mail iOS](https://emailens.dev/email-css/clients/apple-mail-ios) | `apple-mail-ios` |
+| [Yahoo Mail](https://emailens.dev/email-css/clients/yahoo-mail) | `yahoo-mail` |
+| [Yahoo Mail Android](https://emailens.dev/email-css/clients/yahoo-mail-android) | `yahoo-mail-android` |
+| [Yahoo Mail iOS](https://emailens.dev/email-css/clients/yahoo-mail-ios) | `yahoo-mail-ios` |
+| [Samsung Mail](https://emailens.dev/email-css/clients/samsung-mail) | `samsung-mail` |
+| [Thunderbird](https://emailens.dev/email-css/clients/thunderbird) | `thunderbird` |
+| [HEY Mail](https://emailens.dev/email-css/clients/hey-mail) | `hey-mail` |
+| [Proton Mail](https://emailens.dev/email-css/clients/protonmail) | `protonmail` |
+| [AOL Mail](https://emailens.dev/email-css/clients/aol) | `aol` |
+| [Fastmail](https://emailens.dev/email-css/clients/fastmail) | `fastmail` |
+| [Superhuman](https://emailens.dev/email-css/clients/superhuman) | `superhuman` |
 
 ## Ecosystem
 
