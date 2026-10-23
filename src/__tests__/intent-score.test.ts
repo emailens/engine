@@ -192,6 +192,18 @@ describe("intent score", () => {
     expect(scoreOf(fixed, GMAIL)).toBe(scoreOf(wrapper, GMAIL));
   });
 
+  test("a body background repeated with !important, or by the same rule's wrapper, is not lost", () => {
+    // Both shapes came from Gemini 3.8, which audited each email six times
+    // without clearing a warning it had already fixed.
+    const withCss = (css: string) =>
+      page(`<table width="100%" class="wrap" bgcolor="#f4f4f4" style="background-color:#f4f4f4"><tr><td>Hi</td></tr></table>`)
+        .replace("<body>", `<style>${css}</style><body bgcolor="#f4f4f4" style="background-color:#f4f4f4">`);
+    expect(severityOf(withCss("body { background-color:#f4f4f4 !important }"), "body-background", GMAIL)).toBeUndefined();
+    expect(severityOf(withCss("[data-ogsc] body, [data-ogsc] .wrap { background-color:#111 !important }"), "body-background", GMAIL)).toBeUndefined();
+    // A rule for body alone, with a colour no wrapper carries, is still lost.
+    expect(severityOf(withCss("body { background-color:#111 }"), "body-background", GMAIL)).toBe("warning");
+  });
+
   test("box-shadow still counts, and Yahoo elliptical radius is a warning", () => {
     const shadow = page(`<div style="box-shadow:0 2px 8px #000;border:1px solid #ccc">Hi</div>`);
     const border = page(`<div style="border:1px solid #ccc">Hi</div>`);

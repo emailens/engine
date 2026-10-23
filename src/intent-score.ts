@@ -580,12 +580,27 @@ function bodyBackgroundLost($: CheerioAPI): boolean {
       if (at === -1) continue;
       const selector = rule.slice(0, at);
       if (!/(?:^|[\s,])body\b/i.test(selector)) continue;
+      if (ruleCoversWrapper($, selector)) continue;
       declared.push(...backgroundsOf(rule.slice(at + 1)));
     }
   });
   const values = [...new Set(declared.map(normalise).filter(Boolean))];
   if (values.length === 0) return false;
   return values.some((value) => !wrapperRepeats($, value));
+}
+
+/**
+ * Does this rule also paint a full-width wrapper? `body, .wrapper { background: … }`
+ * repeats the background itself. Only the rightmost compound of each part is
+ * matched: `[data-ogsc] .wrapper` targets an attribute the client adds, which
+ * the source never has.
+ */
+function ruleCoversWrapper($: CheerioAPI, selector: string): boolean {
+  return selector.split(",").some((part) => {
+    if (/(?:^|\s)body\b/i.test(part)) return false;
+    const subject = part.trim().split(/[\s>+~]+/).pop() ?? "";
+    return select($, subject).some((el) => fullWidth($, el));
+  });
 }
 
 function backgroundsOf(style: string): string[] {
@@ -622,7 +637,7 @@ function fullWidth($: CheerioAPI, el: AnyNode): boolean {
 }
 
 function normalise(value: string): string {
-  return value.trim().toLowerCase().replace(/['"]/g, "").replace(/\s+/g, "");
+  return value.trim().toLowerCase().replace(/!important/g, "").replace(/['"]/g, "").replace(/\s+/g, "");
 }
 
 function appendKillers(
