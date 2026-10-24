@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.16.8 - 2026-10-25
+
+Gmail on the web follows caniemail again. Scores for Gmail web can go down for
+emails that use the CSS below.
+
+### Fixed
+
+- **Gmail web strips box-shadow, text-shadow, visibility, align-items, gap,
+  grid and animation again**, and removes `@keyframes` from `<style>` blocks.
+  The 0.14.8 overrides came from one provider's Gmail render, which skips
+  Gmail's sanitiser: caniemail's own tests, sent to two Google accounts, lost
+  this CSS in real Gmail web in Chrome and in Firefox. The overrides are gone
+  and the support table shows caniemail's cells. The inline linear-gradient
+  observation, from a separate real Gmail inbox, stays.
+
 ## 0.16.7 - 2026-10-23
 
 The Outlook Classic preview, corrected against real Outlook 2016 and 2019
