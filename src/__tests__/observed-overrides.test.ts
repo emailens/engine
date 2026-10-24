@@ -38,9 +38,16 @@ describe("Gmail webmail keeps what it rendered", () => {
   });
 
   test("the support table says so, with its source", () => {
-    for (const key of ["box-shadow", "text-shadow", "visibility", "align-items", "gap", "animation"]) {
-      expect(CSS_SUPPORT[key]["gmail-web"]).toBe("supported");
-      expect(CSS_SUPPORT_NOTES[key]?.["gmail-web"]?.[0]).toStartWith("Observed 2026-10-14");
+    expect(CSS_SUPPORT.gap["gmail-web"]).toBe("supported");
+    expect(CSS_SUPPORT_NOTES.gap?.["gmail-web"]?.[0]).toStartWith("Observed 2026-10-14");
+  });
+
+  // Gmail web in Chrome stripped these on two Google accounts (2026-10-24)
+  // while Gmail web in Firefox drew them, so they warn as partial.
+  test("what Chrome stripped is partial, with both observations", () => {
+    for (const key of ["box-shadow", "text-shadow", "visibility", "align-items", "animation"]) {
+      expect(CSS_SUPPORT[key]["gmail-web"]).toBe("partial");
+      expect(CSS_SUPPORT_NOTES[key]?.["gmail-web"]?.[0]).toContain("stripped in Gmail web in Chrome");
     }
   });
 });

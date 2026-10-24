@@ -2,7 +2,7 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix, auto-generated from caniemail.com.
- * Last synced: 2026-10-14
+ * Last synced: 2026-10-24
  * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
  * 298 features and 14 image formats across 21 email clients.
@@ -1940,7 +1940,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "align-items": {
-    "gmail-web": "supported",
+    "gmail-web": "partial",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "supported",
@@ -2009,7 +2009,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "unknown",
   },
   "animation": {
-    "gmail-web": "supported",
+    "gmail-web": "partial",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "unsupported",
@@ -2561,7 +2561,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "unknown",
   },
   "box-shadow": {
-    "gmail-web": "supported",
+    "gmail-web": "partial",
     "gmail-android": "partial",
     "gmail-ios": "partial",
     "outlook-web": "supported",
@@ -5183,7 +5183,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "text-shadow": {
-    "gmail-web": "supported",
+    "gmail-web": "partial",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "supported",
@@ -5781,7 +5781,7 @@ const CSS_SUPPORT_TABLE = {
     "superhuman": "supported",
   },
   "visibility": {
-    "gmail-web": "supported",
+    "gmail-web": "partial",
     "gmail-android": "unsupported",
     "gmail-ios": "unsupported",
     "outlook-web": "supported",
@@ -7247,7 +7247,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "samsung-mail": ["Supports `accent-color` but rendering depends on browser support."],
   },
   "align-items": {
-    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): align-items:center centred a short flex item against a tall one."],
+    "gmail-web": ["Observed 2026-10-24 (Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)): align-items rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account."],
   },
   "amp4email": {
     "gmail-web": ["Supported on compatible browsers. Refer to ‘supported platforms’ links listed below under resources."],
@@ -7265,7 +7265,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "samsung-mail": ["Buggy. Clicking an anchor link does nothing."],
   },
   "animation": {
-    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): An animation defined with @keyframes in a <style> block ran to its end state."],
+    "gmail-web": ["Observed 2026-10-24 (Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)): An animation defined with @keyframes in a <style> block rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account."],
     "superhuman": ["Partial. Blink can run animations; Superhuman may honor OS reduced-motion and disable them."],
   },
   "aspect-ratio": {
@@ -7344,7 +7344,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "samsung-mail": ["Partial. Percentages values are not supported."],
   },
   "box-shadow": {
-    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): A box-shadow on a table cell rendered with its offset and colour."],
+    "gmail-web": ["Observed 2026-10-24 (Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)): box-shadow rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account."],
     "gmail-android": ["Partial. Only supported with non Google accounts."],
     "gmail-ios": ["Partial. Only supported with non Google accounts."],
     "yahoo-mail": ["Observed 2026-10-14 (Emailens real-device probe, Yahoo Mail (Chrome)): A box-shadow on a table cell rendered with its offset and colour."],
@@ -7784,7 +7784,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "gmail-ios": ["Partial. Not supported with non Google accounts."],
   },
   "text-shadow": {
-    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): A red text-shadow rendered behind bold text."],
+    "gmail-web": ["Observed 2026-10-24 (Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)): text-shadow rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account."],
     "outlook-web": ["Observed 2026-10-14 (Emailens real-device probe, Outlook.com (Chrome)): A red text-shadow rendered behind bold text."],
   },
   "text-transform": {
@@ -7838,7 +7838,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "aol": ["Property is stripped from style tag"],
   },
   "visibility": {
-    "gmail-web": ["Observed 2026-10-14 (Emailens real-device probe, Gmail web (Firefox, Google account)): visibility:hidden hid the word and kept its space."],
+    "gmail-web": ["Observed 2026-10-24 (Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)): visibility:hidden rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account."],
     "outlook-ios": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "outlook-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "apple-mail-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
@@ -8529,9 +8529,6 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "[height]",
   "<wbr>",
   "<body>",
-  // Progressive enhancement: the clients without them fall back to the inline
-  // light, desktop layout, which is the design. Only Outlook Classic and
-  // Thunderbird lack @media, both desktop, so the desktop layout is right there.
   "@media",
   "@media prefers-color-scheme",
   "color-scheme",

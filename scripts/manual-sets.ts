@@ -133,4 +133,10 @@ export const GRACEFUL_FEATURES = [
   // only edit that clears it is deleting that fallback, which is worse. Found
   // by scoring twelve transactional templates: `<body> x6` on every one.
   "<body>",
+  // Progressive enhancement: the clients without them fall back to the inline
+  // light, desktop layout, which is the design. Only Outlook Classic and
+  // Thunderbird lack @media, both desktop, so the desktop layout is right there.
+  "@media",
+  "@media prefers-color-scheme",
+  "color-scheme",
 ];

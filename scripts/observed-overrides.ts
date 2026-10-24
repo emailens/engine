@@ -35,9 +35,22 @@ const seen = (level: SupportLevel, source: string, note: string): Observation =>
   note,
 });
 
+// The 2026-10-14 Gmail rows came from one rendering path, Gmail web in
+// Firefox. On 2026-10-24 caniemail's own test files, sent unchanged, were
+// stripped of the same CSS by Gmail web in Chrome on two Google accounts,
+// while the Firefox path rendered them again. Until the cause is known
+// (browser or account), these cells are partial, not supported.
+const SPLIT = "Emailens real-device probe (Gmail web, Firefox) and Gmail web in Chrome (two Google accounts)";
+const split = (what: string): Observation => ({
+  level: "partial",
+  observed: "2026-10-24",
+  source: SPLIT,
+  note: `${what} rendered in Gmail web in Firefox (2026-10-14 and 2026-10-24) but was stripped in Gmail web in Chrome on two Google accounts (2026-10-24), so support depends on the browser or the account.`,
+});
+
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
   "box-shadow": {
-    "gmail-web": seen("supported", GMAIL, "A box-shadow on a table cell rendered with its offset and colour."),
+    "gmail-web": split("box-shadow"),
     "yahoo-mail": seen(
       "supported",
       "Emailens real-device probe, Yahoo Mail (Chrome)",
@@ -45,7 +58,7 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
     ),
   },
   "text-shadow": {
-    "gmail-web": seen("supported", GMAIL, "A red text-shadow rendered behind bold text."),
+    "gmail-web": split("text-shadow"),
     "outlook-web": seen(
       "supported",
       "Emailens real-device probe, Outlook.com (Chrome)",
@@ -53,10 +66,10 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
     ),
   },
   visibility: {
-    "gmail-web": seen("supported", GMAIL, "visibility:hidden hid the word and kept its space."),
+    "gmail-web": split("visibility:hidden"),
   },
   "align-items": {
-    "gmail-web": seen("supported", GMAIL, "align-items:center centred a short flex item against a tall one."),
+    "gmail-web": split("align-items"),
   },
   "display:grid": {
     "gmail-web": seen("supported", GMAIL, "A three-column grid rendered as three boxes in a row, gaps included."),
@@ -65,11 +78,7 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
     "gmail-web": seen("supported", GMAIL, "gap:8px spaced flex and grid items."),
   },
   animation: {
-    "gmail-web": seen(
-      "supported",
-      GMAIL,
-      "An animation defined with @keyframes in a <style> block ran to its end state.",
-    ),
+    "gmail-web": split("An animation defined with @keyframes in a <style> block"),
   },
   "text-decoration": {
     "apple-mail-macos": seen(
