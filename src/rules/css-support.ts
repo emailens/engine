@@ -8524,6 +8524,8 @@ export const GRACEFUL_FEATURES: ReadonlySet<string> = new Set<FeatureKey>([
   "@media",
   "@media prefers-color-scheme",
   "color-scheme",
+  ":hover",
+  "transition",
 ]);
 
 /** CSS properties that Outlook Word engine ignores */

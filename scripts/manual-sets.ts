@@ -139,4 +139,10 @@ export const GRACEFUL_FEATURES = [
   "@media",
   "@media prefers-color-scheme",
   "color-scheme",
+  // Interaction-only, same reasoning: a client without them draws the email
+  // exactly as written and only loses the hover or the easing. Cerberus, the
+  // Outlook reference template, ships both, and as warnings they cost it 15
+  // points in Outlook Classic for nothing a reader there can see.
+  ":hover",
+  "transition",
 ];

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { analyzeEmail, generateCompatibilityScore } from "../analyze";
 import { auditEmail } from "../audit";
-import { CSS_SUPPORT, CSS_SUPPORT_NOTES } from "../rules/css-support";
+import { CSS_SUPPORT, CSS_SUPPORT_NOTES, GRACEFUL_FEATURES } from "../rules/css-support";
 import { caveatApplies, VALUE_CAVEAT_PROPS } from "../rules/value-caveats";
 import type { CSSWarning } from "../types";
 
@@ -358,8 +358,9 @@ describe("value-aware partial support: nothing else moves", () => {
     };
     for (const prop of VALUE_CAVEAT_PROPS) {
       const expected = Object.entries(CSS_SUPPORT[prop] ?? {})
-        // Square corners are Outlook Classic's fallback: info, not a warning.
-        .filter(([client, level]) => level === "unsupported" && !(prop === "border-radius" && client === "outlook-windows-legacy"))
+        // Square corners are Outlook Classic's fallback, and a graceful
+        // feature (transition) is ignored everywhere: info, not a warning.
+        .filter(([client, level]) => level === "unsupported" && !GRACEFUL_FEATURES.has(prop) && !(prop === "border-radius" && client === "outlook-windows-legacy"))
         .map(([client]) => client)
         .sort();
       const actual = inline(`${prop}: ${BENIGN[prop]}`)
