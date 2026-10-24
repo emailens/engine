@@ -147,6 +147,7 @@ function adjustOutlook(
   apply(word$, wordRules, WORD, "background-origin", backgroundLayer("origin"), wordFill, "Outlook Classic drops background-origin, and no v:fill covers it.", true);
   apply(word$, wordRules, WORD, "linear-gradient", hit(/linear-gradient\s*\(/i), wordFill, "Outlook Classic drops this linear-gradient, and no v:fill covers it.", true);
   apply(word$, wordRules, WORD, "max-width", hit(/max-width\s*:/i), (el, style) => maxWidthCovered(word$, el, style), "Outlook Classic only honours max-width on a table. Wrap the element in a table with a fixed width.", true);
+  apply(word$, wordRules, WORD, "min-width", hit(/min-width\s*:/i), (el, style) => minWidthCovered(word$, el, style), "Outlook Classic ignores min-width. Give the box a width, or put it in a cell with one.", true);
   apply(word$, wordRules, WORD, "padding", hit(/(?:^|[^-])padding(?:-(?:top|right|bottom|left))?\s*:/i), (el) => paddingCovered(word$, el, true), "Outlook Classic drops this padding. Put it on a table cell, or set mso-padding-alt on one.", true);
   apply(word$, wordRules, WORD, "float", hit(/float\s*:/i), never, "Outlook Classic drops this float. The MSO branch needs a table with align.", true);
   apply(word$, wordRules, WORD, "display:flex", hit(/display\s*:\s*(?:inline-)?flex\b/i), never, "Outlook Classic receives this flex box. The MSO branch needs a table.", true);
@@ -412,11 +413,36 @@ function shapePaints($: CheerioAPI, el: AnyNode): boolean {
   return $(el).find("*").toArray().some((node) => tagName(node) === "v:fill");
 }
 
+/**
+ * Word ignores max-width, so the width has to come from somewhere it reads.
+ * $ is the MSO branch, so a ghost table from an `[if mso]` comment is a real
+ * element here. Covered when the box is a table, an image with a width
+ * attribute (Word sizes it from that), or when a table or cell of the same
+ * width wraps it (a hybrid column's ghost `<td width>`) or is its first child
+ * (Cerberus's container, which opens the ghost table inside the div).
+ */
 function maxWidthCovered($: CheerioAPI, el: AnyNode, style: string): boolean {
-  if (tagName(el) === "table") return true;
+  const tag = tagName(el);
+  if (tag === "table") return true;
+  if (tag === "img" && pxLength($(el).attr("width") ?? "") !== null) return true;
   const want = pxLength(/max-width\s*:\s*([^;]+)/i.exec(style)?.[1] ?? "");
   if (want === null) return false;
-  return $(el).parents("table").toArray().some((table) => pxLength($(table).attr("width") ?? "") === want);
+  const sized = (node: AnyNode) => pxLength($(node).attr("width") ?? "") === want;
+  if ($(el).parents("table, td, th").toArray().some(sized)) return true;
+  const first = $(el).children().first();
+  return first.is("table") && sized(first[0]);
+}
+
+/** A hybrid column's floor: Word ignores min-width, a ghost cell at least as wide holds it. */
+function minWidthCovered($: CheerioAPI, el: AnyNode, style: string): boolean {
+  const want = pxLength(/min-width\s*:\s*([^;]+)/i.exec(style)?.[1] ?? "");
+  if (want === null) return false;
+  const own = pxLength($(el).attr("width") ?? "");
+  if (own !== null && own >= want) return true;
+  return $(el)
+    .parents("table, td, th")
+    .toArray()
+    .some((node) => (pxLength($(node).attr("width") ?? "") ?? 0) >= want);
 }
 
 function pxLength(value: string): number | null {
