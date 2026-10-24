@@ -2,8 +2,9 @@
 
 ## 0.16.8 - 2026-10-25
 
-Gmail on the web follows caniemail again. Scores for Gmail web can go down for
-emails that use the CSS below.
+Gmail on the web follows caniemail again, and Outlook Classic stops warning
+about width fallbacks a template already has. Scores for Gmail web can go down
+for emails that use the CSS below; Outlook Classic scores can go up.
 
 ### Fixed
 
@@ -14,6 +15,14 @@ emails that use the CSS below.
   this CSS in real Gmail web in Chrome and in Firefox. The overrides are gone
   and the support table shows caniemail's cells. The inline linear-gradient
   observation, from a separate real Gmail inbox, stays.
+- **`:hover` and `transition` are info, not warnings.** A client without them
+  draws the email as written and only loses the hover or the easing, the same
+  reasoning as `@media`. Scores go up for emails that use them.
+- **Outlook Classic reads the width another way.** `max-width` is covered by an
+  image's `width` attribute, by a ghost cell of the same width around the box,
+  or by a ghost table of the same width as its first child; `min-width` is now
+  checked, and covered by a cell or table at least that wide. Over 63 popular
+  open-source templates the Outlook Classic mean goes 75.2 to 77.6.
 
 ## 0.16.7 - 2026-10-23
 
