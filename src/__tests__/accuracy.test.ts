@@ -148,11 +148,10 @@ describe("Gmail Transform Accuracy", () => {
       /(style="[^"]*display\s*:)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips box-shadow from inline styles
     tracker.check(
-      "Keeps box-shadow as written",
-      /(box-shadow\s*:)/.test(html) === /(box-shadow\s*:)/.test(source),
+      "Strips box-shadow",
+      !/(style="[^"]*box-shadow\s*:)/.test(html),
     );
 
     // Gmail strips position from inline styles
@@ -179,18 +178,16 @@ describe("Gmail Transform Accuracy", () => {
       !/(style="[^"]*transition\s*:)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips gap from inline styles
     tracker.check(
-      "Keeps gap as written",
-      /(\bgap\s*:)/.test(html) === /(\bgap\s*:)/.test(source),
+      "Strips gap",
+      !/(style="[^"]*\bgap\s*:)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips display:grid
     tracker.check(
-      "Keeps display:grid as written",
-      /(display\s*:\s*grid)/.test(html) === /(display\s*:\s*grid)/.test(source),
+      "Strips display:grid",
+      !/(style="[^"]*display\s*:\s*grid)/.test(html),
     );
 
     // An inline linear-gradient survived in a real Gmail inbox (fidelity
@@ -225,11 +222,10 @@ describe("Gmail Transform Accuracy", () => {
     // Gmail strips @font-face (was in <style> block)
     tracker.check("No @font-face rules remain", !html.includes("@font-face"));
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips box-shadow from inline styles
     tracker.check(
-      "Keeps box-shadow as written",
-      /(box-shadow\s*:)/.test(html) === /(box-shadow\s*:)/.test(source),
+      "Strips box-shadow",
+      !/(style="[^"]*box-shadow\s*:)/.test(html),
     );
 
     // An inline linear-gradient survived in a real Gmail inbox (fidelity
@@ -269,18 +265,16 @@ describe("Gmail Transform Accuracy", () => {
       /\bopacity\s*:/.test(html) === /\bopacity\s*:/.test(source),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips display:grid
     tracker.check(
-      "Keeps display:grid as written",
-      /(display\s*:\s*grid)/.test(html) === /(display\s*:\s*grid)/.test(source),
+      "Strips display:grid",
+      !/(style="[^"]*display\s*:\s*grid)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips gap from inline styles
     tracker.check(
-      "Keeps gap as written",
-      /(\bgap\s*:)/.test(html) === /(\bgap\s*:)/.test(source),
+      "Strips gap",
+      !/(style="[^"]*\bgap\s*:)/.test(html),
     );
 
     // Gmail keeps border-radius
@@ -338,25 +332,22 @@ describe("Gmail Transform Accuracy", () => {
       /(style="[^"]*display\s*:\s*flex)/.test(html) || /(style="[^"]*display\s*:flex)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips display:grid
     tracker.check(
-      "Keeps display:grid as written",
-      /(display\s*:\s*grid)/.test(html) === /(display\s*:\s*grid)/.test(source),
+      "Strips display:grid",
+      !/(style="[^"]*display\s*:\s*grid)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips gap from inline styles
     tracker.check(
-      "Keeps gap as written",
-      /(\bgap\s*:)/.test(html) === /(\bgap\s*:)/.test(source),
+      "Strips gap",
+      !/(style="[^"]*\bgap\s*:)/.test(html),
     );
 
-    // Real Gmail webmail rendered it (2026-10-14, observed-overrides.ts),
-    // so the transform must leave it as the template wrote it.
+    // Gmail strips box-shadow from inline styles
     tracker.check(
-      "Keeps box-shadow as written",
-      /(box-shadow\s*:)/.test(html) === /(box-shadow\s*:)/.test(source),
+      "Strips box-shadow",
+      !/(style="[^"]*box-shadow\s*:)/.test(html),
     );
 
     // Gmail strips transition
@@ -1111,8 +1102,7 @@ describe("Overall Accuracy Score", () => {
       tracker.check(`[Gmail/${name}] Keeps font-family`, /font-family/.test(out));
       tracker.check(`[Gmail/${name}] Keeps padding`, /padding/.test(out));
       tracker.check(`[Gmail/${name}] Keeps border-radius`, /border-radius/.test(out));
-      // Real Gmail webmail draws box-shadow (2026-10-14, observed-overrides.ts).
-      tracker.check(`[Gmail/${name}] Keeps box-shadow as written`, /(box-shadow\s*:)/.test(out) === /(box-shadow\s*:)/.test(html));
+      tracker.check(`[Gmail/${name}] Strips box-shadow`, !/(style="[^"]*box-shadow\s*:)/.test(out));
       tracker.check(`[Gmail/${name}] Strips position`, !/(style="[^"]*\bposition\s*:)/.test(out));
       tracker.check(`[Gmail/${name}] Keeps overflow as written`, /\boverflow\s*:/.test(out) === /\boverflow\s*:/.test(html));
       tracker.check(`[Gmail/${name}] Strips transition`, !/(style="[^"]*transition\s*:)/.test(out));

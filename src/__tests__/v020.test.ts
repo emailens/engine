@@ -279,8 +279,8 @@ describe("new CSS properties (v0.2.0)", () => {
     const warnings = analyzeEmail(TEXT_SHADOW_HTML);
     const tsWarnings = warnings.filter((w) => w.property === "text-shadow");
     expect(tsWarnings.length).toBeGreaterThan(0);
-    // Outlook Classic and the Gmail apps flag it, and so does gmail-web: Gmail
-    // in Firefox draws it but Gmail in Chrome strips it (2026-10-24), so partial.
+    // Outlook Classic, the Gmail apps and Gmail web all flag it: real Gmail web
+    // strips text-shadow (caniemail, retested 2026-10-24).
     expect(tsWarnings.some((w) => w.client === "gmail-web")).toBe(true);
     expect(tsWarnings.some((w) => w.client === "gmail-android")).toBe(true);
     expect(tsWarnings.some((w) => w.client === "outlook-windows-legacy")).toBe(true);

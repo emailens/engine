@@ -541,21 +541,22 @@ const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "tra
 const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
 // Real Yahoo Mail webmail drew a box-shadow (2026-10-14). The apps are unobserved.
 const YAHOO_WEB_STRIPPED = new Set([...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"));
-// Properties real Gmail webmail rendered although caniemail lists them as
-// stripped (2026-10-14, Google account, Firefox). Only gmail-web: the apps and
-// third-party accounts are unobserved and keep the caniemail set.
-const GMAIL_WEB_KEEPS = new Set(["box-shadow", "text-shadow", "visibility", "animation", "gap"]);
-const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES].filter((p) => !GMAIL_WEB_KEEPS.has(p)));
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
-    strippedProperties: GMAIL_WEB_STRIPPED,
+    // caniemail's set. A 2026-10-14 render said Gmail web kept box-shadow,
+    // text-shadow, visibility, animation, gap and grid; caniemail's own tests in
+    // real Gmail web (Chrome and Firefox, 2026-10-24) did not, and the <style>
+    // came back without its @keyframes.
+    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
     stripMode: "strip",
-    // display:grid rendered in real Gmail webmail (2026-10-14), and an inline
-    // linear-gradient survived in an independent real Gmail inbox (fidelity
-    // baseline 2026-10-13). radial-gradient is unobserved and keeps the strip.
+    stripStyleAnimations: true,
+    // An inline linear-gradient survived in an independent real Gmail inbox
+    // (fidelity baseline 2026-10-13). radial-gradient is unobserved and keeps
+    // the strip.
     valueStrips: [
+      { prop: "display", pattern: /grid/ },
       { prop: "background", pattern: /radial-gradient/ },
     ],
     inlineAndStripStyles: true,

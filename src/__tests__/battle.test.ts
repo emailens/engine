@@ -218,9 +218,8 @@ describe("pseudo-selector and pseudo-element detection", () => {
 // ============================================================================
 
 describe("GMAIL_STRIPPED_PROPERTIES consistency", () => {
-  // GMAIL_STRIPPED_PROPERTIES is caniemail's Gmail set and still drives the
-  // apps. gmail-web keeps what real Gmail webmail was seen rendering
-  // (observed-overrides.ts), so the invariant is checked on its transform.
+  // GMAIL_STRIPPED_PROPERTIES is caniemail's Gmail set and drives every Gmail
+  // client; the invariant is checked on the gmail-web transform.
   it("gmail-web never strips a property CSS_SUPPORT marks supported for it", () => {
     for (const prop of GMAIL_STRIPPED_PROPERTIES) {
       if (CSS_SUPPORT[prop]?.["gmail-web"] !== "supported") continue;

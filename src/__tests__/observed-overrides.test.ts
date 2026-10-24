@@ -12,43 +12,20 @@ const run = (clientId: string, body: string, head = "") =>
 const tag = (html: string, marker: string) => new RegExp(`<[^>]*${marker}[^>]*>`).exec(html)?.[0] ?? "";
 const ANIMATION = `<style>@keyframes ok{from{background:red}to{background:green}} .anim{animation:ok .01s forwards}</style>`;
 
-describe("Gmail webmail keeps what it rendered", () => {
-  test("box-shadow, text-shadow, visibility, gap and grid survive", () => {
-    const out = run(
-      "gmail-web",
-      `<div id="a" style="box-shadow:6px 6px 0 #d33;text-shadow:3px 3px 0 #d33;visibility:hidden"></div>` +
-        `<div id="g" style="display:grid;grid-template-columns:60px 60px;gap:8px"></div>`,
-    );
-    expect(tag(out, 'id="a"')).toContain("box-shadow");
-    expect(tag(out, 'id="a"')).toContain("text-shadow");
-    expect(tag(out, 'id="a"')).toContain("visibility");
-    expect(tag(out, 'id="g"')).toMatch(/display:\s*grid/);
-    expect(tag(out, 'id="g"')).toContain("gap");
+// The 2026-10-14 Gmail web rows were dropped on 2026-10-24: caniemail's own
+// tests were stripped of this CSS by real Gmail web in Chrome and Firefox.
+describe("Gmail webmail follows caniemail again", () => {
+  test("box-shadow is stripped and animation dropped", () => {
+    const out = run("gmail-web", `<div id="a" style="box-shadow:6px 6px 0 #d33"></div><div class="anim" id="t">x</div>`, ANIMATION);
+    expect(tag(out, 'id="a"')).not.toContain("box-shadow");
+    expect(out).not.toMatch(/animation\s*:/);
   });
 
-  test("a <style> animation is inlined, not stripped", () => {
-    const out = run("gmail-web", `<div class="anim" id="t">x</div>`, ANIMATION);
-    expect(tag(out, 'id="t"')).toMatch(/animation\s*:/);
-    expect(out).toContain("@keyframes");
-  });
-
-  test("the Gmail apps still follow caniemail", () => {
-    const out = run("gmail-android", `<div id="t" style="box-shadow:6px 6px 0 #d33"></div>`);
-    expect(tag(out, 'id="t"')).not.toContain("box-shadow");
-  });
-
-  test("the support table says so, with its source", () => {
-    expect(CSS_SUPPORT.gap["gmail-web"]).toBe("supported");
-    expect(CSS_SUPPORT_NOTES.gap?.["gmail-web"]?.[0]).toStartWith("Observed 2026-10-14");
-  });
-
-  // Gmail web in Chrome stripped these on two Google accounts (2026-10-24)
-  // while Gmail web in Firefox drew them, so they warn as partial.
-  test("what Chrome stripped is partial, with both observations", () => {
-    for (const key of ["box-shadow", "text-shadow", "visibility", "align-items", "animation"]) {
-      expect(CSS_SUPPORT[key]["gmail-web"]).toBe("partial");
-      expect(CSS_SUPPORT_NOTES[key]?.["gmail-web"]?.[0]).toContain("stripped in Gmail web in Chrome");
+  test("no Gmail web cell carries an observation", () => {
+    for (const key of ["box-shadow", "text-shadow", "visibility", "align-items", "animation", "gap", "display:grid"]) {
+      expect(CSS_SUPPORT_NOTES[key]?.["gmail-web"]?.[0] ?? "").not.toStartWith("Observed");
     }
+    expect(CSS_SUPPORT["box-shadow"]["gmail-web"]).toBe("unsupported");
   });
 });
 
