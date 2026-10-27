@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.16.9 - 2026-10-27
 
 Outlook for Mac is the current app again, not the 2016 one. Scores for Outlook
 for Mac go down for emails that use the CSS below, and its preview now loses
