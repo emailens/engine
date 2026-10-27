@@ -20,11 +20,19 @@ describe("caniemail links", () => {
 
   test("the ones with no caniemail entry get nothing rather than a guess", () => {
     // `top`, `right` and `bottom` are documented under `css-position`, and
-    // `color` and `font-family` have no entry of their own. Naming them keeps
+    // `color`, `font-family`, `flex` and `flex-basis` have no entry of their own. Naming them keeps
     // the gap deliberate: if a resync gives them pages this fails and the
     // comment gets deleted.
     const missing = Object.keys(CSS_SUPPORT).filter((key) => !(key in FEATURE_URLS));
-    expect(missing.sort()).toEqual(["bottom", "color", "font-family", "right", "top"]);
+    expect(missing.sort()).toEqual([
+      "bottom",
+      "color",
+      "flex",
+      "flex-basis",
+      "font-family",
+      "right",
+      "top",
+    ]);
     for (const key of missing) expect(featureUrl(key)).toBeUndefined();
   });
 

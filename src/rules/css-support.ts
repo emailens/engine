@@ -5,7 +5,7 @@ import type { SupportLevel } from "../types";
  * Last synced: 2026-10-27
  * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
- * 298 features and 14 image formats across 21 email clients.
+ * 300 features and 14 image formats across 21 email clients.
  *
  * Support levels:
  * - "supported": fully supported
@@ -3042,6 +3042,52 @@ const CSS_SUPPORT_TABLE = {
     "aol": "unsupported",
     "fastmail": "supported",
     "superhuman": "unknown",
+  },
+  "flex": {
+    "gmail-web": "unsupported",
+    "gmail-android": "unsupported",
+    "gmail-ios": "unsupported",
+    "outlook-web": "supported",
+    "outlook-windows": "supported",
+    "outlook-windows-legacy": "unsupported",
+    "outlook-ios": "supported",
+    "outlook-android": "supported",
+    "outlook-macos": "supported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "unsupported",
+    "yahoo-mail-android": "unsupported",
+    "yahoo-mail-ios": "unsupported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "protonmail": "supported",
+    "aol": "unsupported",
+    "fastmail": "supported",
+    "superhuman": "supported",
+  },
+  "flex-basis": {
+    "gmail-web": "unsupported",
+    "gmail-android": "unsupported",
+    "gmail-ios": "unsupported",
+    "outlook-web": "supported",
+    "outlook-windows": "supported",
+    "outlook-windows-legacy": "unsupported",
+    "outlook-ios": "supported",
+    "outlook-android": "supported",
+    "outlook-macos": "supported",
+    "apple-mail-macos": "supported",
+    "apple-mail-ios": "supported",
+    "yahoo-mail": "unsupported",
+    "yahoo-mail-android": "unsupported",
+    "yahoo-mail-ios": "unsupported",
+    "samsung-mail": "supported",
+    "thunderbird": "supported",
+    "hey-mail": "supported",
+    "protonmail": "supported",
+    "aol": "unsupported",
+    "fastmail": "supported",
+    "superhuman": "supported",
   },
   "flex-direction": {
     "gmail-web": "unsupported",
@@ -7419,6 +7465,12 @@ export const CSS_SUPPORT_NOTES: Record<
     "apple-mail-ios": ["Buggy. `width: min-content` acts as if `word-break: break-all` had been set on the element."],
     "protonmail": ["Buggy. `width: min-content` acts as if `word-break: break-all` had been set on the element."],
   },
+  "flex": {
+    "yahoo-mail": ["Observed 2026-10-27 (Emailens probe, Yahoo Mail web (Chrome), real-device run E8fVpFwwLtL8): The `flex` shorthand is dropped: an item at `flex:0 0 34%` shrank to its narrowest, breaking words letter by letter. Size flex items with `width` (and `flex-shrink:0`), or use a table."],
+  },
+  "flex-basis": {
+    "yahoo-mail": ["Observed 2026-10-27 (Emailens probe, Yahoo Mail web (Chrome), real-device run E8fVpFwwLtL8): Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held."],
+  },
   "float": {
     "gmail-android": ["Partial. Logical property values `inline-start` and `inline-end` are not supported."],
     "gmail-ios": ["Partial. Logical property values `inline-start` and `inline-end` are not supported."],
@@ -8819,6 +8871,8 @@ export const CSS_PROPERTY_FEATURES = [
   "display",
   "empty-cells",
   "filter",
+  "flex",
+  "flex-basis",
   "flex-direction",
   "flex-wrap",
   "float",

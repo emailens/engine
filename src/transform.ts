@@ -561,7 +561,14 @@ const EMPTY_SET: Set<string> = new Set();
 const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
 const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
 // Real Yahoo Mail webmail drew a box-shadow (2026-10-14). The apps are unobserved.
-const YAHOO_WEB_STRIPPED = new Set([...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"));
+// It drops the flex item sizing (`flex`, `flex-basis`) and keeps display:flex
+// and width: a 34% label column collapsed to a letter wide (2026-10-27,
+// scripts/observed-overrides.ts).
+const YAHOO_WEB_STRIPPED = new Set([
+  ...[...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"),
+  "flex",
+  "flex-basis",
+]);
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {

@@ -617,6 +617,22 @@ async function main() {
     }
   }
 
+  // Flex item properties caniemail does not track (it has display:flex,
+  // flex-direction and flex-wrap): the same engines carry them, so they start
+  // from flex-wrap's row, undated, and real observations below refine them.
+  // Without a row, the simulation kept `flex:0 0 34%` that Yahoo drops.
+  if (rows["flex-wrap"]) {
+    for (const key of ["flex", "flex-basis"]) {
+      if (rows[key]) continue;
+      rows[key] = {
+        support: { ...rows["flex-wrap"].support },
+        notes: {},
+        lastTested: "",
+      };
+      kinds[key] = "css-property";
+    }
+  }
+
   // Real-device observations win over caniemail, after every feature sharing
   // a key has been merged, so a worst-wins merge cannot undo one. The note is
   // replaced, not appended: a note explains the level beside it.

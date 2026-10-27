@@ -218,11 +218,13 @@ describe("a client tested on several platforms is graded on its worst", () => {
 describe("caniemail's own test dates ship with the data", () => {
   it("dates every feature that upstream dates, and only in ISO form", () => {
     // `color` and `font-family` are ours, not caniemail's, so they have no
-    // test date. Everything else must, or `check:freshness` under-reports.
+    // test date, nor do `flex` and `flex-basis`, which start from flex-wrap's
+    // row (sync-caniemail.ts). Everything else must, or `check:freshness`
+    // under-reports.
     const undated = [...Object.keys(CSS_SUPPORT), ...Object.keys(IMAGE_SUPPORT)]
       .filter((k) => !FEATURE_LAST_TESTED[k])
       .sort();
-    expect(undated).toEqual(["color", "font-family"]);
+    expect(undated).toEqual(["color", "flex", "flex-basis", "font-family"]);
   });
 
   it("keeps the dates inside a range a human would have typed", () => {

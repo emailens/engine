@@ -48,7 +48,29 @@ const newOutlookMac = (level: SupportLevel, note: string): Observation => ({
   note,
 });
 
+/** A flex-columns probe on Yahoo Mail web, our own seed inbox, 2026-10-27. */
+const yahooWeb = (level: SupportLevel, note: string): Observation => ({
+  level,
+  observed: "2026-10-27",
+  source: "Emailens probe, Yahoo Mail web (Chrome), real-device run E8fVpFwwLtL8",
+  note,
+});
+
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
+  // display:flex holds and so does width; the item sizing does not. A label
+  // column at `flex:0 0 34%` beside a paragraph collapsed to a letter wide.
+  flex: {
+    "yahoo-mail": yahooWeb(
+      "unsupported",
+      "The `flex` shorthand is dropped: an item at `flex:0 0 34%` shrank to its narrowest, breaking words letter by letter. Size flex items with `width` (and `flex-shrink:0`), or use a table.",
+    ),
+  },
+  "flex-basis": {
+    "yahoo-mail": yahooWeb(
+      "unsupported",
+      "Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held.",
+    ),
+  },
   // caniemail 16.80 says not supported; plain track lists are kept and the
   // functions dropped, twice over two runs.
   "grid-template-columns": {
