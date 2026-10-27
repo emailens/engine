@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.16.10 - 2026-10-27
+
+Yahoo Mail web's preview loses flex item sizing, as the real app does.
+
+### Fixed
+
+- **`flex` and `flex-basis` had no support data**, so every client was
+  simulated as keeping them. A real Yahoo Mail web capture collapsed a
+  `flex:0 0 34%` label column to a letter wide: Yahoo drops the `flex`
+  shorthand and `flex-basis` and keeps `display:flex` and `width`. Both
+  properties now start from `flex-wrap`'s row (Gmail, Yahoo and AOL
+  unsupported) with the observation on top, and Yahoo web's preview strips
+  them. Size flex items with `width` and `flex-shrink:0`, or use a table.
+
 ## 0.16.9 - 2026-10-27
 
 Outlook for Mac is the current app again, not the 2016 one. Scores for Outlook
