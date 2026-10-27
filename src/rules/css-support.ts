@@ -7466,9 +7466,11 @@ export const CSS_SUPPORT_NOTES: Record<
     "protonmail": ["Buggy. `width: min-content` acts as if `word-break: break-all` had been set on the element."],
   },
   "flex": {
+    "gmail-web": ["Observed 2026-10-28 (Emailens probe, Gmail web (Chrome), real-device run 1isFNBBaOyEo): The `flex` shorthand is dropped: an item at `flex:0 0 34%` lost its 34% and sized to its content. `width:34%` on the same item held, and so did a table."],
     "yahoo-mail": ["Observed 2026-10-27 (Emailens probe, Yahoo Mail web (Chrome), real-device run E8fVpFwwLtL8): The `flex` shorthand is dropped: an item at `flex:0 0 34%` shrank to its narrowest, breaking words letter by letter. Size flex items with `width` (and `flex-shrink:0`), or use a table."],
   },
   "flex-basis": {
+    "gmail-web": ["Observed 2026-10-28 (Emailens probe, Gmail web (Chrome), real-device run 1isFNBBaOyEo): Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held."],
     "yahoo-mail": ["Observed 2026-10-27 (Emailens probe, Yahoo Mail web (Chrome), real-device run E8fVpFwwLtL8): Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held."],
   },
   "float": {

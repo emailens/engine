@@ -570,6 +570,10 @@ const YAHOO_WEB_STRIPPED = new Set([
   "flex-basis",
 ]);
 
+// Real Gmail web drops the same flex item sizing (2026-10-28,
+// scripts/observed-overrides.ts). The apps are unobserved.
+const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES, "flex", "flex-basis"]);
+
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
@@ -577,7 +581,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // text-shadow, visibility, animation, gap and grid; caniemail's own tests in
     // real Gmail web (Chrome and Firefox, 2026-10-24) did not, and the <style>
     // came back without its @keyframes.
-    strippedProperties: GMAIL_STRIPPED_PROPERTIES,
+    strippedProperties: GMAIL_WEB_STRIPPED,
     stripMode: "strip",
     stripStyleAnimations: true,
     // An inline linear-gradient survived in an independent real Gmail inbox

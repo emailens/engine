@@ -23,3 +23,14 @@ describe("Yahoo Mail web drops flex item sizing", () => {
     );
   });
 });
+
+// Real Gmail web, 2026-10-28: the same probe, the same result.
+describe("Gmail web drops flex item sizing", () => {
+  it("strips flex and flex-basis, keeps display:flex and width", () => {
+    const out = transformForClient(html, "gmail-web").html;
+    expect(out).not.toMatch(/flex:\s*0 0 34%/);
+    expect(out).not.toMatch(/flex-basis/);
+    expect(out).toMatch(/display:\s*flex/);
+    expect(out).toMatch(/width:\s*66%/);
+  });
+});

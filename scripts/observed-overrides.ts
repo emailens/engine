@@ -56,6 +56,14 @@ const yahooWeb = (level: SupportLevel, note: string): Observation => ({
   note,
 });
 
+/** The same probe on Gmail web, our own seed inbox, 2026-10-28. */
+const gmailWeb = (level: SupportLevel, note: string): Observation => ({
+  level,
+  observed: "2026-10-28",
+  source: "Emailens probe, Gmail web (Chrome), real-device run 1isFNBBaOyEo",
+  note,
+});
+
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
   // display:flex holds and so does width; the item sizing does not. A label
   // column at `flex:0 0 34%` beside a paragraph collapsed to a letter wide.
@@ -64,9 +72,17 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
       "unsupported",
       "The `flex` shorthand is dropped: an item at `flex:0 0 34%` shrank to its narrowest, breaking words letter by letter. Size flex items with `width` (and `flex-shrink:0`), or use a table.",
     ),
+    "gmail-web": gmailWeb(
+      "unsupported",
+      "The `flex` shorthand is dropped: an item at `flex:0 0 34%` lost its 34% and sized to its content. `width:34%` on the same item held, and so did a table.",
+    ),
   },
   "flex-basis": {
     "yahoo-mail": yahooWeb(
+      "unsupported",
+      "Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held.",
+    ),
+    "gmail-web": gmailWeb(
       "unsupported",
       "Dropped, with flex-grow and flex-shrink beside it: the item sized to its content instead of 34%. `width:34%` on the same item held.",
     ),
