@@ -286,13 +286,21 @@ interface ClientTransformConfig {
   /** At-rules the client drops from <style> blocks, matched on the rule's
    *  head as written, "@media screen" or "@supports (display:block)". */
   dropAtRules?: RegExp;
-  /** Properties the client ignores in <style> blocks as well as inline,
-   *  matched on the name. strippedProperties only reaches inline styles. */
+  /** Properties the client ignores in <style> blocks and inline, matched on
+   *  the name, keeping earlier declarations (strippedProperties collapses a
+   *  style attribute to one value per property, so it cannot). */
   dropProperties?: RegExp;
-  /** Declarations the client ignores wherever they are, matched on the value.
+  /** Declarations the client ignores wherever they are, matched on
+   *  "property:value" as written ("position:relative", "width:calc(...)").
    *  Earlier declarations of the same property stay, because the real client
    *  keeps them: `width:0;width:calc(...)` renders 0 wide, not full width. */
   dropValues?: RegExp;
+  /** Nested rules the client ignores (CSS nesting), with their declarations. */
+  dropNesting?: boolean;
+  /** Elements the client removes, as a CSS selector ("picture source"). */
+  dropElements?: string;
+  /** Attributes the client removes from every element, matched on the name. */
+  dropAttributes?: RegExp;
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -678,12 +686,26 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // and [data-*] selectors fail because the attribute does not survive,
     // while [class~=], [align=] work. Until engine 0.16.9 the sync read the
     // 2016 app's results instead.
+    // Sheet 22 (coverage, 2026-10-27) found the rest, each matching caniemail
+    // 16.80: text-shadow, filter, clip-path, animation and @keyframes,
+    // :nth-of-type, nesting, logical properties and sizes, conic gradients,
+    // repeat(), hsl() and the modern colour functions, <picture> sources and
+    // srcset; position only as sticky; gap only as column-gap; and the
+    // "type selectors only" pseudo-classes (td:first-child works,
+    // a.cta:link does not).
     strippedProperties: new Set(["transition", "transform"]),
     stripMode: "strip",
-    dropSelectors: /:nth-child|:nth-last-child|:not\(|:has\(|\[data-|::?before|::?after/,
-    dropAtRules: /^@supports\b|^@media\s+(?:only\s+)?[a-z]+\s*$/i,
-    dropValues: /minmax\(|linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(/,
-    dropProperties: /^(?:transform|transition)$/,
+    stripStyleAnimations: true,
+    dropSelectors:
+      /:nth-child|:nth-last-child|:nth-of-type|:nth-last-of-type|:not\(|:has\(|\[data-|::?before|::?after|(?:[.#][\w-]+|\])(?:\[[^\]]*\])*:(?:first-child|last-child|first-of-type|last-of-type|only-child|only-of-type|link|visited|checked|hover|focus|active|target)/,
+    dropAtRules: /^@supports\b|^@media\s+(?:only\s+)?[a-z]+\s*$|^@media\b.*[<>=]/i,
+    dropValues:
+      /minmax\(|repeat\(|conic-gradient\(|linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(|\b(?:hsla?|hwb|lab|lch|oklab|oklch|color)\(|^position:\s*(?:relative|absolute|fixed)/,
+    dropProperties:
+      /^(?:transform|transition(?:-[a-z-]+)?|animation(?:-[a-z-]+)?|text-shadow|filter|clip-path|gap|row-gap|(?:padding|margin|border|inset)-(?:inline|block)(?:-[a-z-]+)?|(?:min-|max-)?(?:inline|block)-size)$/,
+    dropNesting: true,
+    dropElements: "picture source",
+    dropAttributes: /^srcset$/,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -851,10 +873,15 @@ function dropWarnings(
  * never sees: the new Outlook for Mac drops `var()` that downlevel had already
  * replaced. Returns the source unchanged for every other client.
  */
+function hasDrops(config: ClientTransformConfig): boolean {
+  return Boolean(
+    config.dropSelectors || config.dropAtRules || config.dropValues || config.dropProperties ||
+      config.dropNesting || config.dropElements || config.dropAttributes,
+  );
+}
+
 function prepareDropSource(html: string, config: ClientTransformConfig): string {
-  if (!config.dropSelectors && !config.dropAtRules && !config.dropValues && !config.dropProperties) {
-    return html;
-  }
+  if (!hasDrops(config)) return html;
   const $ = cheerio.load(html);
   return applyStyleDrops($, config).length > 0 ? $.html() : html;
 }
@@ -865,22 +892,40 @@ function prepareDropSource(html: string, config: ClientTransformConfig): string 
  * warnings.
  */
 function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): string[] {
-  const { dropSelectors, dropAtRules, dropValues, dropProperties } = config;
-  if (!dropSelectors && !dropAtRules && !dropValues && !dropProperties) return [];
+  const { dropSelectors, dropAtRules, dropValues, dropProperties, dropNesting, dropElements, dropAttributes } = config;
+  if (!hasDrops(config)) return [];
   const dropped = new Set<string>();
+  if (dropElements) {
+    const els = $(dropElements);
+    if (els.length > 0) {
+      els.remove();
+      dropped.add(`<${dropElements.split(/\s+/).pop()}>`);
+    }
+  }
+  if (dropAttributes) {
+    $("*").each((_, el) => {
+      for (const name of Object.keys((el as { attribs?: Record<string, string> }).attribs ?? {})) {
+        if (dropAttributes.test(name)) {
+          $(el).removeAttr(name);
+          dropped.add(`[${name}]`);
+        }
+      }
+    });
+  }
   const dropDeclarations = (ast: csstree.CssNode, inline: boolean) => {
     if (!dropValues && !dropProperties) return;
     csstree.walk(ast, {
       visit: "Declaration",
       enter(node, item, list) {
         if (node.type !== "Declaration" || !list || !item) return;
-        // Inline properties are strippedProperties' job, which also warns.
-        if (!inline && dropProperties?.test(node.property)) {
+        if (dropProperties?.test(node.property)) {
           list.remove(item);
           dropped.add(node.property);
           return;
         }
-        const m = dropValues ? csstree.generate(node.value).match(dropValues) : null;
+        const m = dropValues
+          ? `${node.property}:${csstree.generate(node.value)}`.match(dropValues)
+          : null;
         if (m) {
           list.remove(item);
           dropped.add(m[0].replace(/\($/, "()"));
@@ -914,13 +959,26 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
         }
       },
     });
+    if (dropNesting) {
+      csstree.walk(ast, {
+        visit: "Rule",
+        enter(node: csstree.CssNode) {
+          if (node.type !== "Rule") return;
+          node.block.children.forEach((child, item, list) => {
+            if (child.type === "Rule" || child.type === "Raw") {
+              list.remove(item);
+              dropped.add("CSS nesting");
+            }
+          });
+        },
+      });
+    }
     dropDeclarations(ast, false);
     $(el).text(csstree.generate(ast));
   });
-  if (dropValues) {
+  if (dropValues || dropProperties) {
     $("[style]").each((_, el) => {
       const style = $(el).attr("style") || "";
-      if (!dropValues.test(style)) return;
       let ast: csstree.CssNode;
       try {
         ast = csstree.parse(style, { context: "declarationList", parseCustomProperty: true });

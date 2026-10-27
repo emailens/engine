@@ -40,7 +40,23 @@ const seen = (level: SupportLevel, source: string, note: string): Observation =>
 // them by real Gmail web in Chrome (two Google accounts) and of box-shadow and
 // animation in Firefox, so that render was not real Gmail. Those rows were
 // dropped; caniemail stands for Gmail web.
+/** Probe sheets 20 to 22 on Preflight's new Outlook for Mac, 2026-10-27. */
+const newOutlookMac = (level: SupportLevel, note: string): Observation => ({
+  level,
+  observed: "2026-10-27",
+  source: "Emailens probe sheets 20-22, the new Outlook for Mac (Preflight)",
+  note,
+});
+
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
+  // caniemail 16.80 says not supported; plain track lists are kept and the
+  // functions dropped, twice over two runs.
+  "grid-template-columns": {
+    "outlook-macos": newOutlookMac(
+      "partial",
+      "Plain track sizes work (`300px 300px`, `1fr 1fr`); a value with `repeat()` or `minmax()` is dropped, so the grid falls back to one column.",
+    ),
+  },
   "box-shadow": {
     "yahoo-mail": seen(
       "supported",
@@ -68,7 +84,9 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
     ),
     "outlook-macos": seen(
       "partial",
-      "Emailens real-device probe, Outlook 2019 for Mac",
+      // The legacy app (Outlook 2019 for Mac). Not yet re-checked on the new
+      // Outlook for Mac, which the outlook-macos column now describes.
+      "Emailens real-device probe, Outlook 2019 for Mac (legacy app)",
       "The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration.",
     ),
   },

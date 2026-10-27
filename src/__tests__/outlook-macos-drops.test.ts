@@ -59,6 +59,35 @@ describe("outlook-macos drops what the real app drops", () => {
     expect(res.warnings.map((w) => w.property)).toContain("minmax()");
   });
 
+  test("sheet 22: nesting, sources, srcset, position, colour functions, qualified pseudo-classes", () => {
+    const res = transformForClient(
+      `<html><head><style>
+        .n{color:black;& .m{color:red}}
+        a.cta:link{color:red} a:link{color:blue}
+        .p{position:relative;left:10px} .s{position:sticky}
+        .h{background-color:hsl(120,100%,33%)} .k{color:oklch(0.6 0.2 142)}
+        .t{text-shadow:0 0 1px red;padding-inline-start:4px;gap:4px;column-gap:4px}
+      </style></head><body>
+        <picture><source srcset="a.png"><img src="b.png" srcset="c.png 2x" alt=""></picture>
+      </body></html>`,
+      "outlook-macos",
+    ).html;
+    expect(res).not.toContain(".m");
+    expect(res).not.toContain("a.cta:link");
+    expect(res).toContain("a:link");
+    expect(res).not.toContain("position:relative");
+    expect(res).toContain("position:sticky");
+    expect(res).not.toContain("hsl(");
+    expect(res).not.toContain("oklch(");
+    expect(res).not.toContain("text-shadow");
+    expect(res).not.toContain("padding-inline-start");
+    expect(res).not.toMatch(/[^-]gap:4px/);
+    expect(res).toContain("column-gap:4px");
+    expect(res).not.toContain("<source");
+    expect(res).not.toContain("srcset");
+    expect(res).toContain('src="b.png"');
+  });
+
   test("inline SVG is removed", () => {
     expect(out).not.toContain("<svg");
   });

@@ -25,7 +25,20 @@ what the real app loses.
   20-features and 21-feature-follow-ups: the simulation matches the real app
   on all 58 cases (20 of 38 before).
 - A client with drops gets them applied to the author's CSS before the
-  downlevel pass, which had resolved `var()` the real app never resolves.
+  downlevel pass, which had resolved `var()` and converted `hsl()` that the
+  real app never sees.
+- Probe sheet 22 (34 more cases) found the rest of what the new Outlook for
+  Mac drops, each matching caniemail 16.80: text-shadow, filter, clip-path,
+  animation and `@keyframes`, `:nth-of-type`, CSS nesting, logical properties
+  and sizes, conic gradients, `repeat()`, `hsl()` and the modern colour
+  functions, `<picture>` sources and `srcset`; `position` except `sticky`;
+  `gap` except `column-gap`; and pseudo-classes such as `:link` and
+  `:first-child` unless written on a bare type selector. Over 92 cases, in
+  light and in dark, and over two runs, the simulation matches the real app
+  on every case, as it does for Apple Mail.
+- `grid-template-columns` in Outlook for Mac is partial, not unsupported:
+  plain track sizes work, `repeat()` and `minmax()` are dropped (observed
+  override, 2026-10-27).
 - SVG and WebP images are no longer reported for Outlook for Mac, which shows
   both since 16.80.
 

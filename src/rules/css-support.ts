@@ -3305,7 +3305,7 @@ const CSS_SUPPORT_TABLE = {
     "outlook-windows-legacy": "unsupported",
     "outlook-ios": "unsupported",
     "outlook-android": "unsupported",
-    "outlook-macos": "unsupported",
+    "outlook-macos": "partial",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
     "yahoo-mail": "unsupported",
@@ -7467,6 +7467,9 @@ export const CSS_SUPPORT_NOTES: Record<
     "outlook-macos": ["Partial. Supports column-gap for flexbox."],
     "fastmail": ["Partial. Supports gap and column-gap for flexbox. Supports gap for multi-column layout (i.e. in conjunction with CSS column-count property)"],
   },
+  "grid-template-columns": {
+    "outlook-macos": ["Observed 2026-10-27 (Emailens probe sheets 20-22, the new Outlook for Mac (Preflight)): Plain track sizes work (`300px 300px`, `1fr 1fr`); a value with `repeat()` or `minmax()` is dropped, so the grid falls back to one column."],
+  },
   "height": {
     "outlook-windows-legacy": ["Partial. Not supported on `<body>`, `<span>`, `<div>` or `<p>` elements."],
     "yahoo-mail": ["Buggy. Replaces `height` by `min-height`."],
@@ -7746,7 +7749,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "gmail-android": ["Partial. Not supported with non Google accounts."],
     "gmail-ios": ["Partial. Not supported with non Google accounts."],
     "outlook-windows-legacy": ["Partial. Not supported with multiple values.","Partial. `overline` is not supported."],
-    "outlook-macos": ["Observed 2026-10-14 (Emailens real-device probe, Outlook 2019 for Mac): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
+    "outlook-macos": ["Observed 2026-10-14 (Emailens real-device probe, Outlook 2019 for Mac (legacy app)): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
     "apple-mail-macos": ["Observed 2026-10-14 (Emailens real-device probe, Apple Mail (macOS)): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
     "apple-mail-ios": ["Observed 2026-10-14 (Emailens real-device probe, Apple Mail (iPhone 13)): The multi-value shorthand `text-decoration: underline wavy #d33` was dropped whole: no line at all. A single line value works; style and colour need -webkit-text-decoration."],
   },
