@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.16.11 - 2026-10-28
+
+Gmail web's preview loses flex item sizing too, as the real app does.
+
+### Fixed
+
+- **Gmail web kept `flex` and `flex-basis` in its preview.** The flex-columns
+  probe from 0.16.10, run in a real Gmail web inbox, lost its 34% label column
+  the same way Yahoo did, while `width:34%` and a table held. The Gmail web
+  preview now strips both and the support notes cite the capture. Gmail's
+  apps are unobserved and unchanged.
+
 ## 0.16.10 - 2026-10-27
 
 Yahoo Mail web's preview loses flex item sizing, as the real app does.
