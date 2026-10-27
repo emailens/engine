@@ -280,6 +280,15 @@ interface ClientTransformConfig {
    *  Outlook for Mac and Outlook 2016 (2026-10-14): the whole declaration is
    *  ignored, so no line is drawn at all, not a plain one. */
   dropTextDecorationShorthand?: boolean;
+  /** Style rules the client drops from <style> blocks, matched on the
+   *  selector text. A rule goes whole, as a real sanitiser does. */
+  dropSelectors?: RegExp;
+  /** At-rules the client drops from <style> blocks, matched on the name. */
+  dropAtRules?: RegExp;
+  /** Declarations the client ignores wherever they are, matched on the value.
+   *  Earlier declarations of the same property stay, because the real client
+   *  keeps them: `width:0;width:calc(...)` renders 0 wide, not full width. */
+  dropValues?: RegExp;
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -654,15 +663,23 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "outlook-macos": {
     id: "outlook-macos",
     dropTextDecorationShorthand: true,
-    // caniemail: the new (WebKit) Outlook for Mac supports position/transform/
-    // animation/box-shadow/opacity; only transition is unsupported. It is NOT
-    // the Word engine, so do not mirror outlook-web's broader strip set.
-    strippedProperties: new Set(["transition"]),
+    // The new Outlook for Mac (caniemail 16.80), measured with probe sheet
+    // 20-features on a real install, 2026-10-27, and matching caniemail's
+    // 16.80 column: it drops these selectors, @supports, gradients, var(),
+    // calc()/min()/max()/clamp(), transform and inline SVG. It keeps
+    // :first-child, :last-child, combinators, rgba(), opacity, flex and grid.
+    // Until engine 0.16.9 the sync read the 2016 app's results instead.
+    // @media read as not applied in one probe case, but caniemail says only
+    // nested queries fail: left alone until a second case settles it.
+    strippedProperties: new Set(["transition", "transform"]),
     stripMode: "strip",
+    dropSelectors: /:nth-child|:nth-last-child|:not\(|:has\(|\[|::?before|::?after/,
+    dropAtRules: /^supports$/,
+    dropValues: /linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(/,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
-    stripSvg: false,
+    stripSvg: true,
   },
   "apple-mail-macos": {
     id: "apple-mail-macos",
@@ -802,6 +819,72 @@ const isLineOnly = (value: string) => TEXT_DECORATION_LINE.test(value.trim());
  * Remove animations from every <style> block: @keyframes rules and
  * `animation*` declarations. Returns whether anything was removed.
  */
+/**
+ * Apply a client's selector, at-rule and value drops to <style> blocks and
+ * inline styles. Returns a label for each kind of thing it dropped, for the
+ * warnings.
+ */
+function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): string[] {
+  const { dropSelectors, dropAtRules, dropValues } = config;
+  if (!dropSelectors && !dropAtRules && !dropValues) return [];
+  const dropped = new Set<string>();
+  const dropDeclarations = (ast: csstree.CssNode) => {
+    if (!dropValues) return;
+    csstree.walk(ast, {
+      visit: "Declaration",
+      enter(node, item, list) {
+        if (node.type !== "Declaration" || !list || !item) return;
+        const value = csstree.generate(node.value);
+        const m = value.match(dropValues);
+        if (m) {
+          list.remove(item);
+          dropped.add(m[0].replace(/\($/, "()"));
+        }
+      },
+    });
+  };
+  $("style").each((_, el) => {
+    let ast: csstree.CssNode;
+    try {
+      ast = csstree.parse($(el).text(), { parseCustomProperty: true });
+    } catch {
+      return;
+    }
+    csstree.walk(ast, {
+      enter(node: csstree.CssNode, item: csstree.ListItem<csstree.CssNode>, list: csstree.List<csstree.CssNode>) {
+        if (!list || !item) return;
+        if (dropAtRules && node.type === "Atrule" && dropAtRules.test(node.name)) {
+          list.remove(item);
+          dropped.add(`@${node.name}`);
+        } else if (dropSelectors && node.type === "Rule") {
+          const m = csstree.generate(node.prelude).match(dropSelectors);
+          if (m) {
+            list.remove(item);
+            dropped.add(m[0]);
+          }
+        }
+      },
+    });
+    dropDeclarations(ast);
+    $(el).text(csstree.generate(ast));
+  });
+  if (dropValues) {
+    $("[style]").each((_, el) => {
+      const style = $(el).attr("style") || "";
+      if (!dropValues.test(style)) return;
+      let ast: csstree.CssNode;
+      try {
+        ast = csstree.parse(style, { context: "declarationList", parseCustomProperty: true });
+      } catch {
+        return;
+      }
+      dropDeclarations(ast);
+      $(el).attr("style", csstree.generate(ast));
+    });
+  }
+  return [...dropped];
+}
+
 function stripStyleBlockAnimations($: cheerio.CheerioAPI): boolean {
   let removed = false;
   $("style").each((_, el) => {
@@ -966,6 +1049,17 @@ function applyTransformDom(
     $("[background]").each((_, el) => {
       $(el).removeAttr("background");
     });
+  }
+
+  // 4c. Selectors, at-rules and values the client drops, in <style> blocks
+  // and inline.
+  for (const what of applyStyleDrops($, config)) {
+    warnings.push(makeWarning({
+      severity: "warning",
+      client: clientId,
+      property: what,
+      message: `${clientId} ignores ${what}.`,
+    }, what, clientId, framework));
   }
 
   // 5. Strip/warn about unsupported CSS properties (shared loop)

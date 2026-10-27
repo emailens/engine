@@ -152,16 +152,45 @@ function mapSupportCode(code: string): SupportLevel {
 }
 
 /**
- * Get the latest version's support level from a version map.
- * Takes the last entry (chronologically latest) from the version object.
+ * The code of the latest tested version: the last entry, in data.json order.
+ *
+ * caniemail lists a platform's versions oldest first, and its labels mix
+ * years with app builds ("2011", "2016", "16.80" for Outlook on macOS;
+ * "11.4", "12" ... "15" for Apple Mail on iOS), so they cannot be sorted. A
+ * numeric sort put "16.80", the new Outlook for Mac, before "2016" and kept
+ * 2016's results: 75 Outlook macOS features read supported where the current
+ * app does not support them (found by a real render, 2026-10-27). Plain object
+ * order is no better, because JavaScript moves integer-like keys ("12",
+ * "2016") ahead of the rest; parseCaniemail keeps the file's order instead.
  */
+function latestCode(versions: Record<string, string>): string | undefined {
+  const codes = Object.values(versions);
+  return codes[codes.length - 1];
+}
+
+/**
+ * JSON.parse that keeps caniemail's version order. Every JavaScript object
+ * lists integer-like keys first, in numeric order, so a version map such as
+ * {"12.4": "n", "16": "y"} would come back with "16" first. Prefixing those
+ * keys makes them ordinary strings, which keep the order they were written
+ * in. notes_by_num is looked up by number, so its keys are restored.
+ */
+function parseCaniemail(text: string): CanIEmailData {
+  const data = JSON.parse(text.replace(/"(\d+)":/g, '"#$1":')) as CanIEmailData;
+  for (const feature of data.data) {
+    if (feature.notes_by_num) {
+      feature.notes_by_num = Object.fromEntries(
+        Object.entries(feature.notes_by_num).map(([k, v]) => [k.replace(/^#/, ""), v]),
+      );
+    }
+  }
+  return data;
+}
+
+/** Get the latest version's support level from a version map. */
 function getLatestSupport(versions: Record<string, string>): SupportLevel {
-  const entries = Object.entries(versions);
-  if (entries.length === 0) return "unknown";
-  // Sort by key (numeric-aware) to ensure we pick the latest version
-  entries.sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
-  const [, code] = entries[entries.length - 1];
-  return mapSupportCode(code);
+  const code = latestCode(versions);
+  return code === undefined ? "unknown" : mapSupportCode(code);
 }
 
 /**
@@ -176,10 +205,8 @@ function getLatestNotes(
   notesByNum: Record<string, string> | null,
 ): string[] {
   if (!notesByNum) return [];
-  const entries = Object.entries(versions);
-  if (entries.length === 0) return [];
-  entries.sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
-  const [, code] = entries[entries.length - 1];
+  const code = latestCode(versions);
+  if (code === undefined) return [];
   const refs = [...code.matchAll(/#(\d+)/g)].map((mm) => mm[1]);
   return refs.map((r) => notesByNum[r]).filter((t): t is string => Boolean(t));
 }
@@ -478,7 +505,7 @@ async function main() {
   console.log("Fetching caniemail.com API data...");
   const res = await fetch(API_URL);
   if (!res.ok) throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
-  const data: CanIEmailData = await res.json();
+  const data = parseCaniemail(await res.text());
 
   console.log(`Found ${data.data.length} features (last updated: ${data.last_update_date})`);
 
@@ -996,6 +1023,7 @@ export {
   mapSupportCode,
   getLatestSupport,
   getLatestNotes,
+  parseCaniemail,
   featureToPropertyKey,
   kindOfKey,
   mergeSupport,

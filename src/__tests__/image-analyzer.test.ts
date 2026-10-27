@@ -93,14 +93,15 @@ describe("image analyzer: individual rules", () => {
     expect(rule!.severity).toBe("info");
   });
 
-  test("detects SVG format", () => {
+  test("does not flag an SVG image, which no tracked client fails", () => {
+    // Outlook for Mac was the one client listed as failing it, from the 2016
+    // app's results. The current app (caniemail 16.80) shows SVG images, and
+    // Gmail's caveat is only partial.
     const html = `<html><body>
       <img src="icon.svg" alt="Icon" width="24" height="24" style="display:block;">
     </body></html>`;
     const report = analyzeImages(html);
-    const rule = report.issues.find((i) => i.rule === "svg-format");
-    expect(rule).toBeDefined();
-    expect(rule!.severity).toBe("info");
+    expect(report.issues.find((i) => i.rule === "svg-format")).toBeUndefined();
   });
 
   test("detects missing display:block", () => {
@@ -335,7 +336,7 @@ describe("reading the format out of a src", () => {
     // PNG renders everywhere, so only the delivery mechanism is reported.
     expect(rules("data:image/png;base64,AAAA")).toEqual(["base64-format"]);
     // Not base64-encoded, so only the payload format counts.
-    expect(rules("data:image/svg+xml;utf8,<svg/>")).toEqual(["svg-format"]);
+    expect(rules("data:image/avif,AAAA")).toEqual(["avif-format"]);
     expect(rules("data:image/jpeg,AAAA")).toEqual([]);
   });
 
@@ -383,7 +384,7 @@ describe("naming the clients that break", () => {
     expect(message("data:image/png;base64,iVBORw0KGgo=")).toContain("and 1 other (5 of 21 clients)");
     expect(message("data:image/png;base64,iVBORw0KGgo=")).not.toContain("1 others");
     // Two names join with "and", no comma, no remainder.
-    expect(message("a.webp")).toContain("Outlook Classic and Outlook for Mac (2 of 21 clients");
+    expect(message("a.avif")).toContain("Outlook Classic and Fastmail (2 of 21 clients");
   });
 
   test("names a format the way a person would write it", () => {

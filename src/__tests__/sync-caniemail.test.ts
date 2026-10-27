@@ -3,6 +3,7 @@ import {
   mapSupportCode,
   getLatestSupport,
   getLatestNotes,
+  parseCaniemail,
   featureToPropertyKey,
   kindOfKey,
   normalizeTestDate,
@@ -35,6 +36,24 @@ describe("getLatestSupport", () => {
 
   test("empty version map is unknown", () => {
     expect(getLatestSupport({})).toBe("unknown");
+  });
+
+  test("mixed year and build labels keep caniemail's order", () => {
+    // Shapes from data.json 2026-09-16, oldest first as caniemail writes them.
+    const text = JSON.stringify({
+      data: [{ notes_by_num: { "2": "Only on links." } }],
+    }).replace(
+      '"notes_by_num"',
+      '"stats":{"outlook":{"macos":{"2011":"y","2016":"y","16.80":"n"}},"apple-mail":{"macos":{"12.4":"n","16":"a #2"}}},"notes_by_num"',
+    );
+    const [feature] = parseCaniemail(text).data;
+    // 16.80, the new Outlook for Mac, is newer than 2016.
+    expect(getLatestSupport(feature.stats.outlook.macos)).toBe("unsupported");
+    // A plain JSON.parse would list "16" before "12.4" and pick 12.4.
+    expect(getLatestSupport(feature.stats["apple-mail"].macos)).toBe("partial");
+    expect(getLatestNotes(feature.stats["apple-mail"].macos, feature.notes_by_num)).toEqual([
+      "Only on links.",
+    ]);
   });
 });
 

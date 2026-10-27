@@ -131,14 +131,15 @@ describe("value-aware partial support: the value the note is about", () => {
       sorted(OUTLOOK_WORD, YAHOO_AOL),
     );
     expect(partialClients("text-align: match-parent")).toEqual(
-      sorted(OUTLOOK_WORD, YAHOO_AOL, ["gmail-android", "samsung-mail"]),
+      // Outlook for Android since its 5.2543.1 test.
+      sorted(OUTLOOK_WORD, YAHOO_AOL, ["gmail-android", "outlook-android", "samsung-mail"]),
     );
     // Gmail and Samsung name `-webkit-match-parent` as the value that works,
     // in the same note that rules out `match-parent`. Nobody else does, and a
     // client that cannot resolve `match-parent` will not resolve the WebKit
     // spelling of it either, so the prefixed form is still reported there.
     expect(partialClients("text-align: -webkit-match-parent")).toEqual(
-      sorted(OUTLOOK_WORD, YAHOO_AOL),
+      sorted(OUTLOOK_WORD, YAHOO_AOL, ["outlook-android"]),
     );
   });
 

@@ -34,7 +34,7 @@ const LINES = [
   /* 10 */ '  <h3>Skipped a level</h3>',
   /* 11 */ '  <a href="http://example.com">read more</a>',
   /* 12 */ '  <a>no href here</a>',
-  /* 13 */ '  <img src="logo.svg" width="10" height="10">',
+  /* 13 */ '  <img src="logo.avif" width="10" height="10">',
   /* 14 */ '  <p style="color: #eee; background-color: #fff; box-shadow: 0 0 2px #000">low contrast</p>',
   /* 15 */ '  <img src="{{cdn}}/x.png" alt="x" width="1" height="2">',
   /* 16 */ "</body>",
@@ -230,15 +230,15 @@ describe("source positions: images", () => {
   const report = analyzeImages(HTML, { positions: true });
 
   test("a format finding points at the src attribute", () => {
-    const issue = report.issues.find((i) => i.rule === "svg-format");
+    const issue = report.issues.find((i) => i.rule === "avif-format");
     expect(issue!.loc!.line).toBe(13);
-    expect(slice(HTML, issue!.loc!)).toBe('src="logo.svg"');
+    expect(slice(HTML, issue!.loc!)).toBe('src="logo.avif"');
   });
 
   test("a missing attribute points at the whole tag", () => {
     const issue = report.issues.find((i) => i.rule === "missing-alt");
     expect(issue!.loc!.line).toBe(13);
-    expect(slice(HTML, issue!.loc!)).toBe('<img src="logo.svg" width="10" height="10">');
+    expect(slice(HTML, issue!.loc!)).toBe('<img src="logo.avif" width="10" height="10">');
   });
 
   test("aggregate findings carry no position", () => {

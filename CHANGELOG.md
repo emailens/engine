@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased
+
+Outlook for Mac is the current app again, not the 2016 one. Scores for Outlook
+for Mac go down for emails that use the CSS below, and its preview now loses
+what the real app loses.
+
+### Fixed
+
+- **The caniemail sync read the oldest version for some clients.** It sorted
+  caniemail's version labels as numbers, and the labels mix years with app
+  builds, so Outlook for Mac's "16.80" (the new app) sorted before "2016" and
+  the 2016 results won: 75 features read supported that the current app does
+  not support. JavaScript also moves whole-number labels ahead of the rest, so
+  the sync now reads versions in the order caniemail writes them. Outlook for
+  Android's `text-align: match-parent` changes the same way.
+- **Outlook for Mac's preview drops what the real app drops**: `:nth-child`,
+  `:nth-last-child`, `:not()`, `:has()`, attribute selectors, `::before` and
+  `::after` rules, `@supports`, gradients, `var()`, `calc()`, `min()`, `max()`,
+  `clamp()`, `transform` and inline SVG. Measured on a real install with
+  Emailens probe sheet 20-features: the simulation now matches the real app on
+  37 of 38 cases (20 before). `@media` is left alone until a second case.
+- SVG and WebP images are no longer reported for Outlook for Mac, which shows
+  both since 16.80.
+
 ## 0.16.8 - 2026-10-25
 
 Gmail on the web follows caniemail again, and Outlook Classic stops warning
