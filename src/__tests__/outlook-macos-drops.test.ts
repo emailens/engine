@@ -32,6 +32,33 @@ describe("outlook-macos drops what the real app drops", () => {
     expect(out).toContain("rgba(0,170,0,1)");
   });
 
+  test("type-only media queries go, conditional ones stay", () => {
+    const res = transformForClient(
+      '<html><head><style>@media screen{.a{color:red}} @media screen and (max-width:600px){.b{color:blue}}</style></head><body><p class="a b" data-x="1">x</p></body></html>',
+      "outlook-macos",
+    ).html;
+    expect(res).not.toContain("color:red");
+    expect(res).toContain("max-width:600px");
+  });
+
+  test("var() and transform in a <style> block are dropped before downlevel resolves them", () => {
+    const res = transformForClient(
+      '<html><head><style>.v{--c:green;background-color:var(--c)}.t{transform:scaleX(2);color:black}</style></head><body><div class="v t">x</div></body></html>',
+      "outlook-macos",
+    );
+    expect(res.html).not.toContain("background-color:green");
+    expect(res.html).not.toContain("transform");
+    expect(res.warnings.map((w) => w.property)).toContain("var()");
+  });
+
+  test("minmax() is named as minmax()", () => {
+    const res = transformForClient(
+      '<html><body><div style="display:grid;grid-template-columns:minmax(0,1fr)">x</div></body></html>',
+      "outlook-macos",
+    );
+    expect(res.warnings.map((w) => w.property)).toContain("minmax()");
+  });
+
   test("inline SVG is removed", () => {
     expect(out).not.toContain("<svg");
   });

@@ -283,8 +283,12 @@ interface ClientTransformConfig {
   /** Style rules the client drops from <style> blocks, matched on the
    *  selector text. A rule goes whole, as a real sanitiser does. */
   dropSelectors?: RegExp;
-  /** At-rules the client drops from <style> blocks, matched on the name. */
+  /** At-rules the client drops from <style> blocks, matched on the rule's
+   *  head as written, "@media screen" or "@supports (display:block)". */
   dropAtRules?: RegExp;
+  /** Properties the client ignores in <style> blocks as well as inline,
+   *  matched on the name. strippedProperties only reaches inline styles. */
+  dropProperties?: RegExp;
   /** Declarations the client ignores wherever they are, matched on the value.
    *  Earlier declarations of the same property stay, because the real client
    *  keeps them: `width:0;width:calc(...)` renders 0 wide, not full width. */
@@ -666,16 +670,20 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // The new Outlook for Mac (caniemail 16.80), measured with probe sheet
     // 20-features on a real install, 2026-10-27, and matching caniemail's
     // 16.80 column: it drops these selectors, @supports, gradients, var(),
-    // calc()/min()/max()/clamp(), transform and inline SVG. It keeps
-    // :first-child, :last-child, combinators, rgba(), opacity, flex and grid.
-    // Until engine 0.16.9 the sync read the 2016 app's results instead.
-    // @media read as not applied in one probe case, but caniemail says only
-    // nested queries fail: left alone until a second case settles it.
+    // calc()/min()/max()/clamp() (minmax() too), transform and inline SVG,
+    // in <style> blocks and inline alike. It keeps :first-child, :last-child,
+    // combinators, attribute selectors, rgba(), opacity, flex and grid.
+    // Sheet 21 settled the two open cases: a media query with only a type
+    // (@media all, @media screen) is dropped and one with a condition is kept,
+    // and [data-*] selectors fail because the attribute does not survive,
+    // while [class~=], [align=] work. Until engine 0.16.9 the sync read the
+    // 2016 app's results instead.
     strippedProperties: new Set(["transition", "transform"]),
     stripMode: "strip",
-    dropSelectors: /:nth-child|:nth-last-child|:not\(|:has\(|\[|::?before|::?after/,
-    dropAtRules: /^supports$/,
-    dropValues: /linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(/,
+    dropSelectors: /:nth-child|:nth-last-child|:not\(|:has\(|\[data-|::?before|::?after/,
+    dropAtRules: /^@supports\b|^@media\s+(?:only\s+)?[a-z]+\s*$/i,
+    dropValues: /minmax\(|linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(/,
+    dropProperties: /^(?:transform|transition)$/,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -819,23 +827,60 @@ const isLineOnly = (value: string) => TEXT_DECORATION_LINE.test(value.trim());
  * Remove animations from every <style> block: @keyframes rules and
  * `animation*` declarations. Returns whether anything was removed.
  */
+/** The warnings for what a client's drops remove from the author's CSS. */
+function dropWarnings(
+  html: string,
+  config: ClientTransformConfig,
+  clientId: string,
+  framework?: Framework,
+): CSSWarning[] {
+  return applyStyleDrops(cheerio.load(html), config).map((what) =>
+    makeWarning({
+      severity: "warning",
+      client: clientId,
+      property: what,
+      message: `${clientId} ignores ${what}.`,
+    }, what, clientId, framework),
+  );
+}
+
+/**
+ * The email as a client with drops receives it: its drops applied to the
+ * author's own CSS, before the downlevel pass. Downlevel resolves var() and
+ * rewrites colours for every client, which would hand such a client CSS it
+ * never sees: the new Outlook for Mac drops `var()` that downlevel had already
+ * replaced. Returns the source unchanged for every other client.
+ */
+function prepareDropSource(html: string, config: ClientTransformConfig): string {
+  if (!config.dropSelectors && !config.dropAtRules && !config.dropValues && !config.dropProperties) {
+    return html;
+  }
+  const $ = cheerio.load(html);
+  return applyStyleDrops($, config).length > 0 ? $.html() : html;
+}
+
 /**
  * Apply a client's selector, at-rule and value drops to <style> blocks and
  * inline styles. Returns a label for each kind of thing it dropped, for the
  * warnings.
  */
 function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): string[] {
-  const { dropSelectors, dropAtRules, dropValues } = config;
-  if (!dropSelectors && !dropAtRules && !dropValues) return [];
+  const { dropSelectors, dropAtRules, dropValues, dropProperties } = config;
+  if (!dropSelectors && !dropAtRules && !dropValues && !dropProperties) return [];
   const dropped = new Set<string>();
-  const dropDeclarations = (ast: csstree.CssNode) => {
-    if (!dropValues) return;
+  const dropDeclarations = (ast: csstree.CssNode, inline: boolean) => {
+    if (!dropValues && !dropProperties) return;
     csstree.walk(ast, {
       visit: "Declaration",
       enter(node, item, list) {
         if (node.type !== "Declaration" || !list || !item) return;
-        const value = csstree.generate(node.value);
-        const m = value.match(dropValues);
+        // Inline properties are strippedProperties' job, which also warns.
+        if (!inline && dropProperties?.test(node.property)) {
+          list.remove(item);
+          dropped.add(node.property);
+          return;
+        }
+        const m = dropValues ? csstree.generate(node.value).match(dropValues) : null;
         if (m) {
           list.remove(item);
           dropped.add(m[0].replace(/\($/, "()"));
@@ -853,7 +898,11 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
     csstree.walk(ast, {
       enter(node: csstree.CssNode, item: csstree.ListItem<csstree.CssNode>, list: csstree.List<csstree.CssNode>) {
         if (!list || !item) return;
-        if (dropAtRules && node.type === "Atrule" && dropAtRules.test(node.name)) {
+        const head =
+          node.type === "Atrule"
+            ? `@${node.name}${node.prelude ? ` ${csstree.generate(node.prelude)}` : ""}`
+            : "";
+        if (dropAtRules && node.type === "Atrule" && dropAtRules.test(head)) {
           list.remove(item);
           dropped.add(`@${node.name}`);
         } else if (dropSelectors && node.type === "Rule") {
@@ -865,7 +914,7 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
         }
       },
     });
-    dropDeclarations(ast);
+    dropDeclarations(ast, false);
     $(el).text(csstree.generate(ast));
   });
   if (dropValues) {
@@ -878,7 +927,7 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
       } catch {
         return;
       }
-      dropDeclarations(ast);
+      dropDeclarations(ast, true);
       $(el).attr("style", csstree.generate(ast));
     });
   }
@@ -1198,10 +1247,13 @@ export function transformForClient(
   const branch = wordEngine ? resolveMsoBranch(html) : html;
   // Before the downlevel pass, which would turn these into colours Word reads.
   const source = isWordEngineClient(clientId) ? prepareWordSource(branch) : branch;
+  const dropSource = prepareDropSource(source, config);
 
   // Downlevel once per transformForClient call
-  const downleveled = downlevelCSS(source);
+  const downleveled = downlevelCSS(dropSource);
   const result = applyTransform(downleveled, config, framework);
+  // What the drops removed before downlevel is reported like the rest.
+  if (dropSource !== source) result.warnings.unshift(...dropWarnings(source, config, clientId, framework));
 
   // Translate AFTER the strip pass, never before. The CSS a shape becomes
   // (border-radius, inline-flex) describes what Outlook genuinely draws via
@@ -1251,6 +1303,15 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
   }
 
   return clientIds.map((clientId) => {
+    const config = CLIENT_CONFIGS[clientId];
+    const dropSource = prepareDropSource(html, config);
+    if (dropSource !== html) {
+      // Its own source, like the Word engine's: see prepareDropSource.
+      const own = downlevelCSS(dropSource);
+      const result = applyTransformDom(cheerio.load(own), own, config, framework);
+      result.warnings.unshift(...dropWarnings(html, config, clientId, framework));
+      return result;
+    }
     const wordEngine = isWordEngineClient(clientId) && hasOutlookBranch;
     const ownSource = isWordEngineClient(clientId) && ownWordSource;
     const source = ownSource ? outlookSource : downleveled;

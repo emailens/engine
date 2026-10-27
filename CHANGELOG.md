@@ -16,11 +16,16 @@ what the real app loses.
   the sync now reads versions in the order caniemail writes them. Outlook for
   Android's `text-align: match-parent` changes the same way.
 - **Outlook for Mac's preview drops what the real app drops**: `:nth-child`,
-  `:nth-last-child`, `:not()`, `:has()`, attribute selectors, `::before` and
-  `::after` rules, `@supports`, gradients, `var()`, `calc()`, `min()`, `max()`,
-  `clamp()`, `transform` and inline SVG. Measured on a real install with
-  Emailens probe sheet 20-features: the simulation now matches the real app on
-  37 of 38 cases (20 before). `@media` is left alone until a second case.
+  `:nth-last-child`, `:not()`, `:has()`, `[data-*]` selectors, `::before` and
+  `::after` rules, `@supports`, a media query with only a type (`@media
+  screen`, `@media all`), gradients, `var()`, `calc()`, `min()`, `max()`,
+  `minmax()`, `clamp()`, `transform` and inline SVG, in `<style>` blocks and
+  inline alike. An ignored declaration leaves the one before it in place, as
+  the app does. Measured on a real install with Emailens probe sheets
+  20-features and 21-feature-follow-ups: the simulation matches the real app
+  on all 58 cases (20 of 38 before).
+- A client with drops gets them applied to the author's CSS before the
+  downlevel pass, which had resolved `var()` the real app never resolves.
 - SVG and WebP images are no longer reported for Outlook for Mac, which shows
   both since 16.80.
 
