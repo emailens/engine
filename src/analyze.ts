@@ -745,6 +745,37 @@ export function analyzeEmailFromDom(
   // 6. Dark-mode opt-in / coverage (no-ops unless the email ships dark styles)
   for (const w of checkDarkModeFromDom($, source)) addWarning(w);
 
+  // 7. Real Yahoo Mail web drops an inline font-family that names a quoted
+  // font ('Courier New', 'SFMono-Regular'): the text falls back to Yahoo's
+  // own font. The same stack unquoted, or in a <style> class, holds
+  // (Emailens probe, real-device run fTG7mRVMqloE, 2026-10-28). Gmail keeps
+  // all of them. The Yahoo apps are unobserved.
+  const quotedFonts = $("[style]")
+    .toArray()
+    .filter((el) =>
+      getStyleValues($(el).attr("style") || "", "font-family").some((v) => /['"]/.test(v)),
+    );
+  if (quotedFonts.length) {
+    const found = quotedFonts
+      .map((el) => locOfElement(el))
+      .filter((l): l is SourceLocation => l !== undefined);
+    addWarning({
+      severity: "warning",
+      client: "yahoo-mail",
+      property: "font-family",
+      message:
+        "Yahoo Mail drops an inline font-family that names a quoted font, like 'Courier New': that text shows in Yahoo's own font instead.",
+      suggestion:
+        "Write the font names without quotes (font-family:Courier New,Consolas,monospace), or set the stack in a <style> class, which Yahoo keeps.",
+      ...(found.length
+        ? occurrenceFields({
+            locs: found.slice(0, MAX_WARNING_LOCATIONS),
+            truncated: found.length > MAX_WARNING_LOCATIONS,
+          })
+        : {}),
+    });
+  }
+
   // Sort: errors first, then warnings, then info
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
   warnings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);

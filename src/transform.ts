@@ -748,6 +748,9 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     id: "yahoo-mail",
     strippedProperties: YAHOO_WEB_STRIPPED,
     stripMode: "strip",
+    // An inline font-family naming a quoted font is dropped whole; <style>
+    // keeps it (2026-10-28, analyze.ts step 7).
+    valueStrips: [{ prop: "font-family", pattern: /['"]/ }],
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,

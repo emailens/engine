@@ -811,11 +811,13 @@ describe("Analyzer Accuracy", () => {
       warnings.some((w) => w.property === "opacity"),
     );
 
-    // Should NOT false-positive on universally supported properties
+    // Should NOT false-positive on universally supported properties. Yahoo's
+    // quoted-font finding is a real render, not a false positive (analyze.ts
+    // step 7).
     const falsePositives = warnings.filter(
       (w) =>
         w.property === "color" ||
-        w.property === "font-family" ||
+        (w.property === "font-family" && w.client !== "yahoo-mail") ||
         w.property === "text-align"
     );
     tracker.check(
