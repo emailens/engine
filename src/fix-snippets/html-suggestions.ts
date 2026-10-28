@@ -9,6 +9,12 @@ export const HTML_SUGGESTION_DATABASE: Record<string, string> = {
   "<style>:partial":
     "Use inline styles as the primary approach, with <style> in <head> as progressive enhancement.",
 
+  // ── units and nesting ─────────────────────────────────────────────────
+  "unit-rem":
+    "Write sizes in px (16px, not 1rem): this client ignores a rem value. Most email builds can convert rem to px at compile time.",
+  nesting:
+    "Flatten nested rules before sending: move each @media or nested selector to the top level of the <style> block (Tailwind v4 output needs a downlevel step such as Lightning CSS).",
+
   // ── <link> ────────────────────────────────────────────────────────────
   "<link>": "Inline all CSS directly in the HTML.",
 

@@ -131,11 +131,54 @@ function describeSelector($: CheerioAPI, el: any): string {
  *
  * @internal
  */
-export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning[] {
-  const darkBlock = collectDarkBlocks($);
-  if (!darkBlock) return []; // No dark styling, nothing to say.
+/** Below this luminance a background reads as dark (#1F4D3A is 0.06). */
+const DARK_THRESHOLD = 0.15;
 
-  const warnings: CSSWarning[] = [];
+/**
+ * Gmail on iPhone fully inverts colours in dark mode and ignores
+ * prefers-color-scheme, so an email designed dark comes out light: a dark
+ * green box turned light mint in a reported real capture (mjml #2513). The
+ * render showed it; nothing said so. One warning, every dark background
+ * listed.
+ */
+function gmailInvertsDark($: CheerioAPI): CSSWarning | null {
+  const locs: NonNullable<CSSWarning["locs"]> = [];
+  let first: string | null = null;
+  $("[bgcolor], [style]").each((_, el) => {
+    const $el = $(el);
+    const style = parseInlineStyle($el.attr("style") || "");
+    const color =
+      style.get("background-color") ??
+      backgroundShorthandColor(style.get("background")) ??
+      $el.attr("bgcolor");
+    if (!color) return;
+    const c = parseColor(color);
+    if (!c || c.a < 0.5 || relativeLuminance(c.r, c.g, c.b) >= DARK_THRESHOLD) return;
+    first ??= color;
+    const loc = locOfAttr(el, style.size ? "style" : "bgcolor");
+    if (loc && locs.length < 50) locs.push(loc);
+  });
+  if (!first) return null;
+  return {
+    severity: "warning",
+    client: "gmail-ios",
+    property: "dark-mode-inversion",
+    message:
+      `Gmail on iPhone inverts every colour in dark mode, dark backgrounds included: ${first} and the other dark backgrounds turn light, and their light text turns dark. ` +
+      "It ignores @media (prefers-color-scheme: dark), so CSS cannot opt out.",
+    suggestion:
+      "Check the email in Gmail on iPhone in dark mode, and keep text readable both ways: avoid light text on a dark background image that will not invert with it.",
+    fixType: "css",
+    ...(locs.length ? { loc: locs[0], locs } : {}),
+  };
+}
+
+export function checkDarkModeFromDom($: CheerioAPI, source?: string): CSSWarning[] {
+  const inverted = gmailInvertsDark($);
+  const darkBlock = collectDarkBlocks($);
+  if (!darkBlock) return inverted ? [inverted] : []; // No dark styling of its own.
+
+  const warnings: CSSWarning[] = inverted ? [inverted] : [];
 
   // Rule 1: dark styles with no opt-in meta may never activate.
   const hasOptIn = $("meta").toArray().some((el) => {

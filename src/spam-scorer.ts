@@ -233,6 +233,20 @@ function isLikelyPreheader(
   return PREHEADER_ACCESSORY_PATTERNS.some((p) => p.test(style));
 }
 
+/**
+ * The email's visible-text start, without the padding characters preheaders
+ * carry. A hidden element whose own text opens the email is in the
+ * preheader's place, whatever CSS hides it: a plain display:none preheader is
+ * common and was reported as a major spam red flag. Hidden text further down,
+ * where keyword stuffing lives, is still flagged.
+ */
+function opensTheEmail($: cheerio.CheerioAPI, text: string): boolean {
+  const own = text.replace(INVISIBLE_CHARS, "").replace(/\s+/g, " ").trim();
+  if (!own || own.length > 200) return false;
+  const all = extractVisibleText($).replace(INVISIBLE_CHARS, "").replace(/\s+/g, " ").trim();
+  return all.startsWith(own);
+}
+
 function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
   let found = false;
   let detail = "";
@@ -250,7 +264,7 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
     }
 
     if (/font-size\s*:\s*0(?:px|em|rem|pt)?(?:\s|;|$)/.test(style)) {
-      if (!isLikelyPreheader(style, text)) {
+      if (!isLikelyPreheader(style, text) && !opensTheEmail($, text)) {
         found = true;
         detail = "font-size:0 on element with text content";
         return false;
@@ -258,7 +272,7 @@ function checkHiddenText($: cheerio.CheerioAPI): SpamIssue | null {
     }
 
     if (/display\s*:\s*none/.test(style)) {
-      if (!isLikelyPreheader(style, text)) {
+      if (!isLikelyPreheader(style, text) && !opensTheEmail($, text)) {
         found = true;
         detail = "display:none on element with text content";
         return false;

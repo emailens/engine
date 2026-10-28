@@ -155,11 +155,19 @@ const COMPOUND_DETECTORS: Array<{
   { key: "display:none", property: "display", valueIncludes: "none" },
 ];
 
-/** CSS function detection: require opening paren to avoid false positives (e.g., "min" in "Minion"). */
-const CSS_FUNCTION_DETECTORS = CSS_FUNCTION_FEATURES.map((fn) => ({
-  key: fn,
-  pattern: `${fn}(`, // require opening paren, matches "min(" but not "Minion"
-}));
+/**
+ * Value detectors: CSS functions (the opening paren is required, so "min(" but
+ * not "Minion"), and the rem unit, which Outlook Classic drops (react-email
+ * #2043: text sizes went wrong). Other units are not detected: px and % are
+ * everywhere and fine, and a warning for each would bury the real ones.
+ */
+const CSS_FUNCTION_DETECTORS: { key: string; test: (value: string) => boolean }[] = [
+  ...CSS_FUNCTION_FEATURES.map((fn) => ({
+    key: fn as string,
+    test: (value: string) => value.includes(`${fn}(`),
+  })),
+  { key: "unit-rem", test: (value: string) => /(?:^|[\s(,:])-?\d*\.?\d+rem\b/i.test(value) },
+];
 
 /** Plain CSS property names. Both declaration scans, inline and `<style>`, test against it. */
 const CSS_PROPERTY_SET: ReadonlySet<string> = new Set<string>(CSS_PROPERTY_FEATURES);
@@ -207,7 +215,14 @@ const MISC_FEATURE_LABELS: Partial<Record<HtmlMiscFeature, string>> = {
 /** The misc labels, asked about a key that may not be one. */
 const MISC_LABEL_LOOKUP: Readonly<Record<string, string | undefined>> = MISC_FEATURE_LABELS;
 
+/** Readable names for value features whose keys are not CSS a reader writes. */
+const VALUE_FEATURE_LABELS: Readonly<Record<string, string>> = {
+  "unit-rem": "rem units",
+  nesting: "nested CSS rules",
+};
+
 function featureLabel(prop: string): string {
+  if (VALUE_FEATURE_LABELS[prop]) return VALUE_FEATURE_LABELS[prop];
   const misc = MISC_LABEL_LOOKUP[prop];
   if (misc) return misc;
   if (prop.startsWith("[")) return `the ${prop.slice(1, -1)} attribute`;
@@ -482,6 +497,8 @@ export function analyzeEmailFromDom(
       const atRuleScopeStack: Array<readonly string[] | null> = [];
       let currentAtRuleScope: readonly string[] | null = null;
       let currentRuleScope: readonly string[] | null = null;
+      /** Rules we are inside: above zero, a rule or at-rule is nested. */
+      let ruleDepth = 0;
 
       csstree.walk(ast, {
         enter(node: csstree.CssNode) {
@@ -505,7 +522,18 @@ export function analyzeEmailFromDom(
             recordSelectorLoc(`@${node.name}`, node.loc, currentAtRuleScope);
             recordPropertyScope(`@${node.name}`, currentAtRuleScope);
           }
+          // A rule or at-rule inside a rule is CSS nesting (Tailwind v4 nests
+          // @media inside its utility classes); almost no client reads it.
+          if ((node.type === "Rule" || node.type === "Atrule") && ruleDepth > 0) {
+            parsedProperties.add("nesting");
+            recordPropertyScope("nesting", currentRuleScope);
+            if (node.loc) {
+              if (!propertyLines.has("nesting")) propertyLines.set("nesting", node.loc.start.line);
+              recordLoc("nesting", node.loc, undefined, currentRuleScope);
+            }
+          }
           if (node.type === "Rule") {
+            ruleDepth++;
             if (node.prelude && node.prelude.type === "SelectorList") {
               const selectors: string[] = [];
               node.prelude.children.forEach((child) => {
@@ -574,7 +602,7 @@ export function analyzeEmailFromDom(
 
             // Data-driven CSS function detection
             for (const fn of CSS_FUNCTION_DETECTORS) {
-              if (valueStr.includes(fn.pattern)) {
+              if (fn.test(valueStr)) {
                 detectedCssFunctions.add(fn.key);
                 recordPropertyScope(fn.key, currentRuleScope);
                 if (node.loc) {
@@ -587,6 +615,7 @@ export function analyzeEmailFromDom(
         },
         leave(node: csstree.CssNode) {
           if (node.type === "Rule") {
+            ruleDepth--;
             currentRuleScope = currentAtRuleScope;
           } else if (node.type === "Atrule") {
             atRuleScopeStack.pop();
@@ -696,7 +725,7 @@ export function analyzeEmailFromDom(
       // Data-driven CSS function detection in inline styles
       if (value) {
         for (const fn of CSS_FUNCTION_DETECTORS) {
-          if (value.includes(fn.pattern)) {
+          if (fn.test(value)) {
             checkPropertySupport(
               fn.key, addWarning, framework, selector, undefined, undefined,
               declarationLocs(prop), inlineAllowed,
