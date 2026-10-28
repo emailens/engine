@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.16.12 - 2026-10-28
+
+Yahoo Mail web's lost fonts are now caught.
+
+### Fixed
+
+- **An inline `font-family` naming a quoted font is dropped by Yahoo Mail
+  web**, and nothing said so. A real Yahoo inbox showed
+  `font-family:'Courier New',Courier,monospace` in Yahoo's own font, while
+  the same stack unquoted, or in a `<style>` class, held; Gmail kept every
+  form. Code blocks lost their monospace, and serif headings went sans.
+  `analyzeEmail` now warns for `yahoo-mail` with the fix (write the names
+  unquoted, or move the stack into `<style>`), and the Yahoo web preview
+  drops the declaration as Yahoo does. The Yahoo apps are unobserved.
+
 ## 0.16.11 - 2026-10-28
 
 Gmail web's preview loses flex item sizing too, as the real app does.
