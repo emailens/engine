@@ -842,8 +842,9 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "aol": {
     id: "aol",
-    // The same renderer as Yahoo web: john-lewis's stylesheet was lost on
-    // real AOL as on Yahoo (fidelity sheets, 2026-09). The probe ran on Yahoo.
+    // The same renderer as Yahoo web, and real AOL drew john-lewis as Yahoo
+    // did (buttons as plain links, square cards: emailens.dev's earlier Yahoo
+    // and AOL captures). The comma-list probe itself ran on Yahoo only.
     dropCommaMediaBlocks: true,
     // caniemail: restrictive; drops animation, box-shadow, opacity, transform,
     // external stylesheets, and SVG. Forms are kept.
