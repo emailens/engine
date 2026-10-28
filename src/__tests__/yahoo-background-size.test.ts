@@ -15,3 +15,25 @@ describe("Yahoo web ignores background-size", () => {
     expect(transformForClient(html, "gmail-web").html).toContain("/ cover");
   });
 });
+
+describe("Yahoo web drops a <style> with a comma-separated media query list", () => {
+  // Real Yahoo web probe, run IY_C34Eh_aJ5 (2026-10-29), one block per row.
+  const block = (media: string) =>
+    `<html><head><style>@media ${media}{.z{color:blue}} .t{color:green}</style></head><body><p class="t">x</p></body></html>`;
+  test("a comma list goes whole, whatever its conditions", () => {
+    for (const media of [
+      "screen and (max-device-width:600px), screen and (max-width:600px)",
+      "screen and (max-width:600px), screen and (max-width:601px)",
+    ]) {
+      const t = transformForClient(block(media), "yahoo-mail");
+      expect(t.html).not.toContain(".t{color:green}");
+      expect(t.warnings.some((w) => w.property === "@media")).toBe(true);
+    }
+  });
+  test("one condition stays, max-device-width included; other clients keep the list", () => {
+    expect(transformForClient(block("screen and (max-device-width:600px)"), "yahoo-mail").html).toContain(".t{color:green}");
+    expect(transformForClient(block("only screen and (max-width: 600px)"), "yahoo-mail").html).toContain(".t{color:green}");
+    const gmail = transformForClient(block("screen and (max-width:600px), print"), "gmail-web");
+    expect(gmail.warnings.some((w) => w.message.includes("comma-separated"))).toBe(false);
+  });
+});

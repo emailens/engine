@@ -298,6 +298,9 @@ interface ClientTransformConfig {
   /** The client ignores background-size, as a property and as the `/ size`
    *  part of a background shorthand, and paints the image at its own size. */
   dropBackgroundSize?: boolean;
+  /** The client drops a whole <style> block when one of its @media queries is
+   *  a comma-separated list (`screen and (max-width:600px), print`). */
+  dropCommaMediaBlocks?: boolean;
   /** Nested rules the client ignores (CSS nesting), with their declarations. */
   dropNesting?: boolean;
   /** Elements the client removes, as a CSS selector ("picture source"). */
@@ -758,6 +761,14 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // 236px and its `0% 0% / 100% 100%` coupon at the picture's own size,
     // cropped to the cell (emailens agreement run, 2026-10-28).
     dropBackgroundSize: true,
+    // A <style> with a comma-separated media query list is dropped whole: a
+    // probe on real Yahoo web lost the block for `screen and
+    // (max-device-width:600px), screen and (max-width:600px)` and for two
+    // max-width conditions, and kept one with max-device-width alone
+    // (emailens real-device run IY_C34Eh_aJ5, 2026-10-29). john-lewis's whole
+    // stylesheet went that way: full-width layout, square cards, links for
+    // buttons, the desktop hero still hidden.
+    dropCommaMediaBlocks: true,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -831,6 +842,9 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "aol": {
     id: "aol",
+    // The same renderer as Yahoo web: john-lewis's stylesheet was lost on
+    // real AOL as on Yahoo (fidelity sheets, 2026-09). The probe ran on Yahoo.
+    dropCommaMediaBlocks: true,
     // caniemail: restrictive; drops animation, box-shadow, opacity, transform,
     // external stylesheets, and SVG. Forms are kept.
     strippedProperties: new Set(["animation", "box-shadow", "opacity", "transform"]),
@@ -1176,6 +1190,22 @@ function applyTransformDom(
   if (config.stripBackgroundAttribute) {
     $("[background]").each((_, el) => {
       $(el).removeAttr("background");
+    });
+  }
+
+  // 4b'. A <style> block whose @media list has a comma goes whole.
+  if (config.dropCommaMediaBlocks) {
+    $("style").each((_, el) => {
+      const css = ($(el).html() ?? "").replace(/\/\*[\s\S]*?\*\//g, "");
+      const lists = [...css.matchAll(/@media\b([^{]*)\{/gi)].some((m) => m[1].includes(","));
+      if (!lists) return;
+      $(el).remove();
+      warnings.push(makeWarning({
+        severity: "warning",
+        client: clientId,
+        property: "@media",
+        message: `${clientId} drops this whole <style> block: one of its @media queries is a comma-separated list. Split it into one @media rule per condition.`,
+      }, "@media", clientId, framework));
     });
   }
 
