@@ -164,7 +164,7 @@ function gmailInvertsDark($: CheerioAPI): CSSWarning | null {
     client: "gmail-ios",
     property: "dark-mode-inversion",
     message:
-      `Gmail on iPhone inverts every colour in dark mode, dark backgrounds included: ${first} and the other dark backgrounds turn light, and their light text turns dark. ` +
+      `${getClient("gmail-ios")?.name ?? "Gmail iOS"} inverts every colour in dark mode, dark backgrounds included: ${first} and the other dark backgrounds turn light, and their light text turns dark. ` +
       "It ignores @media (prefers-color-scheme: dark), so CSS cannot opt out.",
     suggestion:
       "Check the email in Gmail on iPhone in dark mode, and keep text readable both ways: avoid light text on a dark background image that will not invert with it.",

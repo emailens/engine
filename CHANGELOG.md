@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.1 - 2026-10-28
+
+### Fixed
+
+- The `dark-mode-inversion` message opens with the client's name, Gmail iOS,
+  like every other warning, so tools that merge warnings across clients strip
+  it cleanly.
+
 ## 0.17.0 - 2026-10-28
 
 Four gaps found by grading real breaks people reported in react-email, mjml
