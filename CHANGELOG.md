@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.18.0 - 2026-10-29
+
+From a person-graded comparison of 9 real emails on 7 real clients, and a
+probe on real Yahoo web. Some scores change where these apply.
+
+### Added
+
+- **Yahoo web and AOL drop a whole `<style>` block when one of its `@media`
+  queries is a comma-separated list** (`screen and (max-device-width:600px),
+  screen and (max-width:600px)`). A probe on real Yahoo web lost the block for
+  that query and for two plain max-width conditions, and kept a single
+  condition, `max-device-width` included. The preview drops the block and a
+  warning says to split the query. john-lewis's whole stylesheet went this way.
+- **Yahoo web ignores `background-size`**, alone and as the `/ size` part of a
+  `background` shorthand, and draws the image at its own size. Warned.
+
+### Fixed
+
+- **VML `arcsize` is a fraction of the shorter side**, as real Outlook Classic
+  draws it (a 48px button at 21% has a 10px corner), not of half of it. Rounded
+  VML buttons were drawn with half their radius.
+- **Outlook Classic: a web font without `mso-font-alt` falls to the next font
+  in the stack**, as current Outlook (Microsoft 365, 2019) does. `'Roboto',
+  Arial` draws in Arial, no longer Times New Roman; a stack with nothing after
+  the web font still draws Times.
+- **Outlook Classic: a nested table hangs its first painted cell's left
+  padding to the left**, lining the cell's text up with the text around it.
+
 ## 0.17.2 - 2026-10-28
 
 ### Fixed
