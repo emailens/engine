@@ -106,15 +106,18 @@ describe("Word box model", () => {
     expect(sheet).toContain("#112233");
   });
 
-  test("a family declared with @font-face falls to Times New Roman, not to the next in the stack", () => {
+  // Current Outlook (Microsoft 365) drew foodpanda's 'Roboto', Arial in Arial (2026-10-28).
+  test("a family declared with @font-face falls to the next in the stack, or Times with none", () => {
     const face = `<style>@font-face{font-family:'Roboto';src:url(x.ttf)}.h{font-family:Roboto,Arial}</style>`;
     const out = word(
       `<h1 id="a" style="font-family: 'Roboto', Arial, sans-serif">x</h1><p id="b" style="font-family:'Nunito',Arial,sans-serif">x</p><p id="c" class="h">x</p>`,
       face,
     );
-    expect(tag(out, 'id="a"')).toContain("Times New Roman");
+    expect(tag(out, 'id="a"')).toMatch(/font-family:\s*Arial, sans-serif/);
     expect(tag(out, 'id="b"')).toContain("Nunito");
-    expect(tag(out, 'id="c"')).toContain("Times New Roman");
+    expect(tag(out, 'id="c"')).toMatch(/font-family:\s*Arial/);
+    const alone = word(`<p id="d" style="font-family:'Roboto'">x</p>`, face);
+    expect(tag(alone, 'id="d"')).toContain("Times New Roman");
   });
 
   test("a rule that wins the family keeps a @font-face `*` rule from drawing Times (AI Fix real-device round, 2026-10-22)", () => {
@@ -187,7 +190,7 @@ describe("Word box model", () => {
   test("a later rule of the same weight wins the family; an earlier one does not", () => {
     const face = `@font-face{font-family:'Inter';src:url(x.woff2)}`;
     const after = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Inter, Arial; } p { font-family: Arial; }</style>`);
-    const before = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Arial; } p { font-family: Inter, Arial; }</style>`);
+    const before = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Arial; } p { font-family: Inter; }</style>`);
     expect(tag(after, 'id="p"')).not.toContain("Times New Roman");
     expect(tag(before, 'id="p"')).toContain("Times New Roman");
   });

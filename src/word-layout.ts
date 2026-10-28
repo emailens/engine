@@ -299,8 +299,11 @@ const TIMES = "'Times New Roman',serif";
  * value as written. Measured on real Outlook 2016 (AI Fix real-device round,
  * 2026-10-23), with React Email faces that declare `mso-font-alt: 'Arial'`:
  * - a first family declared by a face draws in that face's mso-font-alt
- *   (`Geist, Inter, Arial` came out in Arial), and in Times New Roman when
- *   the face has none (a campaign's `'Roboto', Arial`, Outlook 2007-2016);
+ *   (`Geist, Inter, Arial` came out in Arial), and when the face has none, in
+ *   the next family of the stack: current Outlook (Microsoft 365, and 2019)
+ *   drew foodpanda's `'Roboto', Arial` in Arial (emailens agreement run,
+ *   2026-10-28). Outlook 2007-2016 drew Times there; 2016 left support in
+ *   October 2025, so the simulation follows the Outlook readers have now;
  * - a value with `system-ui` in it is dropped whole, so the text falls to
  *   Word's default, Times New Roman (`Inter, system-ui, Arial`).
  */
@@ -309,7 +312,9 @@ function wordFamily(value: string, faces: Faces): string | null {
   const first = firstFamily(value);
   if (!faces.has(first)) return null;
   const alt = faces.get(first);
-  return alt ? `'${alt}'` : TIMES;
+  if (alt) return `'${alt}'`;
+  const rest = value.replace(/!important/gi, "").split(",").slice(1).join(",").trim();
+  return rest || TIMES;
 }
 
 /** A border that draws: a width other than 0 and a style other than none. */
@@ -382,14 +387,10 @@ export function applyWordBoxModel($: CheerioAPI): void {
       props.delete("background-color");
     }
 
-    // A family declared with @font-face cannot be loaded, and Word then skips
-    // the rest of the stack and draws Times New Roman. Measured on a real
-    // campaign: `'Roboto', Arial, sans-serif` with a Roboto @font-face came
-    // out in Times on Outlook 2007, 2010, 2013 and 2016, while `'Nunito',
-    // Arial, sans-serif`, with no @font-face, fell back to Arial as written.
-    // Outlook 2019 did not do this: it used the next family in the stack. One
-    // simulated client stands for all five, and it shows the majority, which
-    // is also the outcome an author most needs to see.
+    // A family declared with @font-face cannot be loaded. Outlook 2007-2016
+    // then skipped the rest of the stack and drew Times New Roman; Outlook
+    // 2019 and Microsoft 365 use the next family, and that is what this draws
+    // (see wordFamily).
     const family = props.get("font-family");
     const drawn = family === undefined ? null : wordFamily(family, faces);
     if (drawn) props.set("font-family", drawn);
