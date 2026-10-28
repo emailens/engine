@@ -850,17 +850,63 @@ export function analyzeDocument(
 ): CompatibilityPass {
   const pass = analyzeEmailFromDom($, framework, source, targetingPolicy, html);
   return {
-    warnings: withElementAdvice(
-      applyIntent(
-        html,
-        withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+    warnings: collapseRepeats(
+      withElementAdvice(
+        applyIntent(
+          html,
+          withOutlookBranch(html, pass.warnings, framework, targetingPolicy),
+          framework,
+          $,
+        ),
         framework,
-        $,
       ),
-      framework,
     ),
     targeting: pass.targeting,
   };
+}
+
+/**
+ * One warning per finding, not per element: the same client, property,
+ * severity, sentence and advice on a <p> and an <h1> is one thing to fix. A
+ * real react-email email (#2043) printed 42 Outlook lines, 18 of them repeats
+ * that differed only by element. Run last, after the intent pass and the
+ * element advice, which can make two elements' sentences differ; a sentence
+ * that names its element ("<td> keeps #fff") stays its own warning, and a
+ * <style> finding stays apart from an inline one. Scores count properties,
+ * so they do not change; every occurrence is kept in `locs`.
+ */
+function collapseRepeats(warnings: CSSWarning[]): CSSWarning[] {
+  const kept = new Map<string, CSSWarning>();
+  const out: CSSWarning[] = [];
+  for (const w of warnings) {
+    const key = [w.client, w.property, w.severity, w.message, w.suggestion ?? "", w.selector ? 1 : 0].join(" ");
+    const first = kept.get(key);
+    if (!first) {
+      kept.set(key, w);
+      out.push(w);
+      continue;
+    }
+    if (w.selector && w.selector !== first.selector) {
+      const list = first.selectors ?? (first.selector ? [first.selector] : []);
+      if (!list.includes(w.selector)) list.push(w.selector);
+      first.selectors = list;
+    }
+    if (!w.locs?.length) continue;
+    const locs = [...(first.locs ?? [])];
+    for (const loc of w.locs) {
+      if (locs.some((l) => l.offset === loc.offset)) continue;
+      if (locs.length >= MAX_WARNING_LOCATIONS) {
+        first.locsTruncated = true;
+        break;
+      }
+      locs.push(loc);
+    }
+    locs.sort((a, b) => a.offset - b.offset);
+    first.locs = locs;
+    first.loc = locs[0];
+    if (w.locsTruncated) first.locsTruncated = true;
+  }
+  return out;
 }
 
 /**

@@ -78,18 +78,25 @@ export interface CSSWarning {
    * styles); with positions on it is `loc.line`, i.e. absolute in the document.
    */
   line?: number;
+  /** The first element the finding was seen on, as the analyzer describes it. */
   selector?: string;
+  /**
+   * Every element the finding was seen on, `selector` first, when there is
+   * more than one: the same sentence and advice on a <p> and an <h1> is one warning.
+   */
+  selectors?: string[];
   /** Position of the first occurrence in the source HTML. Requires `positions: true`. */
   loc?: SourceLocation;
   /**
    * Every occurrence, in document order; `loc` is the first of them.
    *
-   * Warnings are deduplicated per client, property, severity and `selector`,
-   * so twelve elements the analyzer describes the same way collapse into one
-   * warning; this is how a consumer reaches the other eleven. Elements
-   * described differently (`div.card` vs `span`) still produce separate
-   * warnings for the same property, so a consumer that wants every place a
-   * property breaks should union `locs` across the warnings for that property.
+   * Warnings are deduplicated per client, property, severity, message and
+   * suggestion, so
+   * twelve elements with the same finding collapse into one warning; this is
+   * how a consumer reaches the other eleven (`selectors` names them). A
+   * message that names its element stays separate, so a consumer that wants
+   * every place a property breaks should still union `locs` across the
+   * warnings for that property.
    * Ordered by position, capped at {@link MAX_WARNING_LOCATIONS}.
    */
   locs?: SourceLocation[];

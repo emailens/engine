@@ -71,3 +71,29 @@ describe("Gmail on iPhone inverts dark backgrounds (mjml #2513: dark green turne
     expect(find(dark, "apple-mail-ios", "dark-mode-inversion")).toHaveLength(0);
   });
 });
+
+describe("one warning per finding, not per element (react-email #2043: 42 Outlook lines)", () => {
+  const html =
+    '<table style="font-size:1rem"><tr><td><p style="font-size:1.25rem">a</p>' +
+    '<h1 style="font-size:2rem">b</h1></td></tr></table>';
+
+  it("merges the same finding on three elements into one, keeping every place", () => {
+    const rem = analyzeEmail(html, undefined, { positions: true }).filter(
+      (w) => w.client === "outlook-windows-legacy" && w.property === "unit-rem",
+    );
+    expect(rem).toHaveLength(1);
+    expect(rem[0].selectors).toEqual(["table", "p", "h1"]);
+    expect(rem[0].locs).toHaveLength(3);
+    expect(rem[0].loc).toEqual(rem[0].locs?.[0]);
+  });
+
+  it("keeps a sentence that names its element apart", () => {
+    const html2 =
+      '<style>@media (prefers-color-scheme: dark){.x{background:#000!important}}</style>' +
+      '<table><tr><td style="background-color:#ffffff">a</td></tr></table><div style="background-color:#f4f4f4">b</div>';
+    const cover = analyzeEmail(html2).filter(
+      (w) => w.client === "apple-mail-ios" && w.property === "dark-mode-coverage",
+    );
+    expect(cover.length).toBe(2);
+  });
+});

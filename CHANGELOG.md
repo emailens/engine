@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.17.2 - 2026-10-28
+
+### Fixed
+
+- **One warning per finding, not per element.** The same client, property,
+  severity, sentence and advice on a `<p>` and an `<h1>` is now one warning,
+  with `selectors` naming every element and `locs` keeping every place. A
+  real react-email email (#2043) went from 42 Outlook Classic lines to 26, a
+  maizzle build from 464 warnings to 206. Scores do not change (none of 273
+  client scores on 13 real emails moved). A sentence that names its element,
+  and a `<style>` finding next to an inline one, stay separate.
+
 ## 0.17.1 - 2026-10-28
 
 ### Fixed
