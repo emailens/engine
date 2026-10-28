@@ -295,6 +295,9 @@ interface ClientTransformConfig {
    *  Earlier declarations of the same property stay, because the real client
    *  keeps them: `width:0;width:calc(...)` renders 0 wide, not full width. */
   dropValues?: RegExp;
+  /** The client ignores background-size, as a property and as the `/ size`
+   *  part of a background shorthand, and paints the image at its own size. */
+  dropBackgroundSize?: boolean;
   /** Nested rules the client ignores (CSS nesting), with their declarations. */
   dropNesting?: boolean;
   /** Elements the client removes, as a CSS selector ("picture source"). */
@@ -751,6 +754,10 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // An inline font-family naming a quoted font is dropped whole; <style>
     // keeps it (2026-10-28, analyze.ts step 7).
     valueStrips: [{ prop: "font-family", pattern: /['"]/ }],
+    // Real Yahoo web drew foodpanda's `url(...) center / cover` logos at their
+    // 236px and its `0% 0% / 100% 100%` coupon at the picture's own size,
+    // cropped to the cell (emailens agreement run, 2026-10-28).
+    dropBackgroundSize: true,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -1181,6 +1188,43 @@ function applyTransformDom(
       property: what,
       message: `${clientId} ignores ${what}.`,
     }, what, clientId, framework));
+  }
+
+  // 4d. background-size, alone and inside the background shorthand.
+  if (config.dropBackgroundSize) {
+    // url(...) first, so a path like /600/400.jpg is never read as a size.
+    const SIZE = /url\([^)]*\)|\s*\/\s*(?:cover|contain|auto|[\d.]+(?:px|%|em|rem|vw|vh)?)(?:\s+(?:auto|[\d.]+(?:px|%|em|rem|vw|vh)?))?/gi;
+    const unsize = (css: string) =>
+      css
+        .replace(/(^|[;{\s])background-size\s*:[^;}]*;?/gi, "$1")
+        .replace(/(background\s*:[^;}]*)/gi, (decl) =>
+          decl.replace(SIZE, (m) => (m.startsWith("url(") ? m : "")),
+        );
+    let dropped = false;
+    $("[style]").each((_, el) => {
+      const style = $(el).attr("style") || "";
+      const next = unsize(style);
+      if (next !== style) {
+        dropped = true;
+        $(el).attr("style", next);
+      }
+    });
+    $("style").each((_, el) => {
+      const css = $(el).html() ?? "";
+      const next = unsize(css);
+      if (next !== css) {
+        dropped = true;
+        $(el).html(next);
+      }
+    });
+    if (dropped) {
+      warnings.push(makeWarning({
+        severity: "warning",
+        client: clientId,
+        property: "background-size",
+        message: `${clientId} ignores background-size: the image is drawn at its own size.`,
+      }, "background-size", clientId, framework));
+    }
   }
 
   // 5. Strip/warn about unsupported CSS properties (shared loop)
