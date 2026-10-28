@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.17.0 - 2026-10-28
+
+Four gaps found by grading real breaks people reported in react-email, mjml
+and maizzle threads. New warnings can lower some scores.
+
+### Fixed
+
+- **A plain `display:none` preheader was a spam error.** It cost 28 points of
+  the spam score. Hidden text that opens the email is now treated as the
+  preheader it is; hidden text further down is still flagged.
+
+### Added
+
+- **Gmail on iPhone inverting dark backgrounds.** It inverts every colour in
+  dark mode and ignores `prefers-color-scheme`, so a dark design comes out
+  light (mjml #2513). One `dark-mode-inversion` warning lists every dark
+  background, with or without dark CSS in the email.
+- **CSS nesting.** A rule or `@media` inside another rule, as Tailwind v4
+  writes, now grades as `nesting`, which almost no client reads.
+- **rem units.** A rem value now grades as `unit-rem`: Outlook Classic, Yahoo
+  and AOL ignore it, which is how react-email #2043 got the wrong text sizes.
+
 ## 0.16.12 - 2026-10-28
 
 Yahoo Mail web's lost fonts are now caught.
