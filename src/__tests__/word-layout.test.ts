@@ -339,3 +339,17 @@ describe("Word box model", () => {
     expect(out).not.toContain("p,h2{margin:0}");
   });
 });
+
+describe("a nested table in Word", () => {
+  // foodpanda's code pill started its cell padding left of the text above it (2026-10-28).
+  test("hangs a painted first cell's left padding out to the left", () => {
+    const out = word(
+      `<table><tr><td style="padding:0 14px"><table id="pill"><tr><td bgcolor="#2E2A2B" style="padding:4px 12px">code</td></tr></table></td></tr></table>`,
+    );
+    expect(tag(out, 'id="pill"')).toMatch(/left:\s*-12px/);
+    const plain = word(
+      `<table><tr><td><table id="t"><tr><td style="padding:4px 12px">x</td></tr></table></td></tr></table>`,
+    );
+    expect(tag(plain, 'id="t"')).not.toContain("left:");
+  });
+});

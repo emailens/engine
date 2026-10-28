@@ -326,6 +326,15 @@ function hasBorder(props: Map<string, string>): boolean {
   return false;
 }
 
+/** A cell's left padding in px, from padding-left or the padding shorthand. */
+function leftPadding(props: Map<string, string>): number {
+  const own = props.get("padding-left");
+  if (own !== undefined) return parseFloat(own) || 0;
+  const parts = (props.get("padding") ?? "").replace(/!important/i, "").trim().split(/\s+/);
+  const value = parts.length === 4 ? parts[3] : parts.length >= 2 ? parts[1] : parts[0];
+  return /^\d+(?:\.\d+)?(?:px)?$/.test(value ?? "") ? parseFloat(value) : 0;
+}
+
 export function applyWordBoxModel($: CheerioAPI): void {
   const faces = declaredFaces($);
 
@@ -452,6 +461,26 @@ export function applyWordBoxModel($: CheerioAPI): void {
       if (after) $(el).attr("style", after);
       else $(el).removeAttr("style");
     }
+  });
+
+  // A nested table hangs its first cell's left padding out to the left: Word
+  // lines the cell's text up with the text around the table. foodpanda's code
+  // pill (a dark cell, padding 4px 12px, under "40% off") started 12px left of
+  // that text on the real device (emailens agreement run, 2026-10-28). Only a
+  // painted cell shows it. Shifted, not margined: the app pins table margins.
+  // ponytail: one observation; top-level tables and right padding not checked.
+  $("td table, th table").each((_, node) => {
+    const table = node as Element;
+    const cell = $(table).find("> tr > td, > tbody > tr > td").first();
+    if (!cell.length) return;
+    const cellProps = parseInlineStyle(cell.attr("style") || "");
+    if (!cell.attr("bgcolor") && !cellProps.has("background") && !cellProps.has("background-color")) return;
+    const left = leftPadding(cellProps);
+    if (left <= 0) return;
+    const props = parseInlineStyle($(table).attr("style") || "");
+    props.set("position", "relative");
+    props.set("left", `-${left}px`);
+    $(table).attr("style", serializeStyle(props));
   });
 
   // Images get their own pass: most carry no style attribute at all.
