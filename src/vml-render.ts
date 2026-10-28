@@ -91,16 +91,18 @@ function attrs(raw: string): Record<string, string> {
 }
 
 /**
- * `arcsize` is a VgFraction: a proportion of *half the shape's shorter side*,
- * where 0% is square and 100% fully circular. Values outside that are clamped
- * rather than rejected, which is why 120% and 100% draw the identical corner.
- * Verified against Outlook Classic.
+ * `arcsize` is a proportion of the shape's *shorter side*, not of half of it as
+ * the VML spec reads: a 48px button at 21% has a 10px corner in real Outlook
+ * Classic (vercel capture, emailens agreement run 2026-10-28, rows of the corner
+ * fit r=10, not 5), which is also how button generators write it (radius over
+ * height). A corner cannot pass half the shorter side, so 50% and up is a pill.
  */
 export function arcsizeToRadius(arcsize: string, width: number, height: number): number {
   const raw = arcsize.trim();
   const pct = raw.endsWith("%") ? parseFloat(raw) : parseFloat(raw) * 100;
   if (!Number.isFinite(pct)) return 0;
-  return (Math.min(100, Math.max(0, pct)) / 100) * (Math.min(width, height) / 2);
+  const shorter = Math.min(width, height);
+  return Math.min(shorter / 2, (Math.max(0, pct) / 100) * shorter);
 }
 
 /**
@@ -392,7 +394,7 @@ export function vmlToCss(html: string): string {
       const w = px(s.width) ?? 0;
       const h = px(s.height) ?? 0;
       // No arcsize means the VML default of 0.2, not a square corner.
-      const radius = a.arcsize ? arcsizeToRadius(a.arcsize, w, h) : 0.2 * (Math.min(w, h) / 2);
+      const radius = arcsizeToRadius(a.arcsize ?? "20%", w, h);
       // A <v:fill> inside paints the shape its colour. A picture in that fill
       // (src) is not drawn: on real Outlook 2013, 2016 and 2019 the shape shows
       // only the fill's colour, and only 2007 and 2010 draw the picture

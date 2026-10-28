@@ -47,11 +47,13 @@ describe("resolveMsoBranch", () => {
 });
 
 describe("arcsizeToRadius", () => {
-  // Verified against Outlook Classic: 100% and 120% draw the identical corner,
-  // because out-of-range values are clamped rather than rejected.
-  test("is a fraction of half the shorter side", () => {
+  // Real Outlook Classic drew a 48px button at 21% with a 10px corner
+  // (vercel capture, 2026-10-28): a fraction of the whole shorter side.
+  test("is a fraction of the shorter side, up to a pill", () => {
     expect(arcsizeToRadius("0%", 164, 48)).toBe(0);
-    expect(arcsizeToRadius("50%", 164, 48)).toBe(12);
+    expect(arcsizeToRadius("21%", 164, 48)).toBeCloseTo(10.08);
+    expect(arcsizeToRadius("25%", 164, 48)).toBe(12);
+    expect(arcsizeToRadius("50%", 164, 48)).toBe(24);
     expect(arcsizeToRadius("100%", 164, 48)).toBe(24);
   });
 
@@ -69,7 +71,7 @@ describe("vmlToCss: roundrect", () => {
     const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;" arcsize="50%" stroke="f" fillcolor="#336699"><center>Go</center></v:roundrect>`);
     expect(out).toContain("width:200px");
     expect(out).toContain("height:40px");
-    expect(out).toContain("border-radius:10px");
+    expect(out).toContain("border-radius:20px");
     expect(out).toContain("background:#336699");
     expect(out).toContain("border:none");
     expect(out).toContain("Go");
@@ -83,7 +85,7 @@ describe("vmlToCss: roundrect", () => {
 
   test("uses the VML default of 20% when no arcsize is given", () => {
     const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;"><center>x</center></v:roundrect>`);
-    expect(out).toContain("border-radius:4px");
+    expect(out).toContain("border-radius:8px");
   });
 
   // Real Outlook 2013, 2016 and 2019 show a picture fill in a roundrect as its
@@ -109,7 +111,7 @@ describe("vmlToCss: roundrect", () => {
     const out = vmlToCss(`<v:roundrect style="width:600px;height:300px;" arcsize="8%" stroked="f"><v:imagedata src="https://example.com/bowl.jpg" /></v:roundrect>`);
     expect(out).toContain("background-image:url('https://example.com/bowl.jpg')");
     expect(out).toContain("background-size:100% 100%");
-    expect(out).toContain("border-radius:12px");
+    expect(out).toContain("border-radius:24px");
     expect(out).not.toContain("<v:imagedata");
   });
 
@@ -163,7 +165,7 @@ describe("renderOutlookBranch", () => {
     const html = `${mso(`<v:roundrect style="width:200px;height:40px;" arcsize="50%" fillcolor="#336699" stroke="f"><center>Go</center></v:roundrect>`)}<!--[if !mso]><!--><a>fallback</a><!--<![endif]-->`;
     const out = renderOutlookBranch(html);
     expect(out).toContain('data-vml="roundrect"');
-    expect(out).toContain("border-radius:10px");
+    expect(out).toContain("border-radius:20px");
     expect(out).not.toContain("fallback");
     expect(out).not.toMatch(/<v:/i);
   });
