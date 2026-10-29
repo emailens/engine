@@ -56,6 +56,11 @@ const report = auditEmail(html, { framework: "jsx" });
 console.log(report.compatibility.scores["outlook-windows"]);
 ```
 
+The main entry runs in the browser as well as in Node, and a test keeps it that
+way. The Node-only parts live in subpaths: `@emailens/engine/compile` (React
+Email, MJML and Maizzle compilers) and `@emailens/engine/server` (DNS and
+SpamAssassin checks).
+
 ## What It Catches
 
 - **CSS compatibility** across 21 clients
