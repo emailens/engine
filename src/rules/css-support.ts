@@ -7522,7 +7522,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "fastmail": ["Partial. Supports gap and column-gap for flexbox. Supports gap for multi-column layout (i.e. in conjunction with CSS column-count property)"],
   },
   "grid-template-columns": {
-    "outlook-macos": ["Observed 2026-10-27 (Emailens probe sheets 20-22, the new Outlook for Mac (Preflight)): Plain track sizes work (`300px 300px`, `1fr 1fr`); a value with `repeat()` or `minmax()` is dropped, so the grid falls back to one column."],
+    "outlook-macos": ["Observed 2026-10-27 (Emailens probe sheets 20-22, the new Outlook for Mac): Plain track sizes work (`300px 300px`, `1fr 1fr`); a value with `repeat()` or `minmax()` is dropped, so the grid falls back to one column."],
   },
   "height": {
     "outlook-windows-legacy": ["Partial. Not supported on `<body>`, `<span>`, `<div>` or `<p>` elements."],

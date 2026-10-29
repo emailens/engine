@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.1 - 2026-10-29
+
+### Fixed
+
+- The Outlook for Mac grid observations named a third-party capture service
+  in their source label. The label now names only the client. No support level
+  or note text changed.
+
 ## 0.18.0 - 2026-10-29
 
 From a person-graded comparison of 9 real emails on 7 real clients, and a

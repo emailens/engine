@@ -40,11 +40,11 @@ const seen = (level: SupportLevel, source: string, note: string): Observation =>
 // them by real Gmail web in Chrome (two Google accounts) and of box-shadow and
 // animation in Firefox, so that render was not real Gmail. Those rows were
 // dropped; caniemail stands for Gmail web.
-/** Probe sheets 20 to 22 on Preflight's new Outlook for Mac, 2026-10-27. */
+/** Probe sheets 20 to 22 on the new Outlook for Mac, 2026-10-27. */
 const newOutlookMac = (level: SupportLevel, note: string): Observation => ({
   level,
   observed: "2026-10-27",
-  source: "Emailens probe sheets 20-22, the new Outlook for Mac (Preflight)",
+  source: "Emailens probe sheets 20-22, the new Outlook for Mac",
   note,
 });
 
