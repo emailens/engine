@@ -352,4 +352,13 @@ describe("a nested table in Word", () => {
     );
     expect(tag(plain, 'id="t"')).not.toContain("left:");
   });
+
+  test("leaves a sized or centred table where its width puts it", () => {
+    for (const attrs of ['width="560"', 'style="width:100%"', 'align="center"']) {
+      const out = word(
+        `<table><tr><td align="center"><table id="c" ${attrs}><tr><td style="padding:28px;background:#27231d">hero</td></tr></table></td></tr></table>`,
+      );
+      expect(tag(out, 'id="c"')).not.toMatch(/left:\s*-/);
+    }
+  });
 });

@@ -469,8 +469,13 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // that text on the real device (emailens agreement run, 2026-10-28). Only a
   // painted cell shows it. Shifted, not margined: the app pins table margins.
   // ponytail: one observation; top-level tables and right padding not checked.
+  // Only a shrink-wrapped table hangs: a sized or centred one (an email's
+  // container, a 100% column row) is placed by its width, not by the text, and
+  // shifting it slid whole emails left in the simulation (visual check, 2026-10-29).
   $("td table, th table").each((_, node) => {
     const table = node as Element;
+    const own = parseInlineStyle($(table).attr("style") || "");
+    if ($(table).attr("width") || own.has("width") || /center/i.test($(table).attr("align") || "")) return;
     const cell = $(table).find("> tr > td, > tbody > tr > td").first();
     if (!cell.length) return;
     const cellProps = parseInlineStyle(cell.attr("style") || "");
