@@ -65,6 +65,16 @@ const gmailWeb = (level: SupportLevel, note: string): Observation => ({
 });
 
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
+  // Email Geeks #email-code, 2026-10-29: "Yahoo strips action and formaction".
+  // Six forms sent to our Yahoo seed; the delivered HTML had neither.
+  "<form>": {
+    "yahoo-mail": {
+      level: "unsupported",
+      observed: "2026-10-29",
+      source: "Emailens probe, Yahoo Mail web (Chrome), our own seed inbox",
+      note: "The form is kept but its `action` is removed (absolute, relative and empty alike), and so is `formaction` on a button; Yahoo adds `target=\"_blank\"`. The form cannot reach your server: link to a landing page instead. `type=\"email\"` is also dropped from inputs; `method`, text, radio and submit inputs are kept.",
+    },
+  },
   // display:flex holds and so does width; the item sizing does not. A label
   // column at `flex:0 0 34%` beside a paragraph collapsed to a letter wide.
   flex: {

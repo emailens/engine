@@ -410,7 +410,7 @@ const CSS_SUPPORT_TABLE = {
     "outlook-macos": "partial",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
-    "yahoo-mail": "supported",
+    "yahoo-mail": "unsupported",
     "yahoo-mail-android": "supported",
     "yahoo-mail-ios": "unsupported",
     "samsung-mail": "supported",
@@ -7024,6 +7024,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "outlook-web": ["Not supported. The `<form>` is there but values are not submitted."],
     "outlook-windows": ["Not supported. The `<form>` is there but values are not submitted."],
     "outlook-macos": ["Not supported. The `<form>` is there but values are not submitted."],
+    "yahoo-mail": ["Observed 2026-10-29 (Emailens probe, Yahoo Mail web (Chrome), our own seed inbox): The form is kept but its `action` is removed (absolute, relative and empty alike), and so is `formaction` on a button; Yahoo adds `target=\"_blank\"`. The form cannot reach your server: link to a landing page instead. `type=\"email\"` is also dropped from inputs; `method`, text, radio and submit inputs are kept."],
     "protonmail": ["Not supported. The `<form>` and its entire content is removed."],
   },
   "<input type=\"checkbox\">": {

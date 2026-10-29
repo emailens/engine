@@ -263,6 +263,9 @@ interface ClientTransformConfig {
   stripExternalStylesheets: boolean;
   /** Whether to strip <form> elements */
   stripForms: boolean;
+  /** Keep forms but remove where they submit: `action`, `formaction`, and
+   *  `type="email"` on inputs (real Yahoo web, 2026-10-29). */
+  dropFormActions?: boolean;
   /** Whether to strip <svg> elements */
   stripSvg: boolean;
   /** Whether to remove the legacy `background` attribute. The Word engine paints
@@ -772,6 +775,10 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
+    // Six forms sent to our Yahoo seed lost `action` and `formaction`, every
+    // kind (absolute, relative, empty), and `type="email"`; Yahoo added
+    // target="_blank" (emailens probe fidelity/probes/yahoo-forms.ts, 2026-10-29).
+    dropFormActions: true,
     stripSvg: false,
     additionalChecks: yahooAdditionalChecks,
   },
@@ -1166,6 +1173,19 @@ function applyTransformDom(
     $("form").each((_, el) => {
       $(el).replaceWith($(el).html() || "");
     });
+  }
+
+  // 3b. Forms kept, with nowhere to submit to.
+  if (config.dropFormActions && $("form").length > 0) {
+    warnings.push(makeWarning({
+      severity: "error",
+      client: clientId,
+      property: "<form>",
+      message: `${clientId} removes the form's action and any formaction, so it cannot submit to your server. Link to a landing page instead.`,
+    }, "<form>", clientId, framework));
+    $("form").removeAttr("action").attr("target", "_blank");
+    $("[formaction]").removeAttr("formaction");
+    $('input[type="email" i]').removeAttr("type");
   }
 
   // 4. Strip SVG
