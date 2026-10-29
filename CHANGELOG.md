@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.2 - 2026-10-29
+
+### Fixed
+
+- Outlook Classic (Word): 0.18.0 hung a nested table's painted first cell
+  padding out to the left on every nested table, so a centred email whose
+  first row is a padded, coloured header slid left by that padding. Only a
+  shrink-wrapped table hangs now; a table with a width or `align="center"`
+  stays where its width puts it.
+
 ## 0.18.1 - 2026-10-29
 
 ### Fixed
