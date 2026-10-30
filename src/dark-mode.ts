@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
 import { MAX_HTML_SIZE } from "./constants";
-import { parseColor, relativeLuminance } from "./color-utils";
+import { oklabToRgb, parseColor, relativeLuminance, rgbToOklab } from "./color-utils";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import type { CSSWarning } from "./types";
 import { getClient } from "./clients";
@@ -75,8 +75,8 @@ export function simulateDarkMode(
       break;
 
     case "gmail-android":
-      // Gmail Android applies partial color inversion
-      applyColorInversion($, "partial", clientId);
+      // Measured, not the generic partial invert: see gmailAndroidColor.
+      applyColorInversion($, "gmail-android", clientId);
       break;
 
     case "outlook-web":
@@ -246,7 +246,37 @@ const SAMPLED_DARK: Record<string, Record<string, string>> = {
   "gmail-ios": { eeeae4: "#4a4438" },
 };
 
-function invertColor(value: string, mode: "full" | "partial", clientId?: string): string | null {
+/**
+ * Gmail Android's dark mode, fitted to a real Pixel/Gmail app capture of 12
+ * text-on-background swatches (fidelity/probes/gmail-app-dark.ts, 2026-10-30):
+ * every one stayed readable. A light background (OKLab L > 0.8) goes dark and
+ * keeps its hue (#ffffff -> #121212, #eeeae4 -> #2d2a25); saturated, mid and
+ * dark backgrounds are left alone, and so is light text on them. Text is
+ * lightened only when dark, and smoothly (#555 -> #b5b5b5, #777 -> #909090,
+ * #1d4ed8 -> #99a4ff); #999 already reads and is kept. The old generic partial
+ * invert turned white button text #2d2d2d and left #555 on a dark grey: 8 of
+ * the 12 predicted wrong. Borders follow the background rule.
+ * ponytail: two linear fits on 12 points; one app version on one phone.
+ */
+const hex = (c: { r: number; g: number; b: number }) =>
+  "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
+
+function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
+  const parsed = parseColor(value);
+  if (!parsed || parsed.a === 0) return null;
+  const [L, A, B] = rgbToOklab(parsed);
+  if (role === "bg") {
+    if (L <= 0.8) return null;
+    return hex(oklabToRgb([0.18 + (1 - L) * 2.3, A, B]));
+  }
+  const lifted = Math.min(1, 1.16 - 0.87 * L);
+  if (lifted <= L) return null;
+  // Chroma narrows as text lightens, as the measured blue link did.
+  return hex(oklabToRgb([lifted, A * 0.6, B * 0.6]));
+}
+
+function invertColor(value: string, mode: "full" | "partial" | "gmail-android", clientId?: string, role: "fg" | "bg" = "bg"): string | null {
+  if (mode === "gmail-android") return gmailAndroidColor(value, role);
   const pinned = clientId && SAMPLED_DARK[clientId]?.[value.trim().replace("#", "").toLowerCase()];
   if (pinned) return pinned;
   const parsed = parseColor(value);
@@ -297,7 +327,7 @@ function extractBackgroundColor(value: string): string | null {
 
 function applyColorInversion(
   $: cheerio.CheerioAPI,
-  mode: "full" | "partial",
+  mode: "full" | "partial" | "gmail-android",
   clientId?: string,
 ): void {
   // Process inline styles using parseColor for accurate detection
@@ -308,7 +338,7 @@ function applyColorInversion(
 
     props.forEach((value, prop) => {
       if (COLOR_PROPS.has(prop)) {
-        const inverted = invertColor(value, mode, clientId);
+        const inverted = invertColor(value, mode, clientId, prop === "color" ? "fg" : "bg");
         if (inverted) {
           props.set(prop, inverted);
           changed = true;
@@ -357,7 +387,7 @@ function applyColorInversion(
               }
             }
           } else {
-            const inverted = invertColor(valueStr, mode, clientId);
+            const inverted = invertColor(valueStr, mode, clientId, prop === "color" ? "fg" : "bg");
             if (inverted) {
               node.value = csstree.parse(inverted, { context: "value" }) as csstree.Value;
               modified = true;

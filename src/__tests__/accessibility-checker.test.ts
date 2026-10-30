@@ -538,22 +538,33 @@ describe("accessibility checker: contrast background resolution", () => {
 // Dark-mode contrast: failures that only appear once a client inverts colours
 // ============================================================================
 
+const MID_ON_NEAR_WHITE = `<html lang="en"><head><title>T</title></head><body>
+      <div style="background-color: #f9fafb;">
+        <p style="color: #6b7280; font-size: 14px;">Body copy</p>
+      </div>
+    </body></html>`;
+
 describe("dark-mode contrast", () => {
-  test("mid-tone text on white passes in light but is flagged in dark", () => {
-    // #555 on #fff is 7.4:1. Gmail Android repaints the near-white background
-    // to #2d2d2d and leaves #555 alone, collapsing it to ~1.8:1.
+  test("#555 on white is not flagged: the real Gmail Android app lifts it", () => {
+    // Measured 2026-10-30 on the Gmail Android app: #555 on #fff became #b5b5b5
+    // on #121212 (9.1:1). The old model left #555 on #2d2d2d (1.8:1) and
+    // raised an error on a normal footer.
     const html = `<html lang="en"><head><title>T</title></head><body>
       <div style="background-color: #ffffff;">
         <p style="color: #555555; font-size: 14px;">Body copy</p>
       </div>
     </body></html>`;
+    expect(checkDarkModeContrast(html)).toHaveLength(0);
+  });
 
-    expect(checkAccessibility(html).issues.filter((i) => i.rule === "low-contrast")).toHaveLength(0);
-
-    const dark = checkDarkModeContrast(html);
+  test("mid-tone text on near-white passes in light but is flagged in dark", () => {
+    // #6b7280 on #f9fafb is 4.6:1. The Gmail iOS model (light -> #1a1a1a,
+    // mid-range text left alone; not yet checked on a real device) gives 3.6:1.
+    const dark = checkDarkModeContrast(MID_ON_NEAR_WHITE);
+    expect(checkAccessibility(MID_ON_NEAR_WHITE).issues.filter((i) => i.rule === "low-contrast")).toHaveLength(0);
     expect(dark).toHaveLength(1);
     expect(dark[0].rule).toBe("low-contrast-dark");
-    expect(dark[0].severity).toBe("error");
+    expect(dark[0].severity).toBe("warning"); // 3.6:1, above the 3:1 error line
   });
 
   test("a failure that already exists in light mode is not reported twice", () => {
@@ -577,12 +588,7 @@ describe("dark-mode contrast", () => {
   });
 
   test("positions are dropped: they would point into the transformed HTML", () => {
-    const html = `<html lang="en"><head><title>T</title></head><body>
-      <div style="background-color: #ffffff;">
-        <p style="color: #555555; font-size: 14px;">Body copy</p>
-      </div>
-    </body></html>`;
-    const dark = checkDarkModeContrast(html, undefined);
+    const dark = checkDarkModeContrast(MID_ON_NEAR_WHITE, undefined);
     expect(dark[0].loc).toBeUndefined();
     expect(dark[0].locs).toBeUndefined();
   });
@@ -592,13 +598,8 @@ describe("dark-mode contrast", () => {
   });
 
   test("auditEmail surfaces dark-mode contrast, and `skip` turns it off", () => {
-    const html = `<html lang="en"><head><title>T</title></head><body>
-      <div style="background-color: #ffffff;">
-        <p style="color: #555555; font-size: 14px;">Body copy</p>
-      </div>
-    </body></html>`;
-    expect(auditEmail(html).darkContrast).toHaveLength(1);
-    expect(auditEmail(html, { skip: ["darkContrast"] }).darkContrast).toHaveLength(0);
+    expect(auditEmail(MID_ON_NEAR_WHITE).darkContrast).toHaveLength(1);
+    expect(auditEmail(MID_ON_NEAR_WHITE, { skip: ["darkContrast"] }).darkContrast).toHaveLength(0);
   });
 });
 
@@ -723,7 +724,7 @@ describe("accessibility checker: contrast cascade", () => {
   test("dark-mode contrast sees class-styled emails too", () => {
     const html = doc(
       `<div class="card"><p class="body">Copy</p></div>`,
-      `<style>.card{background-color:#ffffff}.body{color:#555555;font-size:14px}</style>`,
+      `<style>.card{background-color:#f9fafb}.body{color:#6b7280;font-size:14px}</style>`,
     );
     expect(checkAccessibility(html).issues.filter((i) => i.rule === "low-contrast")).toHaveLength(0);
     expect(checkDarkModeContrast(html)).toHaveLength(1);

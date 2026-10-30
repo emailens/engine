@@ -454,6 +454,23 @@ export function rgbToOklab(rgba: RGBA): [number, number, number] {
   ];
 }
 
+/** OKLab back to sRGB, clamped into gamut. The inverse of {@link rgbToOklab}. */
+export function oklabToRgb([L, A, B]: [number, number, number]): RGBA {
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  const toGamma = (c: number) => {
+    const v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    return Math.round(Math.min(1, Math.max(0, v)) * 255);
+  };
+  return {
+    r: toGamma(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    g: toGamma(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    b: toGamma(-0.0041960863 * l - 0.7034186147 * m + 1.707662439 * s),
+    a: 1,
+  };
+}
+
 /**
  * Perceptual distance between two colours, as OKLab delta-E.
  *

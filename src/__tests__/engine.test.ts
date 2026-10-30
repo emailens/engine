@@ -537,12 +537,12 @@ describe("simulateDarkMode", () => {
     expect(result.html).toContain("#e0e0e0"); // black text inverted
   });
 
-  test("gmail-android applies partial inversion", () => {
-    const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
+  test("gmail-android darkens a light background and lifts dark text", () => {
+    // Measured on the real app (gmail-android-dark.test.ts): #fff -> #121212.
+    const html = `<html><body><p style="background-color: #ffffff; color: #000000;">Test</p></body></html>`;
     const result = simulateDarkMode(html, "gmail-android");
-    // Partial inversion: very dark text (#000) → #d4d4d4 (not #e0e0e0 which full uses)
-    expect(result.html).toContain("#d4d4d4");
-    expect(result.html).not.toMatch(/color:\s*#e0e0e0[^"]*">\s*Test/); // not full inversion on p
+    expect(result.html).toMatch(/background-color: #1[0-4]1[0-4]1[0-4]/);
+    expect(result.html).toMatch(/color: #f[0-9a-f]f[0-9a-f]f[0-9a-f]/);
   });
 
   test("outlook-ios applies partial inversion", () => {
