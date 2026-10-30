@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.18.4 - 2026-10-30
 
 ### Fixed
 
@@ -13,10 +13,6 @@
   dark text on a light-coloured button turns white (2.1:1 on amber). Known
   misses: a light grey darkens further than modelled, and one green text
   darkens. One phone, one app version; Gmail iOS is not measured yet.
-
-## 0.18.4 - 2026-10-30
-
-### Fixed
 
 - A Gmail wrapper rule meant for Gmail's own auto-links, such as
   `u + #body a { color: inherit !important }`, also matches the email's
