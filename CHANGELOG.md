@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.18.3 - 2026-10-30
+
+### Fixed
+
+- Yahoo Mail web removes a form's `action`, and `formaction` on a button, so
+  the form cannot submit to your server; it also drops `type="email"` from
+  inputs and adds `target="_blank"`. Observed on a real Yahoo inbox
+  (2026-10-29). `<form>` is now unsupported in Yahoo Mail with an error
+  warning that says to link to a landing page, and the Yahoo preview strips
+  the same attributes. `method`, text, radio and submit inputs are kept.
+- The main entry is tested to bundle for the browser with no Node built-ins;
+  the README names the Node-only subpaths.
+
 ## 0.18.2 - 2026-10-29
 
 ### Fixed
