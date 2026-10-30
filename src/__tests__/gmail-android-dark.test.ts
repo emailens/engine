@@ -24,13 +24,48 @@ const ratio = (a: string, b: string) => {
   return contrastRatio(relativeLuminance(x.r, x.g, x.b), relativeLuminance(y.r, y.g, y.b));
 };
 
+// Held out: colours the model was NOT fitted on, predictions committed
+// before the probe was sent (emailens.dev 61ac3474), graded after. 10 of 12
+// agree at the WCAG line; the old generic invert agreed on 6.
+const HELDOUT: Array<[string, string, string, string]> = [
+  ["#111111", "#f59e0b", "#ffffff", "#f59e0b"],
+  ["#1f2937", "#fde68a", "#e3eeff", "#382c00"],
+  ["#111827", "#93c5fd", "#f8ffff", "#93c5fd"],
+  ["#ffffff", "#9ca3af", "#ffffff", "#9ca3af"],
+  ["#374151", "#d1d5db", "#c4cfe3", "#383b40"],
+  ["#dc2626", "#ffffff", "#ff5141", "#121212"],
+  ["#16a34a", "#ffffff", "#008e37", "#121212"],
+  ["#7c3aed", "#ffffff", "#c87dff", "#121212"],
+  ["#9ca3af", "#1f2937", "#9ca3af", "#1f2937"],
+  ["#0f766e", "#ccfbf1", "#56afa5", "#002c25"],
+  ["#ffffff", "#16a34a", "#ffffff", "#16a34a"],
+  ["#444444", "#e5e7eb", "#cacaca", "#2b2d30"],
+];
+// Known misses, kept visible: Gmail darkens a light grey further than the
+// model (a false warning), and darkened this green where the model keeps it.
+const KNOWN_MISSES = new Set(["#374151 on #d1d5db", "#16a34a on #ffffff"]);
+
+function simulated(fg: string, bg: string): number {
+  const html = `<html><body><table><tr><td style="background-color:${bg};color:${fg}">x</td></tr></table></body></html>`;
+  const style = simulateDarkMode(html, "gmail-android").html.match(/<td style="([^"]*)"/)![1];
+  const get = (p: string) => style.split(";").map((d) => d.split(":").map((s) => s.trim())).find((d) => d[0] === p)![1];
+  return ratio(get("color"), get("background-color"));
+}
+
+describe("gmail-android dark mode on held-out colours", () => {
+  for (const [fg, bg, realFg, realBg] of HELDOUT) {
+    const name = `${fg} on ${bg}`;
+    test(name, () => {
+      const agrees = (simulated(fg, bg) >= 4.5) === (ratio(realFg, realBg) >= 4.5);
+      expect(agrees).toBe(!KNOWN_MISSES.has(name));
+    });
+  }
+});
+
 describe("gmail-android dark mode matches the real app", () => {
   for (const [fg, bg, realFg, realBg] of MEASURED) {
     test(`${fg} on ${bg}`, () => {
-      const html = `<html><body><table><tr><td style="background-color:${bg};color:${fg}">x</td></tr></table></body></html>`;
-      const style = simulateDarkMode(html, "gmail-android").html.match(/<td style="([^"]*)"/)![1];
-      const get = (p: string) => style.split(";").map((d) => d.split(":").map((s) => s.trim())).find((d) => d[0] === p)![1];
-      const sim = ratio(get("color"), get("background-color"));
+      const sim = simulated(fg, bg);
       const real = ratio(realFg, realBg);
       // Same verdict at the WCAG line, and the ratio within 25% of the phone's.
       expect(sim >= 4.5).toBe(real >= 4.5);

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Gmail Android dark mode is modelled from the real app instead of a generic
+  partial invert. On a real Gmail Android capture the old model agreed with
+  the phone on 4 of 12 text-on-background swatches and 6 of 12 held-out ones;
+  the new one agrees on 12 and 10. It no longer turns white button text dark
+  or leaves grey footer text on dark grey, which raised dark-mode contrast
+  errors on ordinary emails. It does catch what real Gmail Android breaks:
+  dark text on a light-coloured button turns white (2.1:1 on amber). Known
+  misses: a light grey darkens further than modelled, and one green text
+  darkens. One phone, one app version; Gmail iOS is not measured yet.
+
 ## 0.18.4 - 2026-10-30
 
 ### Fixed
