@@ -8,12 +8,12 @@
 **The rendering linter for email**
 
 [![CI](https://github.com/emailens/engine/actions/workflows/ci.yml/badge.svg)](https://github.com/emailens/engine/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@emailens/engine?cacheSeconds=86400)](https://www.npmjs.com/package/@emailens/engine)
-[![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-1288%20passing-brightgreen)]()
-[![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
-[![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/emailens/mcp)
-[![GitHub stars](https://img.shields.io/github/stars/emailens/engine?style=flat&cacheSeconds=86400)](https://github.com/emailens/engine/stargazers)
+[![npm](https://badgen.net/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
+[![license](https://badgen.net/badge/license/MIT/green)](./LICENSE)
+[![tests](https://badgen.net/badge/tests/1288%20passing/brightgreen)]()
+[![node](https://badgen.net/badge/node/%3E%3D18/brightgreen)](https://nodejs.org/)
+[![MCP](https://badgen.net/badge/MCP/Server/blue)](https://github.com/emailens/mcp)
+[![GitHub stars](https://badgen.net/github/stars/emailens/engine)](https://github.com/emailens/engine/stargazers)
 
 [Quick Start](#quick-start) · [What It Catches](#what-it-catches) · [Why Emailens](#why-emailens) · [Supported Clients](#supported-email-clients) · [API Docs](./docs/API.md)
 
