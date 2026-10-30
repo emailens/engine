@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.18.4 - 2026-10-30
+
+### Fixed
+
+- A Gmail wrapper rule meant for Gmail's own auto-links, such as
+  `u + #body a { color: inherit !important }`, also matches the email's
+  buttons and beats their inline colour and size. On real Gmail web it
+  collapsed the main button in 11 of 20 emails of an agent benchmark. New
+  style-survival rule `gmail-wrapper-overrides-inline`: an error when the
+  rule's `!important` declarations override a button's inline values, a
+  warning for plain links; rules under `prefers-color-scheme` are skipped,
+  since Gmail never applies them. Checked against human grades of 239 real
+  Gmail captures: errors on all 11 broken emails, none on one that holds.
+- The Gmail wrapper selector matches any id or class on `<body>`, not only
+  `.body`, and `.menu + .x` is no longer read as `u + .x`.
+- The Gmail preview builds the wrapper the way Gmail does, inside `<body>`,
+  so `u + #body` rules apply there. The `<u>` used to sit before `<body>`,
+  where a browser moves it back in, and only for a `.body` class.
+
 ## 0.18.3 - 2026-10-30
 
 ### Fixed
