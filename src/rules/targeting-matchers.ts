@@ -2,9 +2,14 @@ import type { CheerioAPI } from "cheerio";
 import { TARGETING_HACKS, type TargetingHack } from "./targeting-hacks.generated";
 
 export type TargetingSimulate =
-  | { kind: "insert-before"; html: string; if?: string; unless?: string }
   | { kind: "wrap-body"; id?: string; className?: string }
-  | { kind: "wrap-then-insert"; wrapHtml: string; html: string; if?: string; unless?: string };
+  | { kind: "gmail-wrapper" };
+
+/**
+ * A selector aimed at Gmail's wrapper: `u + #body`, `u + .body`, any id or
+ * class the body carries. The leading boundary keeps `.menu + .x` out.
+ */
+export const GMAIL_WRAPPER_SELECTOR = /(?:^|[\s>~+(])u\s*\+\s*([.#][\w-]+)/i;
 
 /**
  * Engine-owned matcher. `upstreamKey` is provenance into TARGETING_HACKS;
@@ -34,7 +39,7 @@ export const TARGETING_MATCHERS: readonly TargetingMatcher[] = [
   {
     id: "gmail-android-div-u-body",
     upstreamKey: "c08d3e74cc1e4d28",
-    pattern: /div\s*>\s*u\s*\+\s*(\.body|#body)/i,
+    pattern: /(?:^|[\s>~+(])div\s*>\s*u\s*\+\s*[.#][\w-]+/i,
     surface: "selector",
     clientIds: ["gmail-android"],
     description: "Gmail Android wrapper (`div > u + .body`)",
@@ -42,18 +47,12 @@ export const TARGETING_MATCHERS: readonly TargetingMatcher[] = [
     scopesCompatibility: true,
     preserveOnInline: true,
     lint: "strict",
-    simulate: {
-      kind: "wrap-then-insert",
-      wrapHtml: "<div></div>",
-      html: "<u></u>",
-      if: ".body",
-      unless: "div > u + .body",
-    },
+    simulate: { kind: "gmail-wrapper" },
   },
   {
     id: "gmail-u-plus-body",
     upstreamKey: "efa65078ea98b59f",
-    pattern: /u\s*\+\s*(\.body|#body)/i,
+    pattern: GMAIL_WRAPPER_SELECTOR,
     surface: "selector",
     clientIds: ["gmail-web"],
     description: "Gmail Web wrapper (`u + .body`)",
@@ -61,7 +60,7 @@ export const TARGETING_MATCHERS: readonly TargetingMatcher[] = [
     scopesCompatibility: true,
     preserveOnInline: true,
     lint: "strict",
-    simulate: { kind: "insert-before", html: "<u></u>", if: ".body", unless: "u + .body" },
+    simulate: { kind: "gmail-wrapper" },
   },
   {
     id: "samsung-message-webview",
@@ -470,16 +469,22 @@ export function applyTargetingSimulation($: CheerioAPI, clientId: string): void 
       }
       continue;
     }
-    if (sim.if && $(sim.if).length === 0) continue;
-    if (sim.unless && $(sim.unless).length > 0) continue;
-    if (sim.kind === "wrap-then-insert") {
-      const body = $("body").first();
-      if (body.length === 0) continue;
-      body.wrap(sim.wrapHtml);
-      body.before(sim.html);
-    } else {
-      $("body").first().before(sim.html);
+    // Gmail turns <body> into a div that keeps its id and class, behind a
+    // <u></u>, inside its own div: `u + #body` and `div > u + .body` both
+    // match there. Built inside <body>, since a <u> before it is moved back
+    // in when the preview is parsed again, and nothing then follows it.
+    const body = $("body").first();
+    if (body.length === 0 || $("u + *").length > 0) continue;
+    if (!GMAIL_WRAPPER_SELECTOR.test($("style").text())) continue;
+    const inner = $("<div></div>");
+    for (const attr of ["id", "class"]) {
+      const value = body.attr(attr);
+      if (value === undefined) continue;
+      inner.attr(attr, value);
+      body.removeAttr(attr);
     }
+    inner.append(body.contents());
+    body.append($("<div></div>").append("<u></u>").append(inner));
   }
 }
 

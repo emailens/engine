@@ -1,6 +1,8 @@
 import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
+import type { AnyNode } from "domhandler";
 import { EMPTY_STYLE_SURVIVAL } from "./constants";
+import { GMAIL_WRAPPER_SELECTOR } from "./rules/targeting-matchers";
 import { fromHtml, type ParseOptions } from "./parse-html";
 import { cssBlockAnchor, locInCssBlock, locOfElement } from "./source-location";
 import type { ClientId } from "./rules/css-support";
@@ -391,7 +393,128 @@ export function checkStyleSurvivalFromDom(
     );
   }
 
+  // ── Gmail: a wrapper rule overriding inline styles ────────────────────────
+  // `u + #body a { color: inherit !important }` is a snippet for the links
+  // Gmail adds itself (dates, phone numbers), but `a` matches every link, so
+  // in Gmail it beats the inline colour and size of the email's own buttons.
+  // Observed on real Gmail web, 2026-10-30: 11 of 20 emails carrying it had
+  // their main button collapse to body text.
+  const overridden = gmailWrapperOverrides($);
+  if (overridden.elements.length) {
+    const buttons = overridden.elements.filter(isButtonLike).length;
+    add(
+      "gmail-wrapper-overrides-inline",
+      buttons ? "error" : "warning",
+      GMAIL_WRAPPER,
+      `Gmail matches \`${overridden.selector}\`, and its !important ` +
+        `${overridden.props.join(", ")} replace the inline values of ` +
+        `${overridden.elements.length} element${overridden.elements.length > 1 ? "s" : ""}` +
+        (buttons ? `, ${buttons > 1 ? `${buttons} buttons` : "a button"} among them.` : ".") +
+        (overridden.inherits ? " In Gmail they take the surrounding text's style." : "") +
+        " Narrow the selector so it skips your own links and buttons, or drop the properties they set inline.",
+      overridden.elements.map((el) => locOfElement(el)).filter((l): l is SourceLocation => !!l),
+    );
+  }
+
   return { issues };
+}
+
+/** The Gmail apps whose wrapper `u + .body` selectors match (targeting-matchers). */
+const GMAIL_WRAPPER: ClientId[] = ["gmail-web", "gmail-android"];
+
+function inlineDeclarations(style: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const part of style.split(";")) {
+    const i = part.indexOf(":");
+    if (i < 0) continue;
+    map.set(part.slice(0, i).trim().toLowerCase(), part.slice(i + 1).trim().toLowerCase());
+  }
+  return map;
+}
+
+/** A link styled as a button: its own background. */
+function isButtonLike(el: AnyNode): boolean {
+  const style = inlineDeclarations("attribs" in el ? (el.attribs.style ?? "") : "");
+  const bg = style.get("background-color") ?? style.get("background");
+  return !!bg && bg !== "transparent" && bg !== "none";
+}
+
+/**
+ * Elements whose inline declarations lose to an !important rule that only
+ * Gmail applies: a selector through its wrapper (`u + #body a`) whose wrapper
+ * part names the <body>'s own id or class, which Gmail keeps.
+ */
+function gmailWrapperOverrides($: cheerio.CheerioAPI): {
+  selector: string;
+  props: string[];
+  elements: AnyNode[];
+  inherits: boolean;
+} {
+  const found = { selector: "", props: [] as string[], elements: [] as AnyNode[], inherits: false };
+  const body = $("body").first();
+  if (!body.length) return found;
+  const seen = new Set<AnyNode>();
+  const props = new Set<string>();
+
+  for (const el of $("style").toArray()) {
+    let ast: csstree.CssNode;
+    try {
+      ast = csstree.parse($(el).text());
+    } catch {
+      continue;
+    }
+    csstree.walk(ast, {
+      visit: "Rule",
+      enter(this: csstree.WalkContext, rule: csstree.CssNode) {
+        if (rule.type !== "Rule" || rule.prelude.type !== "SelectorList") return;
+        // Gmail ignores prefers-color-scheme, so a dark-mode block never applies.
+        const at = this.atrule?.prelude ? csstree.generate(this.atrule.prelude) : "";
+        if (/prefers-color-scheme/i.test(at)) return;
+        const important = new Map<string, string>();
+        csstree.walk(rule.block, {
+          visit: "Declaration",
+          enter(d: csstree.CssNode) {
+            if (d.type === "Declaration" && d.important) {
+              important.set(d.property.toLowerCase(), csstree.generate(d.value).trim().toLowerCase());
+            }
+          },
+        });
+        if (!important.size) return;
+
+        for (const child of rule.prelude.children) {
+          const text = csstree.generate(child);
+          const m = GMAIL_WRAPPER_SELECTOR.exec(text);
+          if (!m) continue;
+          const rest = text.slice((m.index ?? 0) + m[0].length).trim();
+          let targets: AnyNode[];
+          try {
+            if (!rest || !body.is(m[1])) continue;
+            targets = body.find(rest.replace(/^>\s*/, "> ")).toArray();
+          } catch {
+            continue; // A selector cheerio cannot evaluate: no guess.
+          }
+          for (const target of targets) {
+            const inline = inlineDeclarations($(target).attr("style") ?? "");
+            let hit = false;
+            for (const [prop, value] of important) {
+              const own = inline.get(prop);
+              if (own === undefined || own.replace(/\s*!important$/, "") === value || own.endsWith("!important")) continue;
+              props.add(prop);
+              if (value === "inherit") found.inherits = true;
+              hit = true;
+            }
+            if (hit && !seen.has(target)) {
+              seen.add(target);
+              found.elements.push(target);
+              found.selector ||= text.trim();
+            }
+          }
+        }
+      },
+    });
+  }
+  found.props = [...props];
+  return found;
 }
 
 /**

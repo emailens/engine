@@ -380,3 +380,63 @@ describe("hostile input", () => {
     expect(() => checkStyleSurvival(doc(long))).not.toThrow();
   });
 });
+
+describe("Gmail: a wrapper rule overriding the email's own inline styles", () => {
+  const page = (css: string, bodyAttrs: string, inner: string) =>
+    `<!DOCTYPE html><html><head><style>${css}</style></head><body ${bodyAttrs}>${inner}</body></html>`;
+  const snippet = "u + #lk-body a { color: inherit !important; font-size: inherit !important; }";
+  const button =
+    '<a href="#" style="background-color: #4F46E5; color: #ffffff; font-size: 16px">Confirm</a>';
+  const link = '<a href="#" style="color: #4F46E5">https://example.com</a>';
+
+  it("is an error when it reaches a button: the case real Gmail collapsed", () => {
+    const found = issue(page(snippet, 'id="lk-body"', button + link), "gmail-wrapper-overrides-inline");
+    expect(found?.severity).toBe("error");
+    expect(found?.clients).toContain("gmail-web");
+    expect(found?.message).toContain("2 elements, a button among them");
+    expect(found?.message).toContain("color, font-size");
+  });
+
+  it("is a warning when only plain links lose their colour", () => {
+    expect(issue(page(snippet, 'id="lk-body"', link), "gmail-wrapper-overrides-inline")?.severity).toBe(
+      "warning",
+    );
+  });
+
+  it("works through a class on the body too", () => {
+    const css = "u + .body a { color: inherit !important; }";
+    expect(rules(page(css, 'class="body"', button))).toContain("gmail-wrapper-overrides-inline");
+  });
+
+  it("stays silent when the links set none of those properties, the snippet's intended use", () => {
+    expect(rules(page(snippet, 'id="lk-body"', '<a href="#">plain</a>'))).not.toContain(
+      "gmail-wrapper-overrides-inline",
+    );
+  });
+
+  it("stays silent when the wrapper names something other than the body", () => {
+    expect(rules(page(snippet, 'id="other"', button))).not.toContain("gmail-wrapper-overrides-inline");
+  });
+
+  it("stays silent on a sibling selector that only ends in u, like .menu + #lk-body", () => {
+    const css = ".menu + #lk-body a { color: inherit !important; }";
+    expect(rules(page(css, 'id="lk-body"', button))).not.toContain("gmail-wrapper-overrides-inline");
+  });
+
+  it("stays silent inside a prefers-color-scheme block, which Gmail never applies", () => {
+    const css = "@media (prefers-color-scheme: dark) { u + .body .btn { color: #E0E7FF !important; } }";
+    const btn = '<a class="btn" href="#" style="background-color: #4F46E5; color: #ffffff">Go</a>';
+    expect(rules(page(css, 'class="body"', btn))).not.toContain("gmail-wrapper-overrides-inline");
+  });
+
+  it("still fires inside a width query, which the Gmail apps apply", () => {
+    const css = `@media (max-width: 600px) { ${snippet} }`;
+    expect(rules(page(css, 'id="lk-body"', button))).toContain("gmail-wrapper-overrides-inline");
+  });
+
+  it("stays silent when the inline value is itself !important, which wins", () => {
+    const own = '<a href="#" style="background-color: #4F46E5; color: #ffffff !important">Go</a>';
+    const css = "u + #lk-body a { color: inherit !important; }";
+    expect(rules(page(css, 'id="lk-body"', own))).not.toContain("gmail-wrapper-overrides-inline");
+  });
+});

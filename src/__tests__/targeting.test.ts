@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import * as cheerio from "cheerio";
 import {
   TARGETING_HACKS,
   TARGETING_MATCHERS,
@@ -362,3 +363,27 @@ u + .body .btn { box-shadow: 0 1px 2px #000; }
 
 
 
+
+describe("Gmail wrapper simulation", () => {
+  // Parse the preview again, the way the browser showing it does.
+  const reparsed = (html: string, client: string) => cheerio.load(transformForClient(html, client).html);
+  const email = (bodyAttrs: string, css: string) =>
+    `<!DOCTYPE html><html><head><style>${css}</style></head><body ${bodyAttrs}><a class="btn" href="#" style="color:#fff">Go</a></body></html>`;
+
+  it("makes u + #id match through the body's own id, as real Gmail web does", () => {
+    const $ = reparsed(email('id="lk-body"', "u + #lk-body a { color: inherit !important; }"), "gmail-web");
+    expect($("u + #lk-body a.btn").length).toBe(1);
+    expect(/u\s*\+\s*#lk-body/.test($.html())).toBe(true);
+  });
+
+  it("keeps u + .body and div > u + .body matching", () => {
+    expect(reparsed(email('class="body"', "u + .body .btn { color: red; }"), "gmail-web")("u + .body .btn").length).toBe(1);
+    expect(
+      reparsed(email('class="body"', "div > u + .body .btn { color: red; }"), "gmail-android")("div > u + .body .btn").length,
+    ).toBe(1);
+  });
+
+  it("leaves an email without a wrapper selector alone", () => {
+    expect(transformForClient(email('id="x"', ".btn { color: red; }"), "gmail-web").html).not.toContain("<u></u>");
+  });
+});
