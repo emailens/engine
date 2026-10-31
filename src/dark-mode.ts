@@ -261,7 +261,7 @@ const hex = (c: { r: number; g: number; b: number }) =>
 
 // sRGB adapted to D50, the white point Skia's Lab uses.
 // Not a threshold: #fdfdfd, #fafafa and #f8f8f8 flip like any other colour.
-// ponytail: the pure greys measured, down to #f8f8f8; #f7f7f7 and #f6f6f6 unseen.
+// Every pure grey from #e0e0e0 up was measured; only these five go to it.
 const APP_BACKGROUND = new Set(["#ffffff", "#fefefe", "#fcfcfc", "#fbfbfb", "#f9f9f9"]);
 
 const D50 = [0.96422, 1, 0.82521];
