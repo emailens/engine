@@ -753,6 +753,26 @@ export function applyWordBoxModel($: CheerioAPI): void {
     table.attr("style", serializeStyle(props));
   });
 
+  // `mso-element:para-border-div` makes the table a Word frame: centred, dotted,
+  // its text justified. Uneed's frame measured 667px around 650px of text, 5px in
+  // from the left (round 2, 2026-11-01).
+  $("table").each((_, node) => {
+    const props = parseInlineStyle($(node).attr("style") || "");
+    if (!/para-border-div/i.test(props.get("mso-element") ?? "")) return;
+    const width = Number.parseFloat(props.get("mso-element-frame-width") ?? "");
+    if (!width) return;
+    props.delete("max-width");
+    props.set("width", `${width + 17}px`);
+    props.set("box-sizing", "border-box");
+    props.set("margin", "0 auto");
+    props.set("padding", "4px 12px 4px 4px");
+    props.set("border", "1px dotted #a6a6a6");
+    props.set("border-collapse", "separate");
+    props.set("text-align", "justify");
+    $(node).attr("style", serializeStyle(props));
+    $(node).removeAttr("width");
+  });
+
   // A zero-width border with a style is still a hairline: SaasHub's
   // `border:0px solid #cccccc` frames the email on real Outlook.
   $("table").each((_, node) => {

@@ -435,6 +435,13 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="t"')).not.toMatch(/margin-(?:top|bottom)/);
   });
 
+  test("a para-border-div table is a dotted, centred Word frame", () => {
+    const out = tag(word(`<table id="t" width="100%" style="max-width:650px;mso-element:para-border-div;mso-element-frame-width:650px"><tr><td>x</td></tr></table>`), 'id="t"');
+    expect(out).toContain("dotted");
+    expect(out).toMatch(/width:\s*667px/);
+    expect(out).not.toContain("max-width");
+  });
+
   test("a zero-width solid table border is a hairline", () => {
     expect(tag(word(`<table id="t" style="border:0px solid #cccccc"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/border:\s*1px solid/);
   });
