@@ -84,11 +84,12 @@ describe("Word box model", () => {
     expect(tag(word(`<div id="t" style="border:2px solid #000">text</div>`), 'id="t"')).toMatch(/border:\s*2px/);
   });
 
-  test("a paragraph and an h2 get no default margin, and an authored one still wins (01 c14, c15)", () => {
-    const out = word(`<p>a</p>`, `<style>p{margin:12px}</style>`);
-    expect(out).toContain("p,h2{margin:0}");
-    // The reset comes first, so the email's own rule overrides it.
-    expect(out.indexOf("p,h2{margin:0}")).toBeLessThan(out.indexOf("p{margin:12px}"));
+  test("a paragraph loses its margin only at the edge of its container", () => {
+    const out = word(`<div><p id="a">a</p><p id="b">b</p><p id="c">c</p></div>`);
+    expect(tag(out, 'id="a"')).toMatch(/margin-top:\s*0/);
+    expect(tag(out, 'id="b"')).not.toContain("margin");
+    expect(tag(out, 'id="c"')).toMatch(/margin-bottom:\s*0/);
+    expect(word(`<h2>a</h2>`, `<style>h2{margin:12px}</style>`)).toContain("h2{margin:0}");
   });
 
   test("the same rules reach declarations delivered by a class", () => {
@@ -223,7 +224,8 @@ describe("Word box model", () => {
     expect(both).toMatch(/width:\s*200px/);
     expect(both).toMatch(/height:\s*100px/);
     // No usable attribute: natural size, whatever the CSS or the attribute said.
-    for (const attrs of ['style="width:100px"', 'style="width:50%"', 'width="200px"', 'width="100%"']) {
+    expect(img('width="100%"')).toMatch(/width:\s*100%/);
+    for (const attrs of ['style="width:100px"', 'style="width:50%"', 'width="200px"']) {
       expect(img(attrs)).toContain("width: auto!important");
       expect(img(attrs)).not.toMatch(/100px|50%|200px|100%/);
     }

@@ -588,6 +588,9 @@ export function applyWordBoxModel($: CheerioAPI): void {
     // A decimal is a number too: Iterable's `width="193.5"` drew at ~193px
     // on today's Outlook Classic (Preflight probe 2026-10-31, I1; MongoDB).
     const NUMBER = /^\d+(?:\.\d+)?$/;
+    // A percentage attribute sizes against the cell: Resend's width="100%" drew
+    // at the column's width, not its 4624px source (round 2 grades, 2026-11-01).
+    const percent = /^\d+(?:\.\d+)?%$/.test($(el).attr("width")?.trim() ?? "") ? $(el).attr("width")?.trim() : undefined;
     const numeric = (name: string) => {
       const value = $(el).attr(name)?.trim();
       if (value !== undefined && !NUMBER.test(value)) $(el).removeAttr(name);
@@ -605,7 +608,7 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if ($(el).attr("border") !== undefined) $(el).attr("border", "0");
     // !important, so a class rule such as `img{width:100%}` cannot resize it
     // in the preview; Word reads no CSS size from any source.
-    props.set("width", width ? `${width}px!important` : "auto!important");
+    props.set("width", percent ? `${percent}!important` : width ? `${width}px!important` : "auto!important");
     props.set("height", height ? `${height}px!important` : "auto!important");
     props.set("max-width", "none!important");
     // An inline image leaves no gap for descenders beneath it (c12).
@@ -716,8 +719,21 @@ export function applyWordBoxModel($: CheerioAPI): void {
     cell.attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}text-align:left`);
   });
 
-  const reset = "<style>p,h2{margin:0}</style>";
+  // A paragraph keeps its gap between siblings and loses it only at the edge of
+  // its container: TAAFT's and SaasHub's paragraphs are spaced on real Outlook
+  // and in real Word, on the build readers have (2026-11-01).
+  $("p").each((_, node) => {
+    const p = $(node);
+    const props = parseInlineStyle(p.attr("style") || "");
+    if (props.has("margin") || props.has("margin-top") || props.has("margin-bottom")) return;
+    if (!p.prev().length) props.set("margin-top", "0");
+    if (!p.next().length) props.set("margin-bottom", "0");
+    const after = serializeStyle(props);
+    if (after) p.attr("style", after);
+  });
+
+  const reset = "<style>h2{margin:0}</style>";
   const head = $("head");
   if (head.length) head.prepend(reset);
-  else if ($("p,h2").length) $.root().prepend(reset);
+  else if ($("h2").length) $.root().prepend(reset);
 }
