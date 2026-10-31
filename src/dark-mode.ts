@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
 import { MAX_HTML_SIZE } from "./constants";
-import { oklabToRgb, parseColor, relativeLuminance, rgbToOklab } from "./color-utils";
+import { parseColor, relativeLuminance } from "./color-utils";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 import type { CSSWarning } from "./types";
 import { getClient } from "./clients";
@@ -75,7 +75,7 @@ export function simulateDarkMode(
       break;
 
     case "gmail-android":
-      // Measured, not the generic partial invert: see gmailAndroidColor.
+      // The WebView's own algorithm, not the generic invert: see gmailAndroidColor.
       applyColorInversion($, "gmail-android", clientId);
       break;
 
@@ -247,32 +247,60 @@ const SAMPLED_DARK: Record<string, Record<string, string>> = {
 };
 
 /**
- * Gmail Android's dark mode, fitted to a real Pixel/Gmail app capture of 12
- * text-on-background swatches (fidelity/probes/gmail-app-dark.ts, 2026-10-30):
- * every one stayed readable. A light background (OKLab L > 0.8) goes dark and
- * keeps its hue (#ffffff -> #121212, #eeeae4 -> #2d2a25); saturated, mid and
- * dark backgrounds are left alone, and so is light text on them. Text is
- * lightened only when dark, and smoothly (#555 -> #b5b5b5, #777 -> #909090,
- * #1d4ed8 -> #99a4ff); #999 already reads and is kept. The old generic partial
- * invert turned white button text #2d2d2d and left #555 on a dark grey: 8 of
- * the 12 predicted wrong. Borders follow the background rule.
- * ponytail: two linear fits on 12 points; one app version on one phone.
+ * Gmail Android's dark mode is the WebView's algorithmic darkening: flip CIELAB
+ * lightness, L -> min(110 - L, 100), keep a and b. Only text darker than
+ * brightness 150 and backgrounds lighter than 206 flip, so mid-tone text gets
+ * darker (#16a34a -> #008e37). A few near-whites are the app's own #121212. Text does
+ * not depend on its background. The two thresholds are the only fitted numbers:
+ * 518 colour pairs measured on the Gmail app, all within 4/255 per channel
+ * (emailens.dev apps/app/fidelity/probes/gmail-app-batch.ts, 2026-10-31).
+ * Borders follow the background rule.
  */
 const hex = (c: { r: number; g: number; b: number }) =>
   "#" + [c.r, c.g, c.b].map((v) => v.toString(16).padStart(2, "0")).join("");
 
+// sRGB adapted to D50, the white point Skia's Lab uses.
+// Not a threshold: #fdfdfd, #fafafa and #f8f8f8 flip like any other colour.
+// ponytail: the pure greys measured, down to #f8f8f8; #f7f7f7 and #f6f6f6 unseen.
+const APP_BACKGROUND = new Set(["#ffffff", "#fefefe", "#fcfcfc", "#fbfbfb", "#f9f9f9"]);
+
+const D50 = [0.96422, 1, 0.82521];
+const TO_XYZ = [
+  [0.4360747, 0.3850649, 0.1430804],
+  [0.2225045, 0.7168786, 0.0606169],
+  [0.0139322, 0.0971045, 0.7141733],
+];
+const FROM_XYZ = [
+  [3.1338561, -1.6168667, -0.4906146],
+  [-0.9787684, 1.9161415, 0.033454],
+  [0.0719453, -0.2289914, 1.4052427],
+];
+const dot = (m: number[], v: number[]) => m[0] * v[0] + m[1] * v[1] + m[2] * v[2];
+const labF = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : (841 / 108) * t + 4 / 29);
+const labFInv = (t: number) => (t > 6 / 29 ? t ** 3 : (108 / 841) * (t - 4 / 29));
+
+function flipLabLightness(c: { r: number; g: number; b: number }): string {
+  const linear = [c.r, c.g, c.b].map((v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  const [fx, fy, fz] = TO_XYZ.map((row, i) => labF(dot(row, linear) / D50[i]));
+  const y = (Math.min(110 - (116 * fy - 16), 100) + 16) / 116;
+  const xyz = [fx - fy + y, y, y - (fy - fz)].map((t, i) => labFInv(t) * D50[i]);
+  const [r, g, b] = FROM_XYZ.map((row) => {
+    const v = Math.min(1, Math.max(0, dot(row, xyz)));
+    return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
+  });
+  return hex({ r, g, b });
+}
+
 function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   const parsed = parseColor(value);
   if (!parsed || parsed.a === 0) return null;
-  const [L, A, B] = rgbToOklab(parsed);
-  if (role === "bg") {
-    if (L <= 0.8) return null;
-    return hex(oklabToRgb([0.18 + (1 - L) * 2.3, A, B]));
-  }
-  const lifted = Math.min(1, 1.16 - 0.87 * L);
-  if (lifted <= L) return null;
-  // Chroma narrows as text lightens, as the measured blue link did.
-  return hex(oklabToRgb([lifted, A * 0.6, B * 0.6]));
+  const brightness = (parsed.r * 299 + parsed.g * 587 + parsed.b * 114) / 1000;
+  if (role === "fg") return brightness < 150 ? flipLabLightness(parsed) : null;
+  if (brightness <= 206) return null;
+  return APP_BACKGROUND.has(hex(parsed)) ? "#121212" : flipLabLightness(parsed);
 }
 
 function invertColor(value: string, mode: "full" | "partial" | "gmail-android", clientId?: string, role: "fg" | "bg" = "bg"): string | null {

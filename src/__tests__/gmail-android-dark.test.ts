@@ -24,9 +24,8 @@ const ratio = (a: string, b: string) => {
   return contrastRatio(relativeLuminance(x.r, x.g, x.b), relativeLuminance(y.r, y.g, y.b));
 };
 
-// Held out: colours the model was NOT fitted on, predictions committed
-// before the probe was sent (emailens.dev 61ac3474), graded after. 10 of 12
-// agree at the WCAG line; the old generic invert agreed on 6.
+// Colours the first, fitted model never saw: it agreed on 10 of 12 at the WCAG
+// line, the generic invert on 6, and the WebView rule now on all 12.
 const HELDOUT: Array<[string, string, string, string]> = [
   ["#111111", "#f59e0b", "#ffffff", "#f59e0b"],
   ["#1f2937", "#fde68a", "#e3eeff", "#382c00"],
@@ -41,9 +40,7 @@ const HELDOUT: Array<[string, string, string, string]> = [
   ["#ffffff", "#16a34a", "#ffffff", "#16a34a"],
   ["#444444", "#e5e7eb", "#cacaca", "#2b2d30"],
 ];
-// Known misses, kept visible: Gmail darkens a light grey further than the
-// model (a false warning), and darkened this green where the model keeps it.
-const KNOWN_MISSES = new Set(["#374151 on #d1d5db", "#16a34a on #ffffff"]);
+const KNOWN_MISSES = new Set<string>();
 
 function simulated(fg: string, bg: string): number {
   const html = `<html><body><table><tr><td style="background-color:${bg};color:${fg}">x</td></tr></table></body></html>`;
@@ -70,6 +67,47 @@ describe("gmail-android dark mode matches the real app", () => {
       // Same verdict at the WCAG line, and the ratio within 25% of the phone's.
       expect(sim >= 4.5).toBe(real >= 4.5);
       expect(Math.abs(sim - real) / real).toBeLessThan(0.25);
+    });
+  }
+});
+
+// Measured on the Gmail app, 2026-10-31. The rule predicted 423 of 424 frozen
+// held-out rows within 4/255 (emailens.dev docs/fidelity/gmail-android-dark-2026-10-31.md).
+describe("gmail-android dark mode follows the WebView's rule", () => {
+  const colours = (fg: string, bg: string) => {
+    const html = `<html><body><table><tr><td style="background-color:${bg};color:${fg}">x</td></tr></table></body></html>`;
+    const style = simulateDarkMode(html, "gmail-android").html.match(/<td style="([^"]*)"/)![1];
+    const get = (p: string) => style.split(";").map((d) => d.split(":").map((s) => s.trim())).find((d) => d[0] === p)![1];
+    return { fg: get("color"), bg: get("background-color") };
+  };
+
+  test("text flips below brightness 150, and mid-tones get darker", () => {
+    expect(colours("#649b79", "#ffffff").fg).toBe("#4e8463");
+    expect(colours("#97ba6f", "#ffffff").fg).toBe("#97ba6f");
+  });
+
+  test("a text colour does not depend on its background", () => {
+    const fg = "#16a34a";
+    expect(colours(fg, "#ffffff").fg).toBe(colours(fg, "#e5e7eb").fg);
+  });
+
+  test("a background flips above brightness 206", () => {
+    expect(colours("#111111", "#d1d5db").bg).toBe("#383c40");
+    expect(colours("#111111", "#5fd604").bg).toBe("#5fd604");
+  });
+
+  for (const [bg, real] of [
+    ["#ffffff", "#121212"],
+    ["#fefefe", "#121212"],
+    ["#fdfdfd", "#1d1d1d"],
+    ["#fcfcfc", "#121212"],
+    ["#fafafa", "#1f1f1f"],
+    ["#f9f9f9", "#121212"],
+    ["#f8f8f8", "#202020"],
+  ]) {
+    test(`near-white ${bg}`, () => {
+      const { r } = parseColor(colours("#111111", bg).bg)!;
+      expect(Math.abs(r - parseColor(real)!.r)).toBeLessThanOrEqual(2);
     });
   }
 });

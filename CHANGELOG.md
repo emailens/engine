@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+Gmail Android dark mode now runs the WebView's own algorithm instead of two
+fitted curves. Measured on the Gmail app with 518 colour pairs, then predicted
+424 new pairs with the predictions committed first: 423 within 4/255 per
+channel, and the WCAG verdict agreed on all 424.
+
+- Mid-tone text gets darker, as it does in the app: `#16a34a` becomes `#008e37`
+  and fails contrast, which the old model missed.
+- Light greys go as dark as they really do, which removes a false warning.
+
 ## 0.18.6 - 2026-10-31
 
 ### Fixed
