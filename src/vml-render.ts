@@ -129,7 +129,7 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
  * the bare `[if !mso]`.
  */
 const DOWNLEVEL_REVEALED =
-  /<!--\[if[^\]]*!\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
+  /<!--\[if[^\]]*!\s*\(*\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
 
 /**
  * A downlevel-hidden block: the markup only Outlook reads.

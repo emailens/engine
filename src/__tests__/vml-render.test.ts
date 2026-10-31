@@ -678,3 +678,18 @@ describe("vmlToCss: a picture clipped to a v:shape path", () => {
     expect(out).not.toContain("<image");
   });
 });
+
+describe("resolveMsoBranch: a parenthesised negation", () => {
+  // HubSpot writes "hidden from Outlook" as [if !((mso)|(IE))] with a
+  // `<!-- -->` reveal marker. Read as positive, it was left in for Word.
+  test("drops a revealed !((mso)|(IE)) block, as for [if !mso]", () => {
+    const html =
+      "<!--[if !((mso)|(IE))]><!-- --><p>web only</p><!--<![endif]-->" +
+      "<!--[if mso]><p>word only</p><![endif]--><p>everyone</p>";
+    const out = resolveMsoBranch(html);
+    expect(out).not.toContain("web only");
+    expect(out).toContain("word only");
+    expect(out).toContain("everyone");
+    expect(out).not.toContain("<!--");
+  });
+});
