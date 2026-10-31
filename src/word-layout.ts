@@ -304,16 +304,19 @@ const TIMES = "'Times New Roman',serif";
  *   drew foodpanda's `'Roboto', Arial` in Arial (emailens agreement run,
  *   2026-10-28). Outlook 2007-2016 drew Times there; 2016 left support in
  *   October 2025, so the simulation follows the Outlook readers have now;
- * - a value with `system-ui` in it is dropped whole, so the text falls to
- *   Word's default, Times New Roman (`Inter, system-ui, Arial`).
+ * - `system-ui` and the `ui-*` keywords name no font, so Word moves on to the
+ *   next family: `Inter, system-ui, Arial` and `ui-sans-serif, system-ui,
+ *   sans-serif` drew a sans on current Outlook (probe outlook-font-stack,
+ *   2026-10-31). Outlook 2016 dropped such a value whole, to Times.
  */
 function wordFamily(value: string, faces: Faces): string | null {
-  if (/(^|,)\s*system-ui\s*(,|$)/i.test(value.replace(/!important/gi, ""))) return TIMES;
-  const first = firstFamily(value);
-  if (!faces.has(first)) return null;
+  const families = value.replace(/!important/gi, "").split(",");
+  const named = families.filter((f) => !/^\s*(?:system-ui|ui-[a-z-]+)\s*$/i.test(f));
+  const first = firstFamily(named.join(","));
+  if (!faces.has(first)) return named.length < families.length ? named.join(",").trim() || TIMES : null;
   const alt = faces.get(first);
   if (alt) return `'${alt}'`;
-  const rest = value.replace(/!important/gi, "").split(",").slice(1).join(",").trim();
+  const rest = named.slice(1).join(",").trim();
   return rest || TIMES;
 }
 
@@ -361,7 +364,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
     // the 20px inset. The 01 cells had no border. Whether text content matters
     // as well was not isolated.
     const bordered = (tag === "div" || tag === "p") && hasBorder(props);
-    if ((tag === "div" || tag === "p" || tag === "span" || tag === "a") && !bordered) {
+    // React Email's button draws its padding in Word with spacer runs instead:
+    // `<i style="mso-font-width:450%" hidden>` either side of the label. Neon's
+    // real capture kept a 38px tall button (round 2 tuning, 2026-10-31).
+    const spacerRuns = tag === "a" && $(el).html()?.includes("mso-font-width");
+    if (spacerRuns) props.set("display", "inline-block");
+    if ((tag === "div" || tag === "p" || tag === "span" || tag === "a") && !bordered && !spacerRuns) {
       for (const prop of PADDING) props.delete(prop);
     }
 
@@ -378,9 +386,11 @@ export function applyWordBoxModel($: CheerioAPI): void {
       props.delete("height");
     }
 
-    if (tag === "div") {
-      // The margin's lengths are honoured (01 c12), but `auto` does not centre
-      // and a negative value does not pull the box up (01 c17, c19, c20).
+    if (tag === "div" || tag === "table") {
+      // The margin's lengths are honoured (01 c12), but `auto` does not centre,
+      // on a table either: align, a parent's align or <center> does (probe
+      // outlook-table-centre, 2026-10-31). A negative value does not pull the
+      // box up (01 c17, c19, c20).
       for (const prop of MARGIN) {
         const value = props.get(prop);
         if (value !== undefined) props.set(prop, flattenMargin(value));

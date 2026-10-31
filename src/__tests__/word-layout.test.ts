@@ -23,6 +23,21 @@ describe("Word box model", () => {
     }
   });
 
+  test("a React Email button keeps its padding: its spacer runs draw it (Neon, 2026-10-31)", () => {
+    const out = word(`<a id="t" style="padding:12px 18px;mso-padding-alt:0px"><span><!--[if mso]><i style="mso-font-width:450%" hidden>  </i><![endif]--></span>Go</a>`);
+    expect(tag(out, 'id="t"')).toMatch(/padding:\s*12px 18px/);
+  });
+
+  test("max-width holds on a table and nowhere else (probe outlook-max-width, 2026-10-31)", () => {
+    expect(tag(word(`<table id="t" width="100%" style="max-width:37.5em"><tr><td>x</td></tr></table>`), 'id="t"')).toContain("max-width");
+    expect(tag(word(`<div id="t" style="max-width:400px">x</div>`), 'id="t"')).not.toContain("max-width");
+  });
+
+  test("margin auto does not centre a table (probe outlook-table-centre, 2026-10-31)", () => {
+    const out = tag(word(`<table id="t" width="400" style="margin:0 auto"><tr><td>x</td></tr></table>`), 'id="t"');
+    expect(out).not.toContain("auto");
+  });
+
   test("padding on a table cell is kept (01 c09)", () => {
     expect(tag(word(`<table><tr><td id="t" style="padding:20px">x</td></tr></table>`), 'id="t"')).toContain(
       "padding",
@@ -140,10 +155,13 @@ describe("Word box model", () => {
     expect(tag(out, 'id="p"')).not.toContain("Times New Roman");
   });
 
-  test("a stack with system-ui is dropped whole, to Times (barebone-welcome, real Outlook 2016)", () => {
+  test("system-ui names no font: Word takes the next family (probe outlook-font-stack, 2026-10-31)", () => {
     const face = `<style>@font-face{font-family:'Inter';mso-font-alt:'Arial';src:url(x.woff2)}</style>`;
-    const out = word(`<h1 id="h" style="font-family:Inter,system-ui,Arial,sans-serif">x</h1>`, face);
-    expect(tag(out, 'id="h"')).toContain("Times New Roman");
+    const faced = word(`<h1 id="h" style="font-family:Inter,system-ui,Arial,sans-serif">x</h1>`, face);
+    expect(tag(faced, 'id="h"')).toContain("Arial");
+    const bare = word(`<p id="p" style="font-family:ui-sans-serif, system-ui, sans-serif">x</p>`);
+    expect(tag(bare, 'id="p"')).toContain("font-family: sans-serif");
+    expect(tag(bare, 'id="p"')).not.toContain("system-ui");
   });
 
   test("Word ignores `*`: text only it gives a family is in Times, whatever the face's alt", () => {

@@ -405,12 +405,12 @@ function outlookWindowsAdditionalChecks(
     }, "border-radius", clientId, framework));
   }
 
-  if ($("[style*='max-width']").length > 0) {
+  if ($("[style*='max-width']").not("table").length > 0) {
     warnings.push(makeWarning({
       severity: "warning",
       client: clientId,
       property: "max-width",
-      message: "Outlook Classic ignores max-width.",
+      message: "Outlook Classic ignores max-width except on tables.",
     }, "max-width", clientId, framework));
   }
 
@@ -1286,6 +1286,10 @@ function applyTransformDom(
       const removed: string[] = [];
 
       props.forEach((value, prop) => {
+        // Word honours max-width on a table and nowhere else (probe
+        // outlook-max-width, 2026-10-31; caniemail says the same).
+        if (prop === "max-width" && clientId === "outlook-windows-legacy" && $(el).is("table")) return;
+
         // Check stripped properties
         if (config.strippedProperties.has(prop)) {
           if (config.stripMode === "strip") {
