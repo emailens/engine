@@ -371,3 +371,11 @@ describe("Word image width from a decimal attribute", () => {
     expect(tag(out, 'id="i"')).toMatch(/width:\s*194px!important/);
   });
 });
+
+describe("Word bgcolor spelling", () => {
+  test("a three-digit bgcolor paints nothing; six digits paint (probe 2026-10-31)", () => {
+    const out = word(`<table><tr><td id="a" bgcolor="#888">x</td><td id="b" bgcolor="#888888">y</td></tr></table>`);
+    expect(tag(out, 'id="a"')).not.toContain("bgcolor");
+    expect(tag(out, 'id="b"')).toContain('bgcolor="#888888"');
+  });
+});

@@ -231,8 +231,11 @@ const dropUnknown = (declarations: string) => declarations.replace(UNKNOWN_TO_WO
  * `rgb()`, which Word does read. Returns the input itself when nothing matches.
  */
 export function dropWordUnknownColors(html: string): string {
-  if (!/rgba\(|hsla?\(|var\(|#[0-9a-f]{8}|#[0-9a-f]{4}(?![0-9a-f])/i.test(html)) return html;
+  if (!/rgba\(|hsla?\(|var\(|#[0-9a-f]{8}|#[0-9a-f]{4}(?![0-9a-f])|bgcolor\s*=\s*["']?#[0-9a-f]{3}(?![0-9a-f])/i.test(html)) return html;
   return html
+    // A three-digit bgcolor paints nothing: `bgcolor="#888"` behind white text
+    // left white on white on today's Outlook Classic (probe 2026-10-31).
+    .replace(/\sbgcolor\s*=\s*(["']?)#[0-9a-f]{3}\1(?=[\s>/])/gi, "")
     .replace(/(\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi, (whole, lead: string, dq?: string, sq?: string) => {
       const style = dq ?? sq ?? "";
       const kept = dropUnknown(style);
