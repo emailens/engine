@@ -498,10 +498,13 @@ export function applyWordBoxModel($: CheerioAPI): void {
     //   - with no usable attribute the image is drawn at its natural size,
     //     however narrow the cell.
     // A real campaign's `width="138"` with `width:100%` drew at 138px.
+    // A decimal is a number too: Iterable's `width="193.5"` drew at ~193px
+    // on today's Outlook Classic (Preflight probe 2026-10-31, I1; MongoDB).
+    const NUMBER = /^\d+(?:\.\d+)?$/;
     const numeric = (name: string) => {
-      const value = $(el).attr(name);
-      if (value !== undefined && !/^\d+$/.test(value.trim())) $(el).removeAttr(name);
-      return value !== undefined && /^\d+$/.test(value.trim()) ? value.trim() : undefined;
+      const value = $(el).attr(name)?.trim();
+      if (value !== undefined && !NUMBER.test(value)) $(el).removeAttr(name);
+      return value !== undefined && NUMBER.test(value) ? String(Math.round(Number(value))) : undefined;
     };
     const width = numeric("width");
     const height = numeric("height");

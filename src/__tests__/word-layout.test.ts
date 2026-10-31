@@ -364,3 +364,10 @@ describe("a nested table in Word", () => {
     }
   });
 });
+
+describe("Word image width from a decimal attribute", () => {
+  test("width=\"193.5\" draws at 194px, not the natural size (probe 2026-10-31, I1)", () => {
+    const out = word(`<img id="i" src="https://x.test/badge.png" width="193.5" style="width:100%;height:auto">`);
+    expect(tag(out, 'id="i"')).toMatch(/width:\s*194px!important/);
+  });
+});
