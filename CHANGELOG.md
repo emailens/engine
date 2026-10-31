@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.18.6 - 2026-10-31
+
+### Fixed
+
+Outlook Classic is now modelled on today's build, not the Outlook 2007-2016
+the earlier probe sheets ran on. Each change was measured on Preflight's
+Outlook Classic (2026-10-31) after the held-out agreement run found it.
+
+- `display:none` hides a div, a span and a table, inline or by class. A
+  preheader hidden with a bare `<div style="display:none">` no longer shows
+  above the email.
+- `[if true]` and `[if !true]` conditionals (Marketo) are read like
+  `[if mso]`, so its ghost-table columns sit side by side.
+- A decimal `width` attribute (`width="193.5"`, Iterable) sizes the image
+  instead of being dropped for its natural size.
+- A three-digit `bgcolor` (`#888`) paints nothing, as in Word.
+
 ## 0.18.5 - 2026-10-31
 
 ### Fixed

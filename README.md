@@ -10,7 +10,7 @@
 [![CI](https://github.com/emailens/engine/actions/workflows/ci.yml/badge.svg)](https://github.com/emailens/engine/actions/workflows/ci.yml)
 [![npm](https://badgen.net/npm/v/@emailens/engine)](https://www.npmjs.com/package/@emailens/engine)
 [![license](https://badgen.net/badge/license/MIT/green)](./LICENSE)
-[![tests](https://badgen.net/badge/tests/1684%20passing/brightgreen)]()
+[![tests](https://badgen.net/badge/tests/1691%20passing/brightgreen)]()
 [![node](https://badgen.net/badge/node/%3E%3D18/brightgreen)](https://nodejs.org/)
 [![MCP](https://badgen.net/badge/MCP/Server/blue)](https://github.com/emailens/mcp)
 [![GitHub stars](https://badgen.net/github/stars/emailens/engine)](https://github.com/emailens/engine/stargazers)
