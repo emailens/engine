@@ -171,7 +171,11 @@ const OFFICE_SETTINGS = /<xml\b[^>]*>[\s\S]*?<\/xml>/gi;
 export function resolveMsoBranch(html: string): string {
   return html
     .replace(DOWNLEVEL_REVEALED, "")
-    .replace(DOWNLEVEL_HIDDEN, "$1")
+    // A class font-size in an [if mso] <style> did nothing on a div (probe
+    // outlook-word-flow, 2026-10-31; G2's heading stayed at its inline 30px).
+    .replace(DOWNLEVEL_HIDDEN, (_, inner: string) =>
+      /^\s*<style/i.test(inner) ? inner.replace(/(\.[\w-]+\s*\{[^}]*?)font-size\s*:[^;}]*;?/g, "$1") : inner,
+    )
     // After the unwrap, never before: the settings block is inside the
     // conditional we just opened.
     .replace(OFFICE_SETTINGS, "");

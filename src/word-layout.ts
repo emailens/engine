@@ -133,11 +133,11 @@ function fontFaceWinners($: CheerioAPI, faces: Faces): Map<Element, string> {
       order++;
       for (const one of selector.split(",")) {
         if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
-        // Word ignores `*`: text that only `*` gives a family keeps Word's
-        // default, Times New Roman. React Email's <Font> writes
-        // `* { font-family: 'Inter', Arial }`, and on a real Outlook 2016 the
-        // text with no family of its own came out in Times (2026-10-23).
-        const family = one.trim() === "*" ? TIMES : drawn;
+        // Word ignores `*`, even `!important` inside [if mso]: text keeps the
+        // family it inherits, or Word's default (probe outlook-word-flow,
+        // 2026-10-31). The browser would apply it, so it is cancelled per element.
+        const universal = one.trim() === "*";
+        const family = universal ? WORD_DEFAULT : drawn;
         let matched: Element[];
         try {
           matched = $(one).toArray() as Element[];
@@ -148,7 +148,8 @@ function fontFaceWinners($: CheerioAPI, faces: Faces): Map<Element, string> {
         const weight = (important ? 1e12 : 0) + specificity(one.trim()) * 1e5 + order;
         for (const el of matched) {
           const was = best.get(el);
-          if (!was || weight > was.weight) best.set(el, { weight, family });
+          const inherited = universal && $(el).parents("[style*='font-family']").length > 0;
+          if (!was || weight > was.weight) best.set(el, { weight, family: inherited ? "inherit" : family });
         }
       }
     }
@@ -267,6 +268,11 @@ function markHiddenCells(html: string): string {
       const style = dq ?? sq ?? "";
       if (!/display\s*:\s*none/i.test(style) || /mso-hide\s*:/i.test(style)) return whole;
       const quote = dq === undefined ? "'" : '"';
+      // A hidden cell keeps its padding: see the "mso-hollow" pass.
+      if (/^<t[dh]\s/i.test(lead) && /padding/i.test(style)) {
+        const kept = style.replace(/display\s*:\s*none\s*(?:!important)?\s*;?/gi, "");
+        return `${lead}${quote}${kept}${/;\s*$/.test(kept) ? "" : ";"}mso-hollow:1${quote}`;
+      }
       return `${lead}${quote}${style}${/;\s*$/.test(style) ? "" : ";"}mso-hide:all${quote}`;
     },
   );
@@ -285,14 +291,17 @@ function declaredFaces($: CheerioAPI): Faces {
     for (const [, body] of ($(block).html() ?? "").matchAll(/@font-face\s*\{([^}]*)\}/gi)) {
       const props = parseInlineStyle(body);
       const family = props.get("font-family");
-      const alt = props.get("mso-font-alt")?.replace(/["']/g, "").trim() || null;
+      const named = props.get("mso-font-alt")?.replace(/["']/g, "").trim() || null;
+      // Mobbin's quoted "sans-serif" drew Word's default, not a font of that name.
+      const alt = named && /^sans-serif$/i.test(named) ? WORD_DEFAULT : named;
       if (family) faces.set(firstFamily(family), alt ?? faces.get(firstFamily(family)) ?? null);
     }
   });
   return faces;
 }
 const firstFamily = (value: string) => value.split(",")[0].replace(/["']|!important/gi, "").trim().toLowerCase();
-const TIMES = "'Times New Roman',serif";
+/** Word's own font, Aptos on current Outlook. It is not bundled: Selawik stands in through Segoe UI. */
+const WORD_DEFAULT = "Aptos,'Segoe UI',sans-serif";
 
 /**
  * The family Word draws for a font-family value, or null when it reads the
@@ -313,11 +322,11 @@ function wordFamily(value: string, faces: Faces): string | null {
   const families = value.replace(/!important/gi, "").split(",");
   const named = families.filter((f) => !/^\s*(?:system-ui|ui-[a-z-]+)\s*$/i.test(f));
   const first = firstFamily(named.join(","));
-  if (!faces.has(first)) return named.length < families.length ? named.join(",").trim() || TIMES : null;
+  if (!faces.has(first)) return named.length < families.length ? named.join(",").trim() || WORD_DEFAULT : null;
   const alt = faces.get(first);
-  if (alt) return `'${alt}'`;
+  if (alt) return alt === WORD_DEFAULT ? alt : `'${alt}'`;
   const rest = named.slice(1).join(",").trim();
-  return rest || TIMES;
+  return rest || WORD_DEFAULT;
 }
 
 /** A border that draws: a width other than 0 and a style other than none. */
@@ -395,6 +404,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
         const value = props.get(prop);
         if (value !== undefined) props.set(prop, flattenMargin(value));
       }
+      // A table with align="center" loses its vertical margins, at any depth
+      // (probe outlook-word-flow margin, 2026-11-01: rows 2, 4, 5 and 7).
+      if (tag === "table" && /center/i.test($(el).attr("align") ?? "")) {
+        props.delete("margin-top");
+        props.delete("margin-bottom");
+      }
     }
 
     // A background paints behind the element's own lines of text. A div or h2
@@ -413,13 +428,27 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const family = props.get("font-family");
     const drawn = family === undefined ? null : wordFamily(family, faces);
     if (drawn) props.set("font-family", drawn);
+    // A generic family on the body or a cell reaches the text as Word's default:
+    // Neon's and Mobbin's `sans-serif` drew Aptos where the same value on a <p>
+    // drew Arial (round 2 tuning, 2026-10-31).
+    if ((tag === "body" || tag === "td") && /^\s*sans-serif(?![\w-])/i.test(drawn ?? family ?? "")) props.set("font-family", WORD_DEFAULT);
 
     // `mso-line-height-alt` replaces the line-height, as mso-padding-alt does
     // the padding. A real campaign set `line-height:1.50;
     // mso-line-height-alt:1.5em` on 16px text and Outlook spaced the lines
     // 24px apart, where the unitless value alone gives one normal line.
+    // Beefree's VML button: Word honours these over the box the browser would
+    // draw inside the shape (MongoDB's Register Now, round 2 tuning).
+    if (/none/i.test(props.get("mso-border-alt") ?? "")) {
+      for (const prop of [...props.keys()]) if (prop.startsWith("border") && prop !== "border-radius") props.delete(prop);
+    }
+    if (/transparent/i.test(props.get("mso-shading") ?? "")) props.delete("background-color");
+
     const lineAlt = props.get("mso-line-height-alt");
-    if (lineAlt !== undefined) props.set("line-height", lineAlt);
+    // In em it counts from 16px whatever the font size: 2.875em spaced 30px and
+    // 16px text alike 46px apart (probe outlook-word-flow, 2026-10-31).
+    const altEm = /^([\d.]+)em$/i.exec(lineAlt?.trim() ?? "");
+    if (lineAlt !== undefined) props.set("line-height", altEm ? `${Number(altEm[1]) * 16}px` : lineAlt);
 
     // Without `mso-line-height-rule:exactly`, a line-height is a minimum: the
     // line is never shorter than the font's own height. `line-height:30px` at
@@ -471,6 +500,51 @@ export function applyWordBoxModel($: CheerioAPI): void {
       if (after) $(el).attr("style", after);
       else $(el).removeAttr("style");
     }
+  });
+
+  // display:none on a cell hides its content, not its padding: a cell with
+  // padding 20px 10px 10px left a 30px gap, one with none left nothing, and a
+  // hidden <tr> left nothing at all (probe outlook-word-flow hidden, 2026-11-01).
+  $("td[style*='mso-hollow'], th[style*='mso-hollow']").each((_, node) => {
+    const cell = $(node);
+    const props = parseInlineStyle(cell.attr("style") || "");
+    props.delete("mso-hollow");
+    props.set("display", "table-cell!important"); // over a class that hides it
+    props.set("font-size", "0");
+    props.set("line-height", "0");
+    cell.empty().attr("style", serializeStyle(props));
+  });
+
+  // Whatever its border, an <hr> is a grey rule 9px tall plus its margins, and
+  // always full width (probe outlook-word-flow hr, 2026-11-01: 9, 29, 9, 49).
+  $("hr").each((_, node) => {
+    const props = parseInlineStyle($(node).attr("style") || "");
+    const [top = "", , bottom = top] = (props.get("margin") ?? "").trim().split(/\s+/).concat([""]);
+    const px = (v?: string) => Number.parseFloat(v ?? "") || 0;
+    const set = new Map([
+      ["border", "none"],
+      ["border-top", "1px solid #a0a0a0"],
+      ["height", "0"],
+      ["width", "100%"],
+      ["margin", `${px(props.get("margin-top") ?? top) + 4}px 0 ${px(props.get("margin-bottom") ?? (bottom || top)) + 4}px`],
+    ]);
+    $(node).attr("style", serializeStyle(set));
+  });
+
+  // A link around a div leaves an empty line on each side: a 24px line took
+  // 65px. Around a table, an image or text it adds nothing (probe
+  // outlook-word-flow anchor, 2026-11-01; Mobbin's rows).
+  $("a").each((_, node) => {
+    if (!$(node).children("div").length) return;
+    $(node).before('<div style="height:21px"></div>').after('<div style="height:20px"></div>');
+  });
+
+  // text-decoration-line means nothing to Word: a link it sets to none stays
+  // underlined, where text-decoration:none does not (same probe, Mobbin's rows).
+  $("a[style*='text-decoration-line']").each((_, node) => {
+    const props = parseInlineStyle($(node).attr("style") || "");
+    props.delete("text-decoration-line");
+    $(node).attr("style", serializeStyle(props));
   });
 
   // A nested table hangs its first cell's left padding out to the left: Word
@@ -570,7 +644,7 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const indented = props.has("margin-left") || props.has("padding-left") || props.has("padding") || margin.length > 0;
     let previous = el.prev;
     while (previous && previous.type === "text" && !previous.data.trim()) previous = previous.prev;
-    const afterBreak = previous?.type === "tag" && previous.name === "br";
+    const afterBreak = previous?.type === "tag" && (previous.name === "br" || previous.name === "p");
     props.set("margin-top", afterBreak ? "1lh!important" : "0!important");
     props.set("margin-bottom", `${LIST_TRAILING_PX}px!important`);
     if (!indented) {

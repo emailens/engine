@@ -132,7 +132,7 @@ describe("Word box model", () => {
     expect(tag(out, 'id="b"')).toContain("Nunito");
     expect(tag(out, 'id="c"')).toMatch(/font-family:\s*Arial/);
     const alone = word(`<p id="d" style="font-family:'Roboto'">x</p>`, face);
-    expect(tag(alone, 'id="d"')).toContain("Times New Roman");
+    expect(tag(alone, 'id="d"')).toContain("Aptos");
   });
 
   test("a rule that wins the family keeps a @font-face `*` rule from drawing Times (AI Fix real-device round, 2026-10-22)", () => {
@@ -141,10 +141,10 @@ describe("Word box model", () => {
       `<style>@font-face{font-family:'Inter';src:url(x.woff2)} * { font-family: 'Inter', Arial, sans-serif; }</style>` +
       `<!--[if mso]><style>td, p, a { font-family: Arial, sans-serif !important; }</style><![endif]-->`;
     const out = word(`<p id="p">x</p><a id="a" href="#">x</a><span id="s">x</span>`, head);
-    expect(tag(out, 'id="p"')).not.toContain("Times New Roman");
-    expect(tag(out, 'id="a"')).not.toContain("Times New Roman");
+    expect(tag(out, 'id="p"')).not.toContain("Aptos");
+    expect(tag(out, 'id="a"')).not.toContain("Aptos");
     // Nothing else names a family for a span: the face rule still wins there.
-    expect(tag(out, 'id="s"')).toContain("Times New Roman");
+    expect(tag(out, 'id="s"')).toContain("Aptos");
   });
 
   test("a face's mso-font-alt is what Word draws for it (AI Fix real-device round, 2026-10-23)", () => {
@@ -152,7 +152,7 @@ describe("Word box model", () => {
     const face = `<style>@font-face{font-family:'Geist';mso-font-alt:'Arial';src:url(x.woff2)}</style>`;
     const out = word(`<p id="p" style="font-family:Geist,Inter,Arial,sans-serif">x</p>`, face);
     expect(tag(out, 'id="p"')).toContain("'Arial'");
-    expect(tag(out, 'id="p"')).not.toContain("Times New Roman");
+    expect(tag(out, 'id="p"')).not.toContain("Aptos");
   });
 
   test("system-ui names no font: Word takes the next family (probe outlook-font-stack, 2026-10-31)", () => {
@@ -167,7 +167,7 @@ describe("Word box model", () => {
   test("Word ignores `*`: text only it gives a family is in Times, whatever the face's alt", () => {
     const head = `<style>@font-face{font-family:'Inter';mso-font-alt:'Arial';src:url(x.woff2)} * { font-family: 'Inter', Arial, sans-serif; }</style>`;
     const out = word(`<p id="p">x</p><p id="q" style="font-family:Inter,Arial">x</p>`, head);
-    expect(tag(out, 'id="p"')).toContain("Times New Roman");
+    expect(tag(out, 'id="p"')).toContain("Aptos");
     // Its own family wins over `*`: the face's alt.
     expect(tag(out, 'id="q"')).toContain("'Arial'");
     // Nothing in the head is touched.
@@ -209,8 +209,8 @@ describe("Word box model", () => {
     const face = `@font-face{font-family:'Inter';src:url(x.woff2)}`;
     const after = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Inter, Arial; } p { font-family: Arial; }</style>`);
     const before = word(`<p id="p">x</p>`, `<style>${face} p { font-family: Arial; } p { font-family: Inter; }</style>`);
-    expect(tag(after, 'id="p"')).not.toContain("Times New Roman");
-    expect(tag(before, 'id="p"')).toContain("Times New Roman");
+    expect(tag(after, 'id="p"')).not.toContain("Aptos");
+    expect(tag(before, 'id="p"')).toContain("Aptos");
   });
 
   test("an image is sized by bare-number attributes and nothing else (06 c04-c09, c21)", () => {
@@ -269,7 +269,7 @@ describe("Word box model", () => {
 
   test("mso-line-height-alt replaces the line-height", () => {
     const out = tag(word(`<div id="t" style="font-size:16px;line-height:1.50;mso-line-height-alt:1.5em">x</div>`), 'id="t"');
-    expect(out).toMatch(/line-height:\s*1.5em/);
+    expect(out).toMatch(/line-height:\s*24px/);
   });
 
   test("text-align:centre on a div centres a table inside it (03 c17)", () => {
@@ -343,13 +343,15 @@ describe("Word box model", () => {
   });
 
   test("a list has no space above and one line below, whatever its margin (09 c16, c17, c20)", () => {
-    const plain = tag(word(`<p>x</p><ul id="t" style="margin:0;padding:0"><li>a</li></ul>`), 'id="t"');
+    const plain = tag(word(`<div>x</div><ul id="t" style="margin:0;padding:0"><li>a</li></ul>`), 'id="t"');
     expect(plain).toMatch(/margin-top:\s*0/);
     expect(plain).toMatch(/margin-bottom:\s*18px/);
     expect(plain).not.toContain("margin-left");
     const bare = tag(word(`<ul id="t"><li>a</li></ul>`), 'id="t"');
     expect(bare).toMatch(/margin-left:\s*24px/);
     expect(tag(word(`<div>x<br><ul id="t"><li>a</li></ul></div>`), 'id="t"')).toMatch(/margin-top:\s*1lh/);
+    // After a paragraph too, on today's build: MongoDB, OneSignal, Neon (2026-11-01).
+    expect(tag(word(`<p>x</p><ul id="t"><li>a</li></ul>`), 'id="t"')).toMatch(/margin-top:\s*1lh/);
   });
 
   test("no other client is touched", () => {
@@ -395,5 +397,36 @@ describe("Word bgcolor spelling", () => {
     const out = word(`<table><tr><td id="a" bgcolor="#888">x</td><td id="b" bgcolor="#888888">y</td></tr></table>`);
     expect(tag(out, 'id="a"')).not.toContain("bgcolor");
     expect(tag(out, 'id="b"')).toContain('bgcolor="#888888"');
+  });
+  test("a centred table loses its vertical margins, a left one keeps them", () => {
+    expect(tag(word(`<table id="t" align="center" style="margin-top:40px"><tr><td>x</td></tr></table>`), 'id="t"')).not.toMatch(/margin-top/);
+    expect(tag(word(`<table id="t" style="margin-top:40px"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/margin-top:\s*40px/);
+  });
+
+  test("a quoted sans-serif mso-font-alt draws the default", () => {
+    const html = `<style>@font-face{font-family:"Saans";mso-font-alt:"sans-serif";src:url(x.woff2)}</style><p id="t" style="font-family:'Saans',sans-serif">x</p>`;
+    expect(tag(word(html), 'id="t"')).toContain("font-family: Aptos");
+  });
+
+  test("an hr is a grey rule with 4px more margin each side", () => {
+    const out = tag(word(`<hr id="t" style="border:none;border-top:1px solid #eaeaea;margin:20px 0">`), 'id="t"');
+    expect(out).toMatch(/margin:\s*24px 0 24px/);
+    expect(out).toContain("#a0a0a0");
+  });
+
+  test("a link's text-decoration-line does not remove the underline", () => {
+    expect(tag(word(`<a id="t" href="#" style="text-decoration-line:none;color:red">x</a>`), 'id="t"')).not.toContain("text-decoration-line");
+  });
+
+  test("a link around a div leaves an empty line each side", () => {
+    expect(word(`<a href="#"><div>x</div></a>`)).toContain("height:21px");
+    expect(word(`<a href="#">x</a>`)).not.toContain("height:21px");
+  });
+
+  test("a hidden cell keeps its padding and loses its content", () => {
+    const out = word(`<table><tr><td id="t" style="display:none;padding:20px 10px 10px"><div>gone</div></td></tr></table>`);
+    expect(out).not.toContain("gone");
+    expect(tag(out, 'id="t"')).toMatch(/padding:\s*20px 10px 10px/);
+    expect(tag(out, 'id="t"')).toContain("table-cell");
   });
 });
