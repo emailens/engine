@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.5 - 2026-10-31
+
+### Fixed
+
+- Outlook Classic: a downlevel-revealed block written as
+  `<!--[if !((mso)|(IE))]><!-- -->` (HubSpot's spelling of "not Outlook") is
+  now removed from the Word render, as `[if !mso]` already was. The
+  parentheses before `mso` hid it from the revealed-block pattern, so the
+  branch meant for every other client stayed in the Outlook preview. Found
+  by the held-out agreement run (2026-10-31).
+
 ## 0.18.4 - 2026-10-30
 
 ### Fixed
