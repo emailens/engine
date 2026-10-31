@@ -177,12 +177,12 @@ describe("Word box model", () => {
 
   test("padding and margin in rem are dropped; px stay (real Outlook 2016 and 2019, 2026-10-22)", () => {
     const out = word(
-      `<table><tr><td id="a" style="padding-top:5rem;padding-left:32px">x</td></tr></table><table id="b" style="margin-top:4rem;margin-bottom:12px"><tr><td>x</td></tr></table>`,
+      `<table><tr><td id="a" style="padding-top:5rem;padding-left:32px">x</td></tr></table><table id="b" style="margin-top:4rem;margin-bottom:12px"><tr><td id="c">x</td></tr></table>`,
     );
     expect(tag(out, 'id="a"')).not.toContain("5rem");
     expect(tag(out, 'id="a"')).toMatch(/padding-left:\s*32px/);
     expect(tag(out, 'id="b"')).not.toContain("4rem");
-    expect(tag(out, 'id="b"')).toMatch(/margin-bottom:\s*12px/);
+    expect(tag(out, 'id="c"')).toMatch(/padding-bottom:\s*12px/);
   });
 
   test("a nested table's cell starts left: the outer cell's centring does not reach in (real Outlook 2016/2019)", () => {
@@ -400,9 +400,12 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="a"')).not.toContain("bgcolor");
     expect(tag(out, 'id="b"')).toContain('bgcolor="#888888"');
   });
-  test("a centred table loses its vertical margins, a left one keeps them", () => {
-    expect(tag(word(`<table id="t" align="center" style="margin-top:40px"><tr><td>x</td></tr></table>`), 'id="t"')).not.toMatch(/margin-top/);
-    expect(tag(word(`<table id="t" style="margin-top:40px"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/margin-top:\s*40px/);
+  test("a centred table loses its vertical margins, a left one paints them in the row", () => {
+    const centred = word(`<table id="t" align="center" style="margin-top:40px"><tr><td id="c">x</td></tr></table>`);
+    expect(tag(centred, 'id="t"')).not.toMatch(/margin-top/);
+    expect(tag(centred, 'id="c"')).not.toMatch(/padding-top/);
+    const left = word(`<table id="t" style="margin-top:40px"><tr><td id="c">x</td></tr></table>`);
+    expect(tag(left, 'id="c"')).toMatch(/padding-top:\s*40px/);
   });
 
   test("a quoted sans-serif mso-font-alt draws the default", () => {
@@ -423,6 +426,17 @@ describe("Word bgcolor spelling", () => {
   test("a link around a div leaves an empty line each side", () => {
     expect(word(`<a href="#"><div>x</div></a>`)).toContain("height:21px");
     expect(word(`<a href="#">x</a>`)).not.toContain("height:21px");
+  });
+
+  test("a left table paints its vertical margin as row height", () => {
+    const out = word(`<table id="t" style="margin:4px 0 18px"><tr><td id="c" style="padding:9px">x</td></tr></table>`);
+    expect(tag(out, 'id="c"')).toMatch(/padding-bottom:\s*27px/);
+    expect(tag(out, 'id="c"')).toMatch(/padding-top:\s*13px/);
+    expect(tag(out, 'id="t"')).not.toMatch(/margin-(?:top|bottom)/);
+  });
+
+  test("a zero-width solid table border is a hairline", () => {
+    expect(tag(word(`<table id="t" style="border:0px solid #cccccc"><tr><td>x</td></tr></table>`), 'id="t"')).toMatch(/border:\s*1px solid/);
   });
 
   test("a hidden cell keeps its padding and loses its content", () => {

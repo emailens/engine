@@ -719,6 +719,50 @@ export function applyWordBoxModel($: CheerioAPI): void {
     cell.attr("style", `${style}${style.trim() === "" || /;\s*$/.test(style) ? "" : ";"}text-align:left`);
   });
 
+  // Elsewhere a table's vertical margin is painted inside it, as extra height on
+  // the first or last row: 20px rows measured 60px with margin-top:40px and with
+  // margin-bottom:40px (probe outlook-word-flow margin, 2026-11-01; DevHunt's
+  // sponsor box and button).
+  $("table").each((_, node) => {
+    const table = $(node);
+    const props = parseInlineStyle(table.attr("style") || "");
+    const box = (props.get("margin") ?? "").trim().split(/\s+/).filter(Boolean);
+    const top = Number.parseFloat(props.get("margin-top") ?? box[0] ?? "") || 0;
+    const bottom = Number.parseFloat(props.get("margin-bottom") ?? box[2] ?? box[0] ?? "") || 0;
+    if ((top <= 0 && bottom <= 0) || /center/i.test(table.attr("align") ?? "")) return;
+    const rows = table.find("> tr, > tbody > tr");
+    const grow = (row: ReturnType<typeof rows.first>, side: "top" | "bottom", by: number) => {
+      row.children("td, th").each((_, cell) => {
+        const own = parseInlineStyle($(cell).attr("style") || "");
+        const pad = (own.get("padding") ?? "").trim().split(/\s+/).filter(Boolean);
+        const was = Number.parseFloat(own.get(`padding-${side}`) ?? (side === "top" ? pad[0] : (pad[2] ?? pad[0])) ?? "") || 0;
+        own.set(`padding-${side}`, `${was + by}px`);
+        $(cell).attr("style", serializeStyle(own));
+      });
+    };
+    if (!rows.length) return;
+    if (top > 0) grow(rows.first(), "top", top);
+    if (bottom > 0) grow(rows.last(), "bottom", bottom);
+    props.delete("margin-top");
+    props.delete("margin-bottom");
+    if (box.length) {
+      props.delete("margin");
+      if (box[1]) props.set("margin-left", box[3] ?? box[1]);
+      if (box[1]) props.set("margin-right", box[1]);
+    }
+    table.attr("style", serializeStyle(props));
+  });
+
+  // A zero-width border with a style is still a hairline: SaasHub's
+  // `border:0px solid #cccccc` frames the email on real Outlook.
+  $("table").each((_, node) => {
+    const props = parseInlineStyle($(node).attr("style") || "");
+    const zero = /^0(?:px)?\s+solid\s+(\S+)/i.exec(props.get("border")?.trim() ?? "");
+    if (!zero) return;
+    props.set("border", `1px solid ${zero[1]}`);
+    $(node).attr("style", serializeStyle(props));
+  });
+
   // A paragraph keeps its gap between siblings and loses it only at the edge of
   // its container: TAAFT's and SaasHub's paragraphs are spaced on real Outlook
   // and in real Word, on the build readers have (2026-11-01).
@@ -732,8 +776,10 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (after) p.attr("style", after);
   });
 
-  const reset = "<style>h2{margin:0}</style>";
+  // Word's own paragraph margin is 14pt, not a browser's 1em: TAAFT's paragraphs
+  // sit 39.5px apart on real Outlook, a 21px line plus 18.67px.
+  const reset = "<style>h2{margin:0}p{margin:14pt 0}</style>";
   const head = $("head");
   if (head.length) head.prepend(reset);
-  else if ($("h2").length) $.root().prepend(reset);
+  else if ($("p,h2").length) $.root().prepend(reset);
 }
