@@ -128,8 +128,11 @@ export function arcsizeToRadius(arcsize: string, width: number, height: number):
  * starting with one, because `[if (!mso)&(!IE)]` is as common in real email as
  * the bare `[if !mso]`.
  */
+// `true` is a condition Word evaluates like `mso`: Marketo writes its Outlook
+// ghost tables as [if true] and the div fallback as [if !true] (OneSignal,
+// held-out run 2026-10-31: real Outlook drew the speakers side by side).
 const DOWNLEVEL_REVEALED =
-  /<!--\[if[^\]]*!\s*\(*\s*(?:mso|vml)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
+  /<!--\[if[^\]]*!\s*\(*\s*(?:mso|vml|true)[^\]]*\]>\s*<(?:!-->|!--\s*-->|!\s*-->)([\s\S]*?)(?:<!--\s*<!\[endif\]-->|<!--\[endif\]-*-->)/gi;
 
 /**
  * A downlevel-hidden block: the markup only Outlook reads.
@@ -141,7 +144,7 @@ const DOWNLEVEL_REVEALED =
  * "revealed the hidden branch" is not.
  */
 const DOWNLEVEL_HIDDEN =
-  /<!--\[if(?![^\]]*!)[^\]]*(?:mso|vml)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi;
+  /<!--\[if(?![^\]]*!)[^\]]*(?:mso|vml|true)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi;
 
 /**
  * The Office configuration an `[if mso]` block carries beside its markup:

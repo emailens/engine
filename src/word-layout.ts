@@ -195,12 +195,9 @@ function overrideStylesheetRules($: CheerioAPI, faces: Faces): void {
         }
         for (const el of matched) {
           const tag = el.tagName?.toLowerCase();
-          // `display:none` from a class hides neither a div nor a table: a
-          // div holding a table and a div holding only text were both drawn
-          // (07-style-delivery c19; 09-follow-ups c25).
-          if (hides && (tag === "div" || tag === "table") && !/mso-hide/i.test($(el).attr("style") ?? "")) {
-            override(el, tag === "div" ? "display:block!important" : "display:table!important");
-          }
+          // A class `display:none` hides a div and a table on today's Outlook
+          // Classic (Preflight probe 2026-10-31, case B), as the browser does,
+          // so nothing is overridden. 07 c19 / 09 c25 drew them on older builds.
           if (hasPadding && (tag === "div" || tag === "p" || tag === "span" || tag === "a"))
             override(el, "padding:0!important");
           if (hasSize && (tag === "div" || tag === "span")) {
@@ -250,19 +247,19 @@ export function dropWordUnknownColors(html: string): string {
 }
 
 /**
- * `display:none` is honoured on a cell and a row, and nowhere else that was
- * tried (09-follow-ups c21 to c25, Outlook 2007 to 2016; 2019 does hide a
- * text-only div). The strip pass already removes `display` for Word, which is
- * right for a div or a table: both are drawn in full, and that is why a hidden
- * block needs `mso-hide:all` as well. A cell or a row is different: it stays
- * hidden, with any table inside it still drawn, and so does a span (c26). So
- * those are marked here,
- * before the strip pass, for the mso-hide pass to act on.
+ * `display:none` hides what it is on. On today's Outlook Classic (Preflight
+ * probe 2026-10-31) an inline or class `display:none` hid a div, a span and a
+ * table alike, and Make's bare display:none preheader stayed hidden. The
+ * 2026-10-14 sheets (09-follow-ups c21 to c25, the old provider's Outlook
+ * 2007 to 2016) drew a hidden div and table; 2019 already hid a text-only div.
+ * The strip pass removes `display` for Word, so hidden elements are marked
+ * here, before it, for the mso-hide pass to hide. A table inside a hidden cell
+ * still follows the mso-hide rules (c21, c22; not re-probed).
  */
 function markHiddenCells(html: string): string {
   if (!/display\s*:\s*none/i.test(html)) return html;
   return html.replace(
-    /(<(?:td|th|tr|span)\b[^>]*?\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
+    /(<(?:td|th|tr|span|div|table)\b[^>]*?\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
     (whole, lead: string, dq?: string, sq?: string) => {
       const style = dq ?? sq ?? "";
       if (!/display\s*:\s*none/i.test(style) || /mso-hide\s*:/i.test(style)) return whole;

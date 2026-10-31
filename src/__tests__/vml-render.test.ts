@@ -596,12 +596,14 @@ describe("applyMsoHide", () => {
     expect(out.html).toContain("display:none");
   });
 
-  test("a preheader hidden ONLY with display:none still shows, because Outlook ignores it", () => {
+  test("a preheader hidden only with display:none stays hidden (today's Outlook Classic, probe 2026-10-31)", () => {
+    // Older builds (the old provider's Outlook 2016) drew it; Preflight's
+    // Outlook Classic and real Make's preheader did not.
     const out = transformForClient(
       `<div style="display:none;max-height:0">preheader</div><p>body</p>`,
       "outlook-windows-legacy",
     );
-    expect(out.html).not.toContain("display:none");
+    expect(out.html).toMatch(/<div[^>]*display:\s*none[^>]*>preheader/);
   });
 
   test("applies with no conditional comment anywhere in the email", () => {
@@ -691,5 +693,17 @@ describe("resolveMsoBranch: a parenthesised negation", () => {
     expect(out).toContain("word only");
     expect(out).toContain("everyone");
     expect(out).not.toContain("<!--");
+  });
+});
+
+describe("resolveMsoBranch: Marketo's [if true]", () => {
+  test("[if true] opens for Word and a revealed [if !true] block is dropped", () => {
+    const html =
+      '<!--[if true]><table><tr><td width="190">ghost</td><![endif]-->' +
+      '<!--[if !true]><!--><div style="display:table-cell">div column</div><!--<![endif]-->' +
+      "<!--[if false]></td></tr></table><![endif]-->";
+    const out = resolveMsoBranch(html);
+    expect(out).toContain('<td width="190">ghost</td>');
+    expect(out).not.toContain("div column");
   });
 });

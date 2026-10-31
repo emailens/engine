@@ -291,14 +291,16 @@ describe("Word box model", () => {
     expect(tag(out, 'id="t"')).not.toMatch(/#00AA00|rgb\(0,\s*170,\s*0\)/i);
   });
 
-  test("display:none hides neither a div nor a table, inline or by class (07 c19; 09 c23-c25)", () => {
+  test("display:none hides a div and a table, inline or by class (Preflight Outlook Classic probe 2026-10-31)", () => {
+    // 07 c19 / 09 c23-c25 drew these on the old provider's Outlook 2007-2016;
+    // today's Outlook Classic hid every one (fidelity/probes/outlook-display-none.ts).
     const out = word(
       `<div id="a" class="h">text</div><div id="b" style="display:none">text</div><table id="c" style="display:none"><tr><td>x</td></tr></table>`,
       `<style>.h{display:none !important}</style>`,
     );
-    expect(tag(out, 'id="a"')).toContain("display:block!important");
-    expect(tag(out, 'id="b"')).not.toMatch(/display:\s*none/);
-    expect(tag(out, 'id="c"')).not.toMatch(/display:\s*none/);
+    expect(tag(out, 'id="a"')).not.toContain("display:block!important");
+    expect(tag(out, 'id="b"')).toMatch(/display:\s*none/);
+    expect(tag(out, 'id="c"')).toMatch(/display:\s*none/);
     // With mso-hide:all the block is hidden, as before.
     expect(tag(word(`<div id="d" style="display:none;mso-hide:all">text</div>`), 'id="d"')).toContain("display:none");
   });
