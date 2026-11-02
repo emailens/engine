@@ -49,8 +49,8 @@ const INVISIBLE_ONLY = /^[\s\u00a0\u00ad\u034f\u200b-\u200d\u2007\ufeff]+$/;
 
 /** The line of space Word leaves under a list (09-follow-ups c16, c17). */
 const LIST_TRAILING_PX = 18;
-/** Where a list's box starts when the email sets no indent (09-follow-ups c16). */
-const LIST_INDENT_PX = 24;
+/** Where a list's text starts: padding-left is not read (list probe, 2026-11-02). */
+const LIST_TEXT_INDENT_PX = 48;
 
 /** Word draws no border wider than 6pt, which is 8px. A 10px border measured 8px (01 c21, c22; 05 c20). */
 const MAX_BORDER_PX = 8;
@@ -634,26 +634,28 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (text.length > 20 && INVISIBLE_ONLY.test(text)) el.text(String.fromCharCode(160));
   });
 
-  // A list has no space above it and one line of space below that
-  // `margin:0` does not remove: two 20px items measured 59px with default
-  // margins and 58px with `margin:0;padding:0`, on every version
-  // (09-follow-ups c16, c17, c19). A `<br>` straight before the list adds a
-  // line of its own, where a browser swallows it (c20). The list's box starts
-  // 24px in when the email sets no indent (c16).
+  // A list's own top and bottom margins are not read. It keeps a line of space
+  // on each side, and loses both when its items set a margin of their own;
+  // the items' margins then apply. A `<br>` straight before the list adds a
+  // line either way, where a browser swallows it (09-follow-ups c20). Its text
+  // sits 48px in whatever padding-left says, and margin-left adds to that
+  // (list probes, local Outlook, 2026-11-02).
   $("ul,ol").each((_, node) => {
     const el = node as Element;
     const props = parseInlineStyle($(el).attr("style") || "");
-    const margin = (props.get("margin") ?? "").trim().split(/\s+/).filter(Boolean);
-    const indented = props.has("margin-left") || props.has("padding-left") || props.has("padding") || margin.length > 0;
     let previous = el.prev;
     while (previous && previous.type === "text" && !previous.data.trim()) previous = previous.prev;
-    const afterBreak = previous?.type === "tag" && (previous.name === "br" || previous.name === "p");
-    props.set("margin-top", afterBreak ? "1lh!important" : "0!important");
-    props.set("margin-bottom", `${LIST_TRAILING_PX}px!important`);
-    if (!indented) {
-      props.set("margin-left", `${LIST_INDENT_PX}px`);
-      props.set("padding-left", `${40 - LIST_INDENT_PX}px`);
-    }
+    const afterBreak = previous?.type === "tag" && previous.name === "br";
+    const tight = $(el)
+      .children("li")
+      .toArray()
+      .some((item) => {
+        const style = parseInlineStyle($(item).attr("style") || "");
+        return style.has("margin") || style.has("margin-top") || style.has("margin-bottom");
+      });
+    props.set("margin-top", afterBreak || (previous && !tight) ? "1lh!important" : "0!important");
+    props.set("margin-bottom", tight ? "0!important" : `${LIST_TRAILING_PX}px!important`);
+    props.set("padding-left", `${LIST_TEXT_INDENT_PX}px!important`);
     $(el).attr("style", serializeStyle(props));
   });
 

@@ -345,15 +345,38 @@ describe("Word box model", () => {
   });
 
   test("a list has no space above and one line below, whatever its margin (09 c16, c17, c20)", () => {
-    const plain = tag(word(`<div>x</div><ul id="t" style="margin:0;padding:0"><li>a</li></ul>`), 'id="t"');
+    const plain = tag(word(`<ul id="t" style="margin:0;padding:0"><li>a</li></ul>`), 'id="t"');
     expect(plain).toMatch(/margin-top:\s*0/);
     expect(plain).toMatch(/margin-bottom:\s*18px/);
-    expect(plain).not.toContain("margin-left");
-    const bare = tag(word(`<ul id="t"><li>a</li></ul>`), 'id="t"');
-    expect(bare).toMatch(/margin-left:\s*24px/);
     expect(tag(word(`<div>x<br><ul id="t"><li>a</li></ul></div>`), 'id="t"')).toMatch(/margin-top:\s*1lh/);
     // After a paragraph too, on today's build: MongoDB, OneSignal, Neon (2026-11-01).
     expect(tag(word(`<p>x</p><ul id="t"><li>a</li></ul>`), 'id="t"')).toMatch(/margin-top:\s*1lh/);
+  });
+
+  test("a list's margins are not read: one line each side, gone when its items set a margin (local Outlook 2026-11-02)", () => {
+    for (const style of ["margin:0", "margin:0 0 40px", "margin:16px 0 0", ""]) {
+      const list = tag(word(`<div>x</div><ol id="t" style="${style}"><li>a</li></ol>`), 'id="t"');
+      expect(list).toMatch(/margin-top:\s*1lh\s*!important/);
+      expect(list).toMatch(/margin-bottom:\s*18px\s*!important/);
+    }
+    for (const item of ["margin:0 0 6px", "margin-bottom:20px"]) {
+      const list = tag(word(`<div>x</div><ol id="t"><li style="${item}">a</li></ol>`), 'id="t"');
+      expect(list).toMatch(/margin-top:\s*0\s*!important/);
+      expect(list).toMatch(/margin-bottom:\s*0\s*!important/);
+    }
+    const afterBreak = tag(word(`<div>x<br><ol id="t"><li style="margin:0">a</li></ol></div>`), 'id="t"');
+    expect(afterBreak).toMatch(/margin-top:\s*1lh/);
+  });
+
+  test("list text sits 48px in whatever padding-left says, and margin-left adds to it (local Outlook 2026-11-02)", () => {
+    for (const style of ["padding-left:0", "padding-left:22px", "padding:0", "margin:0;padding-left:60px", ""]) {
+      const list = tag(word(`<ol id="t" style="${style}"><li>a</li></ol>`), 'id="t"');
+      expect(list).toMatch(/padding-left:\s*48px\s*!important/);
+      expect(list).not.toMatch(/margin-left/);
+    }
+    const margin = tag(word(`<ul id="t" style="margin:0 0 16px 22px;padding:0"><li>a</li></ul>`), 'id="t"');
+    expect(margin).toMatch(/padding-left:\s*48px\s*!important/);
+    expect(margin).toMatch(/margin:\s*0 0 16px 22px/);
   });
 
   test("no other client is touched", () => {
