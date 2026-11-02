@@ -501,5 +501,21 @@ export function checkVml(html: string, options?: { positions?: boolean }): VmlRe
     }, locAt(source, tag.offset, tag.length)));
   }
 
+  // Measured in local Outlook at 125% display scaling, 2026-11-02.
+  // A fragment has no <head> to put the declaration in.
+  if (/<head[\s>]/i.test(html) && !/<o:PixelsPerInch[\s>]/i.test(html)) {
+    add(issues, seen, "ppi", withLoc({
+      rule: "vml-pixels-per-inch",
+      severity: "warning",
+      message: `This email uses VML but does not declare <o:PixelsPerInch>96</o:PixelsPerInch>.`,
+      detail:
+        `Verified in Outlook Classic at 125% display scaling, common on Windows laptops: VML stays at its ` +
+        `pixel size while the text grows. A 203px button lost the last word of its label, pictures came ` +
+        `out too small and shapes stopped lining up. At 100% nothing looks wrong, so previews miss it. ` +
+        `Add xmlns:o="urn:schemas-microsoft-com:office:office" to <html> and put this in <head>: ` +
+        `<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->`,
+    }, locAt(source, tags[0].offset, tags[0].length)));
+  }
+
   return { hasVml: true, issues };
 }

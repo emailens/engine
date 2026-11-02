@@ -364,3 +364,30 @@ describe("checkVml: a rounded picture painted with v:fill", () => {
     expect(rules(mso(vml))).not.toContain("vml-roundrect-fill-picture");
   });
 });
+
+// Measured in local Outlook at 125% display scaling, 2026-11-02: without the
+// declaration a 203px v:roundrect stayed 203 device pixels while its text
+// scaled, and the label lost its last word.
+describe("vml-pixels-per-inch", () => {
+  const BUTTON =
+    '<!--[if mso]><v:roundrect href="#" style="width:203px;height:52px;"><center>Run your free check</center></v:roundrect><![endif]-->';
+  test("warns when VML has no PixelsPerInch", () => {
+    expect(rules(`<html><head></head><body>${BUTTON}</body></html>`)).toContain(
+      "vml-pixels-per-inch",
+    );
+  });
+
+  test("is quiet once the email declares it", () => {
+    const head =
+      "<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->";
+    expect(rules(`<html><head>${head}</head><body>${BUTTON}</body></html>`)).not.toContain(
+      "vml-pixels-per-inch",
+    );
+  });
+
+  test("says nothing about an email with no VML", () => {
+    expect(rules("<html><body><p>Hi</p></body></html>")).not.toContain(
+      "vml-pixels-per-inch",
+    );
+  });
+});

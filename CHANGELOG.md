@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `vml-pixels-per-inch`: warns when a full email uses VML without declaring
+  `<o:PixelsPerInch>96</o:PixelsPerInch>`. Measured in Outlook Classic at 125%
+  display scaling: VML stays at its pixel size while text grows, so a 203px
+  button lost the last word of its label. At 100% nothing looks wrong.
+
 ## 0.18.8 - 2026-11-02
 
 ### Fixed
