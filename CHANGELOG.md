@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.18.8 - 2026-11-02
+
+### Fixed
+
+Outlook Classic layout, measured on a current Microsoft 365 build
+(16.0.20527.20112) with probes and on real emails.
+
+- Unstyled text defaults to Aptos, `*` rules are ignored, and paragraph margins
+  default to 14pt.
+- `system-ui` and `ui-*` name no font, so Word takes the next family.
+- `max-width` holds on a table, not on a div. `margin:auto` never centres a
+  table; `align` or `<center>` does. Centred tables lose their vertical margins.
+- A left table's vertical margin counts as row height, and `border:0px solid`
+  on a table still draws a hairline.
+- A hidden cell keeps its padding. `hr` draws its margins plus 9px. A link
+  around a div leaves a line on each side.
+- Lists ignore `padding-left` and their own top and bottom margins. Text sits
+  48px in plus `margin-left`, with a line above and below that goes when an
+  item sets a margin.
+- Consecutive paragraphs with the same border draw as one block.
+- Padding on a bordered `p` or `div` sits only against a border.
+- A bordered link keeps its padding, with its fill behind the text.
+- A paragraph keeps a margin set in a style rule, including the last one in a
+  container.
+- `mso-border-alt`, `mso-shading` and percentage image widths are honoured, and
+  `mso-line-height-alt` in `em` counts from 16px.
+- `mso-element:para-border-div` tables draw as Word frames.
+
 ## 0.18.7 - 2026-10-31
 
 ### Fixed
