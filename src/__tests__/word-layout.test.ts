@@ -84,6 +84,11 @@ describe("Word box model", () => {
     expect(tag(word(`<div id="t" style="border:2px solid #000">text</div>`), 'id="t"')).toMatch(/border:\s*2px/);
   });
 
+  test("a margin from a <style> rule holds on the last paragraph", () => {
+    const out = word(`<div class="body"><p>a</p><p id="last">b</p></div>`, `<style>.body p{margin:0 0 16px}</style>`);
+    expect(tag(out, 'id="last"')).not.toContain("margin-bottom");
+  });
+
   test("a paragraph loses its margin only at the edge of its container", () => {
     const out = word(`<div><p id="a">a</p><p id="b">b</p><p id="c">c</p></div>`);
     expect(tag(out, 'id="a"')).toMatch(/margin-top:\s*0/);

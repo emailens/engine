@@ -162,6 +162,16 @@ function fontFaceWinners($: CheerioAPI, faces: Faces): Map<Element, string> {
 /** Selector forms Word was measured to ignore (probe sheet 07-style-delivery, c04, c06-c09, c11, c14). */
 const IGNORED_BY_WORD = /\[|>|:first-child|:nth-child|:not\(|::?before|\.[\w-]+\.[\w-]/;
 
+/** What a <style> selector matches in Word, or nothing for a form Word ignores. */
+function matchedByWord($: CheerioAPI, selector: string): Element[] {
+  if (!selector.trim() || IGNORED_BY_WORD.test(selector)) return [];
+  try {
+    return $(selector).toArray() as Element[];
+  } catch {
+    return []; // a selector this parser cannot read is left to the browser
+  }
+}
+
 /**
  * Carry the element rules over to declarations that arrive through a class.
  * Adds an inline `!important` override to each matched element where Word
@@ -187,14 +197,7 @@ function overrideStylesheetRules($: CheerioAPI, faces: Faces): void {
       const hides = props.get("display") === "none";
       if (!hasPadding && !hasSize && !hasBackground && !hides) continue;
       for (const one of selector.split(",")) {
-        if (!one.trim() || IGNORED_BY_WORD.test(one)) continue;
-        let matched: Element[];
-        try {
-          matched = $(one).toArray() as Element[];
-        } catch {
-          continue; // a selector this parser cannot read is left to the browser
-        }
-        for (const el of matched) {
+        for (const el of matchedByWord($, one)) {
           const tag = el.tagName?.toLowerCase();
           // A class `display:none` hides a div and a table on today's Outlook
           // Classic (Preflight probe 2026-10-31, case B), as the browser does,
@@ -787,11 +790,22 @@ export function applyWordBoxModel($: CheerioAPI): void {
 
   // A paragraph keeps its gap between siblings and loses it only at the edge of
   // its container: TAAFT's and SaasHub's paragraphs are spaced on real Outlook
-  // and in real Word, on the build readers have (2026-11-01).
+  // and in real Word, on the build readers have (2026-11-01). A margin the
+  // email sets keeps even there, inline or from a <style> rule: Marc Lou's
+  // `.body p{margin:0 0 16px}` holds on its last paragraph (round 3, 2026-11-02).
+  const margined = new Set<Element>();
+  $("style").each((_, block) => {
+    for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
+      const props = parseInlineStyle(body);
+      if (!props.has("margin") && !props.has("margin-top") && !props.has("margin-bottom")) continue;
+      for (const one of selector.split(",")) for (const el of matchedByWord($, one)) margined.add(el);
+    }
+  });
   $("p").each((_, node) => {
     const p = $(node);
     const props = parseInlineStyle(p.attr("style") || "");
     if (props.has("margin") || props.has("margin-top") || props.has("margin-bottom")) return;
+    if (margined.has(node as Element)) return;
     if (!p.prev().length) props.set("margin-top", "0");
     if (!p.next().length) props.set("margin-bottom", "0");
     const after = serializeStyle(props);
