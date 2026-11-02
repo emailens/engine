@@ -375,7 +375,25 @@ export function applyWordBoxModel($: CheerioAPI): void {
     // (2026-10-14): `padding:20px; border:2px solid` with text inside rendered
     // the 20px inset. The 01 cells had no border. Whether text content matters
     // as well was not isolated.
-    const bordered = (tag === "div" || tag === "p") && hasBorder(props);
+    // A bordered link keeps it the same way, in a box as wide as its text; the
+    // preview's link reset skips data-word-box (probe outlook-para-borders F,
+    // Carom's outlined button, local Outlook, 2026-11-02).
+    const bordered = (tag === "div" || tag === "p" || tag === "a") && hasBorder(props);
+    if (bordered && tag === "a") {
+      props.set("display", "inline-block");
+      $(el).attr("data-word-box", "");
+      // Its fill stays on the glyphs: OpenRouter's black button is a black band
+      // behind the label inside its padding (real capture, 2026-11-02).
+      const fill = props.get("background-color") ?? props.get("background");
+      if (fill) {
+        props.delete("background-color");
+        props.delete("background");
+        $(el).html(`<span style="background-color:${fill}">${$(el).html()}</span>`);
+      }
+    }
+    // That space sits against a border: with only a border-bottom, padding-top
+    // adds nothing (probe outlook-para-borders A to E, 2026-11-02).
+    if (bordered && !props.has("border") && !props.has("border-top")) props.set("padding-top", "0");
     // React Email's button draws its padding in Word with spacer runs instead:
     // `<i style="mso-font-width:450%" hidden>` either side of the label. Neon's
     // real capture kept a 38px tall button (round 2 tuning, 2026-10-31).
@@ -786,6 +804,23 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (!zero) return;
     props.set("border", `1px solid ${zero[1]}`);
     $(node).attr("style", serializeStyle(props));
+  });
+
+  // Word draws neighbouring paragraphs with the same border as one block: no
+  // rule and no padding between them, only after the last. Margins stay, and
+  // divs do not merge (probe outlook-para-borders A to E, Carom's date list,
+  // 2026-11-02).
+  const borderOf = (style: string | undefined) =>
+    [...parseInlineStyle(style ?? "")].filter(([k, v]) => k.startsWith("border") && !/^0|none/.test(v)).join(";");
+  $("p").each((_, node) => {
+    const p = $(node);
+    const next = p.next();
+    const border = borderOf(p.attr("style"));
+    if (!border || !next.is("p") || borderOf(next.attr("style")) !== border) return;
+    const props = parseInlineStyle(p.attr("style") ?? "");
+    for (const key of [...props.keys()]) if (key.startsWith("border")) props.delete(key);
+    props.set("padding-bottom", "0");
+    p.attr("style", serializeStyle(props));
   });
 
   // A paragraph keeps its gap between siblings and loses it only at the edge of

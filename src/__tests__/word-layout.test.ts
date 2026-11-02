@@ -89,6 +89,38 @@ describe("Word box model", () => {
     expect(tag(out, 'id="last"')).not.toContain("margin-bottom");
   });
 
+  test("a bordered link's fill stays behind its text", () => {
+    const out = word(`<a id="a" href="#" style="padding:12px;border:1px solid #fff;background-color:#000">x</a>`);
+    expect(tag(out, 'id="a"')).not.toContain("background");
+    expect(out).toContain('<span style="background-color:#000">x</span>');
+  });
+
+  test("paragraphs with the same border draw as one block", () => {
+    const rule = "padding:8px 0;border-bottom:1px solid #d00";
+    const out = word(`<p id="a" style="${rule}">a</p><p id="b" style="${rule}">b</p><p id="c" style="padding:8px 0;border-bottom:1px solid #00d">c</p>`);
+    expect(tag(out, 'id="a"')).not.toContain("border");
+    expect(tag(out, 'id="b"')).toContain("border-bottom");
+    expect(tag(out, 'id="c"')).toContain("border-bottom");
+  });
+
+  test("divs with the same border stay separate", () => {
+    const rule = "padding:8px 0;border-bottom:1px solid #d00";
+    expect(tag(word(`<div id="a" style="${rule}">a</div><div style="${rule}">b</div>`), 'id="a"')).toContain("border-bottom");
+  });
+
+  test("padding sits only against a border", () => {
+    expect(tag(word(`<p id="a" style="padding:8px 0;border-bottom:1px solid #d00">a</p>`), 'id="a"')).toMatch(/padding-top:\s*0/);
+    expect(tag(word(`<div id="a" style="padding:20px;border:2px solid #000">a</div>`), 'id="a"')).toContain("padding:20px");
+  });
+
+  test("a bordered link keeps its padding, a plain one loses it", () => {
+    const bordered = tag(word(`<a id="a" href="#" style="padding:14px 20px;border:2px solid #800;display:block">x</a>`), 'id="a"');
+    expect(bordered).toContain("data-word-box");
+    expect(bordered).toMatch(/padding:\s*14px 20px/);
+    expect(bordered).toContain("inline-block");
+    expect(tag(word(`<a id="a" href="#" style="padding:14px 20px">x</a>`), 'id="a"')).not.toContain("padding");
+  });
+
   test("a paragraph loses its margin only at the edge of its container", () => {
     const out = word(`<div><p id="a">a</p><p id="b">b</p><p id="c">c</p></div>`);
     expect(tag(out, 'id="a"')).toMatch(/margin-top:\s*0/);
