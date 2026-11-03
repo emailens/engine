@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.10 - 2026-11-03
+
+### Fixed
+
+- Outlook Classic: a `display:none` element inside a `<v:textbox>` is drawn
+  again. Word ignores `display:none` inside a VML textbox, so the label of a
+  VML button (the Brevo pattern) shows in the real client; the simulation hid
+  it and showed an empty button.
+
 ## 0.18.9 - 2026-11-02
 
 ### Added
