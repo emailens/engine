@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.18.12 - Unreleased
+
+### Fixed
+
+- Proton Mail: a `<p>`, `<div>` or `<span>` whose only content is `&nbsp;`
+  now draws empty, so a spacer collapses to its explicit height (0 without
+  one). In real Proton web, 9 of 9 such spacers collapsed and spaced
+  paragraphs touched (real-device runs `_YHEeChhj-3_`, `Z2Hn_aEsftuG`;
+  preview `ckKDNoBCeSKz`). A div with a set `height` kept it. Yahoo and Gmail
+  kept the gaps.
+- Yahoo Mail web: a `radial-gradient` is dropped, inline and in `<style>`, so
+  the element shows its `background-color`. Real Yahoo drew preview
+  `J9vFS4nm_LGl`'s gradient button as the flat colour it declared (`#d234e2`
+  measured), while real Gmail drew the gradient. Linear gradients are
+  unchanged: caniemail says unsupported, but no capture we hold can show it.
+- A client with `dropValues` or `dropProperties` no longer re-serialises
+  inline styles it does not change (`url(x) no-repeat` was rewritten as
+  `url(x)no-repeat`). Output for Outlook for Mac changes in formatting only.
+
 ## 0.18.11 - 2026-11-03
 
 ### Fixed
