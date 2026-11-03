@@ -768,6 +768,12 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // An inline font-family naming a quoted font is dropped whole; <style>
     // keeps it (2026-10-28, analyze.ts step 7).
     valueStrips: [{ prop: "font-family", pattern: /['"]/ }],
+    // A radial-gradient button drew as its flat background-color, inline and
+    // from <style> alike (real-device capture of preview J9vFS4nm_LGl,
+    // 2026-10-30; caniemail agrees). ponytail: radial only; linear is also "n"
+    // in caniemail but every Yahoo capture we hold has a bgcolor fallback
+    // under it, so it is unmeasured. Probe a fallback-less one before adding.
+    dropValues: /radial-gradient\(/i,
     // Real Yahoo web drew foodpanda's `url(...) center / cover` logos at their
     // 236px and its `0% 0% / 100% 100%` coupon at the picture's own size,
     // cropped to the cell (emailens agreement run, 2026-10-28).
@@ -966,8 +972,10 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
       }
     });
   }
-  const dropDeclarations = (ast: csstree.CssNode, inline: boolean) => {
-    if (!dropValues && !dropProperties) return;
+  /** Returns whether a declaration was dropped. */
+  const dropDeclarations = (ast: csstree.CssNode): boolean => {
+    if (!dropValues && !dropProperties) return false;
+    let changed = false;
     csstree.walk(ast, {
       visit: "Declaration",
       enter(node, item, list) {
@@ -975,6 +983,7 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
         if (dropProperties?.test(node.property)) {
           list.remove(item);
           dropped.add(node.property);
+          changed = true;
           return;
         }
         const m = dropValues
@@ -983,9 +992,11 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
         if (m) {
           list.remove(item);
           dropped.add(m[0].replace(/\($/, "()"));
+          changed = true;
         }
       },
     });
+    return changed;
   };
   $("style").each((_, el) => {
     let ast: csstree.CssNode;
@@ -1027,7 +1038,7 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
         },
       });
     }
-    dropDeclarations(ast, false);
+    dropDeclarations(ast);
     $(el).text(csstree.generate(ast));
   });
   if (dropValues || dropProperties) {
@@ -1039,8 +1050,9 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
       } catch {
         return;
       }
-      dropDeclarations(ast, true);
-      $(el).attr("style", csstree.generate(ast));
+      // An untouched style keeps its own text: re-serialising it rewrote
+      // `url(x) no-repeat` as `url(x)no-repeat` on every element.
+      if (dropDeclarations(ast)) $(el).attr("style", csstree.generate(ast));
     });
   }
   return [...dropped];
