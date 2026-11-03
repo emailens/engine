@@ -73,6 +73,25 @@ SpamAssassin checks).
 
 Every finding may include source positions, so a result can be pointed at, annotated, or fixed in place.
 
+## Measured on real clients
+
+Support tables say what a client should do. We send probe emails to the real
+app and read the result off the screenshot, and where the two disagree, the
+screenshot wins. Each rule built that way lands with a test holding what the
+real client did, so you can check our work and rerun it after any change.
+
+| Behaviour | How it was measured | Test |
+| --- | --- | --- |
+| Gmail on Android, dark mode | 880 colour pairs predicted and committed before sending, then read off the real app: 878 within 4/255 per channel | [`gmail-android-dark.test.ts`](src/__tests__/gmail-android-dark.test.ts) |
+| Outlook for Mac, dark mode | A sheet of 223 colour cells, light and dark; the rule is fitted on half the random colours and graded on the other half: 42 of 42 held-out cells within 4/255 (unreleased) | [`outlook-macos-dark.test.ts`](src/__tests__/outlook-macos-dark.test.ts) |
+| Yahoo, Proton and Outlook quirks | One small probe per behaviour, such as Yahoo dropping a quoted font or a radial gradient, or Proton collapsing nbsp spacers | `yahoo-*.test.ts`, `protonmail-*.test.ts`, `outlook-*.test.ts` |
+| Support-table corrections | Each cell a real inbox contradicted, with the date it was seen | [`scripts/observed-overrides.ts`](scripts/observed-overrides.ts) |
+
+It runs in a fraction of a second per email across all 21 clients, so you can
+check every draft and keep real screenshots for the final send. How the whole
+loop works, and the blind score against real inboxes:
+[emailens.dev/accuracy](https://emailens.dev/accuracy).
+
 ## Why Emailens?
 
 - **Offline-first**: runs locally with no account required
