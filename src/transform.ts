@@ -310,6 +310,9 @@ interface ClientTransformConfig {
   dropElements?: string;
   /** Attributes the client removes from every element, matched on the name. */
   dropAttributes?: RegExp;
+  /** A <p>, <div> or <span> whose only content is &nbsp; is drawn empty, so a
+   *  spacer collapses to its explicit height (0 without one). */
+  emptyNbspBlocks?: boolean;
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -851,6 +854,9 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripExternalStylesheets: true,
     stripForms: true,
     stripSvg: false,
+    // Real Proton web drew 9 of 9 &nbsp;-only <p>/<div><span> spacers at no
+    // height (real-device runs _YHEeChhj-3_, Z2Hn_aEsftuG; preview ckKDNoBCeSKz).
+    emptyNbspBlocks: true,
   },
   "aol": {
     id: "aol",
@@ -1177,6 +1183,15 @@ function applyTransformDom(
     }, "<form>", clientId, framework));
     $("form").each((_, el) => {
       $(el).replaceWith($(el).html() || "");
+    });
+  }
+
+  // 3a. &nbsp;-only spacers drawn empty. ponytail: leaf elements only; a
+  // nested wrapper collapses with its emptied child.
+  if (config.emptyNbspBlocks) {
+    $("p, div, span").each((_, el) => {
+      const $el = $(el);
+      if ($el.children().length === 0 && /^[\s ]* [\s ]*$/.test($el.text())) $el.empty();
     });
   }
 
