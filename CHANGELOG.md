@@ -2,7 +2,23 @@
 
 ## Unreleased
 
+### Added
+
+- An image no inbox can load is an error in every client, so the score drops:
+  a relative path (`images/logo.png`), `file:`, `localhost` or `127.0.0.1`,
+  or an empty `src`. All eight real clients drew such images broken in one
+  real-device run, while the report scored most clients 94. Full `http(s)`,
+  protocol-relative, `cid:`, `data:` and template variables are untouched.
+
 ### Fixed
+
+- Gmail web and Android, Outlook Classic, Outlook for Mac and Apple Mail on
+  the Mac turn a bare email address into a link, and the simulation now does
+  too: blue and underlined (Gmail `#1155cc`, Outlook Classic `blue`, the Mac
+  apps `#0068da`), with no underline on Gmail Android, bold kept. New Outlook
+  and Apple Mail on iOS leave it as text. Seen on one real-device run, in
+  body text and small footer text alike. Bare URLs and phone numbers are not
+  modelled yet.
 
 - Outlook for Mac now has a dark mode. It had none: the simulation showed the
   light email while the real app recolours all of it. Measured on 223 cells

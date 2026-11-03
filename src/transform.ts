@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import * as csstree from "css-tree";
+import type { AnyNode, Element, Text } from "domhandler";
 import type { CSSWarning, Framework, TransformResult } from "./types";
 import {
   CSS_SUPPORT,
@@ -313,6 +314,9 @@ interface ClientTransformConfig {
   /** A <p>, <div> or <span> whose only content is &nbsp; is drawn empty, so a
    *  spacer collapses to its explicit height (0 without one). */
   emptyNbspBlocks?: boolean;
+  /** The client turns a bare email address in the text into a mailto link,
+   *  drawn in its own link colour. */
+  autolinkEmails?: { color: string; underline: boolean };
   /** Additional checks to run (animation detection, dark mode hints, etc.) */
   additionalChecks?: (
     $: cheerio.CheerioAPI,
@@ -608,6 +612,8 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripForms: true,
     stripSvg: true,
     additionalChecks: gmailAdditionalChecks,
+    // Bare addresses become links: real-device run C93iCoVV5yas, 2026-11-03.
+    autolinkEmails: { color: "#1155cc", underline: true },
   },
   "gmail-android": {
     id: "gmail-android",
@@ -622,6 +628,8 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripForms: true,
     stripSvg: true,
     additionalChecks: gmailAdditionalChecks,
+    // Bare addresses become links: real-device run C93iCoVV5yas, 2026-11-03.
+    autolinkEmails: { color: "#1155cc", underline: false },
   },
   "gmail-ios": {
     id: "gmail-ios",
@@ -649,6 +657,8 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-windows-legacy": {
     id: "outlook-windows-legacy",
+    // Bare addresses become links: real-device run C93iCoVV5yas, 2026-11-03.
+    autolinkEmails: { color: "blue", underline: true },
     strippedProperties: OUTLOOK_WORD_UNSUPPORTED,
     stripMode: "strip",
     valueStrips: [
@@ -697,6 +707,8 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "outlook-macos": {
     id: "outlook-macos",
+    // Bare addresses become links: real-device run C93iCoVV5yas, 2026-11-03.
+    autolinkEmails: { color: "#0068da", underline: true },
     dropTextDecorationShorthand: true,
     // The new Outlook for Mac (caniemail 16.80), measured with probe sheet
     // 20-features on a real install, 2026-10-27, and matching caniemail's
@@ -741,6 +753,8 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "apple-mail-macos": {
     id: "apple-mail-macos",
+    // Bare addresses become links: real-device run C93iCoVV5yas, 2026-11-03.
+    autolinkEmails: { color: "#0068da", underline: true },
     dropTextDecorationShorthand: true,
     strippedProperties: EMPTY_SET,
     stripMode: "strip",
@@ -1134,6 +1148,32 @@ function dropTextDecorationShorthands($: cheerio.CheerioAPI): boolean {
 // Shared transform engine
 // =============================================================================
 
+const EMAIL_ADDRESS = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+const NO_AUTOLINK = new Set(["a", "script", "style", "title", "textarea", "head"]);
+
+function autolinkEmails($: cheerio.CheerioAPI, link: { color: string; underline: boolean }): void {
+  const style = `color:${link.color};text-decoration:${link.underline ? "underline" : "none"}`;
+  const walk = (node: AnyNode): void => {
+    if (node.type === "text") {
+      const text = (node as Text).data;
+      if (!EMAIL_ADDRESS.test(text)) return;
+      EMAIL_ADDRESS.lastIndex = 0;
+      const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      let out = "";
+      let at = 0;
+      for (const m of text.matchAll(EMAIL_ADDRESS)) {
+        out += `${escape(text.slice(at, m.index))}<a href="mailto:${m[0]}" style="${style}">${m[0]}</a>`;
+        at = m.index + m[0].length;
+      }
+      $(node).replaceWith(out + escape(text.slice(at)));
+      return;
+    }
+    if (node.type === "tag" && NO_AUTOLINK.has((node as Element).name)) return;
+    if ("children" in node) for (const child of [...(node as Element).children]) walk(child);
+  };
+  for (const body of $("body").toArray()) walk(body);
+}
+
 function applyTransform(
   html: string,
   config: ClientTransformConfig,
@@ -1206,6 +1246,10 @@ function applyTransformDom(
       if ($el.children().length === 0 && /^[\s ]* [\s ]*$/.test($el.text())) $el.empty();
     });
   }
+
+  // 3a'. Bare email addresses become links. ponytail: addresses only; bare
+  // URLs and phone numbers wait for a capture that shows what each client does.
+  if (config.autolinkEmails) autolinkEmails($, config.autolinkEmails);
 
   // 3b. Forms kept, with nowhere to submit to.
   if (config.dropFormActions && $("form").length > 0) {

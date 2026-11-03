@@ -550,7 +550,7 @@ describe("a correct email does not drown in findings", () => {
 <tr><td valign="top" style="font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
 <p style="margin: 0;">Hello</p>
 <a href="https://example.com" style="color: #0066cc;">Read more</a>
-<img src="hero.png" width="600" height="200" alt="Hero" style="display: block;">
+<img src="https://example.com/hero.png" width="600" height="200" alt="Hero" style="display: block;">
 </td></tr></table></body></html>`;
 
   it("raises nothing to fix", () => {
@@ -665,7 +665,7 @@ describe("a finding no edit can clear reports at info", () => {
     for (const feature of ["<body>", "[width]", "[height]"]) {
       expect([feature, GRACEFUL_FEATURES.has(feature)]).toEqual([feature, true]);
     }
-    const img = `<html><body><img src="a.png" width="40" height="40" alt=""></body></html>`;
+    const img = `<html><body><img src="https://example.com/a.png" width="40" height="40" alt=""></body></html>`;
     expect(analyzeEmail(img).filter((w) => w.severity !== "info")).toEqual([]);
   });
 });

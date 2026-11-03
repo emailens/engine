@@ -805,6 +805,35 @@ export function analyzeEmailFromDom(
     });
   }
 
+  // 8. An image no inbox can load: a relative path has no page to resolve
+  // against, and file:/localhost only exist on the sender's machine. All
+  // eight real clients drew these as broken images (real-device run
+  // C93iCoVV5yas, 2026-11-03).
+  const unloadable = $("img[src]")
+    .toArray()
+    .filter((el) => isUnloadableImageSrc($(el).attr("src") ?? ""));
+  if (unloadable.length) {
+    const found = unloadable
+      .map((el) => locOfElement(el))
+      .filter((l): l is SourceLocation => l !== undefined);
+    const first = ($(unloadable[0]).attr("src") ?? "").trim() || "an empty src";
+    for (const client of EMAIL_CLIENTS) {
+      addWarning({
+        severity: "error",
+        client: client.id,
+        property: "<img src>",
+        message: `${unloadable.length === 1 ? "An image points" : `${unloadable.length} images point`} to an address no inbox can load (${first}), so ${client.name} shows a broken image instead.`,
+        suggestion: "Host the images and use full https:// addresses, such as https://cdn.example.com/logo.png.",
+        ...(found.length
+          ? occurrenceFields({
+              locs: found.slice(0, MAX_WARNING_LOCATIONS),
+              truncated: found.length > MAX_WARNING_LOCATIONS,
+            })
+          : {}),
+      });
+    }
+  }
+
   // Sort: errors first, then warnings, then info
   const severityOrder: Record<string, number> = { error: 0, warning: 1, info: 2 };
   warnings.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
@@ -1275,6 +1304,17 @@ function checkPropertySupport(
 /**
  * Generate a summary of CSS compatibility for the email.
  */
+/** An img src no inbox can fetch. Template variables are left to the template checker. */
+function isUnloadableImageSrc(raw: string): boolean {
+  const src = raw.trim();
+  if (!src) return true;
+  if (/\{\{|\}\}|\*\||\|\*|%%|\[\[|\$\{|<%/.test(src)) return false;
+  if (/^(https?:)?\/\//i.test(src)) return /^(https?:)?\/\/(localhost|127\.\d+\.\d+\.\d+|\[::1\])(?=[:/]|$)/i.test(src);
+  if (/^(data|cid):/i.test(src)) return false;
+  // file:, a bare path or any other scheme the client has no way to fetch.
+  return true;
+}
+
 export function generateCompatibilityScore(
   warnings: CSSWarning[]
 ): Record<string, { score: number; errors: number; warnings: number; info: number }> {
