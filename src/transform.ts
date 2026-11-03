@@ -718,7 +718,12 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     stripStyleAnimations: true,
     dropSelectors:
       /:nth-child|:nth-last-child|:nth-of-type|:nth-last-of-type|:not\(|:has\(|\[data-|::?before|::?after|(?:[.#][\w-]+|\])(?:\[[^\]]*\])*:(?:first-child|last-child|first-of-type|last-of-type|only-child|only-of-type|link|visited|checked|hover|focus|active|target)/,
-    dropAtRules: /^@supports\b|^@media\s+(?:only\s+)?[a-z]+\s*$|^@media\b.*[<>=]/i,
+    // No web font either: a Google Fonts <link>, an @import and a remote
+    // @font-face all fell back to the stack's next font on real Outlook for
+    // Mac, where Apple Mail on the same Mac drew them (real-device runs
+    // 6UOu1JWi1l9C, Z2Hn_aEsftuG, _YHEeChhj-3_; caniemail agrees). The
+    // <link> goes with stripExternalStylesheets below.
+    dropAtRules: /^@supports\b|^@media\s+(?:only\s+)?[a-z]+\s*$|^@media\b.*[<>=]|^@font-face\b|^@import\b/i,
     dropValues:
       /minmax\(|repeat\(|conic-gradient\(|linear-gradient\(|radial-gradient\(|var\(|calc\(|min\(|max\(|clamp\(|\b(?:hsla?|hwb|lab|lch|oklab|oklch|color)\(|^position:\s*(?:relative|absolute|fixed)/,
     dropProperties:
@@ -727,7 +732,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     dropElements: "picture source",
     dropAttributes: /^srcset$/,
     inlineAndStripStyles: false,
-    stripExternalStylesheets: false,
+    stripExternalStylesheets: true,
     stripForms: false,
     stripSvg: true,
   },
