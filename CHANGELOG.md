@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.18.11 - Unreleased
+
+### Fixed
+
+- Outlook for Mac: web fonts are no longer loaded. The client drops a font
+  stylesheet `<link>`, an `@import` and an `@font-face`, as the real app does.
+  The real app fell back to the next font in the stack for all three
+  (real-device runs on outlook_mac_light: `6UOu1JWi1l9C`, `Z2Hn_aEsftuG`,
+  `_YHEeChhj-3_`), while the simulation drew the web font. As a result,
+  headlines set narrower and wrapped later than in the inbox. Apple Mail on
+  the same Mac still loads them.
+
 ## 0.18.10 - 2026-11-03
 
 ### Fixed
