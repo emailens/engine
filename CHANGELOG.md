@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Outlook Classic reads version conditions. `[if lt mso 16]`, `[if gt mso 16]`,
+  `[if mso 12]` and the like were all opened as if they said `[if mso]`, so
+  an email that gives old Outlook one image and current Outlook another drew
+  both, stacked. Each `mso`, `mso N` and `lt|lte|gt|gte mso N` term is now
+  checked against version 16 (Outlook 2016 to 365), with `|`, `&` and
+  parentheses; `IE` and `false` are false. Seen on one real-device run: a
+  hero in `lt mso 16` and `gte mso 16` branches drew once in real Outlook,
+  twice in the simulation.
+
 ## 0.18.13 - 2026-11-04
 
 ### Added

@@ -707,3 +707,33 @@ describe("resolveMsoBranch: Marketo's [if true]", () => {
     expect(out).not.toContain("div column");
   });
 });
+
+describe("resolveMsoBranch: version conditions", () => {
+  // Real-device run GjJM8YpmiwGA (preview ayfXwZKjhMPK), 2026-11-01: a hero
+  // in three branches, [if lt mso 16] JPG, [if gte mso 16] GIF and
+  // [if !mso] GIF. Real Outlook Classic drew one globe; the simulation drew
+  // the JPG and the GIF stacked, because every mso condition was opened.
+  // Outlook Classic today (2016 to 365) is mso 16.
+  test("opens only the branches true for Outlook 16", () => {
+    const html =
+      '<!--[if lt mso 16]><img alt="old"><![endif]-->' +
+      '<!--[if gte mso 16]><img alt="new"><![endif]-->' +
+      '<!--[if !mso]><!--><img alt="web"><!--<![endif]-->';
+    const out = resolveMsoBranch(html);
+    expect(out).not.toContain("old");
+    expect(out).toContain("new");
+    expect(out).not.toContain("web");
+    expect(out).not.toContain("<!--");
+  });
+
+  test("every comparison against 16, and | & between terms", () => {
+    // Kept means opened: a block left as a comment is not drawn.
+    const kept = (cond: string) => resolveMsoBranch(`<!--[if ${cond}]><b>x</b><![endif]-->`) === "<b>x</b>";
+    for (const c of ["mso", "gte mso 9", "gt mso 15", "lte mso 16", "mso 16", "(gte mso 9)|(IE)", "mso | IE", "(mso)&(gte mso 12)", "vml", "true"]) {
+      expect(kept(c)).toBe(true);
+    }
+    for (const c of ["lt mso 16", "lte mso 15", "gt mso 16", "mso 12", "lte mso 11", "(lt mso 16)|(IE)", "false"]) {
+      expect(kept(c)).toBe(false);
+    }
+  });
+});

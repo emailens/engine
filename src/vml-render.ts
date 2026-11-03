@@ -144,7 +144,48 @@ const DOWNLEVEL_REVEALED =
  * "revealed the hidden branch" is not.
  */
 const DOWNLEVEL_HIDDEN =
-  /<!--\[if(?![^\]]*!)[^\]]*(?:mso|vml|true)[^\]]*\]>([\s\S]*?)<!\[endif\]-->/gi;
+  /<!--\[if(?![^\]]*!)([^\]]*(?:mso|vml|true)[^\]]*)\]>([\s\S]*?)<!\[endif\]-->/gi;
+
+/**
+ * Outlook Classic's version, as conditional comments see it: 2016, 2019, 2021
+ * and 365 all answer mso 16. Run GjJM8YpmiwGA (2026-11-01) had a hero in an
+ * [if lt mso 16] and an [if gte mso 16] branch; real Outlook drew only the
+ * second.
+ */
+const WORD_MSO_VERSION = 16;
+
+/**
+ * Whether Word opens `[if <condition>]`. Terms are `mso`, `mso N` and
+ * `lt|lte|gt|gte mso N` against WORD_MSO_VERSION, `vml` and `true` (true),
+ * and anything else such as `IE` or `false` (false), joined by `|`, `&` and
+ * parentheses. Negations never reach here (DOWNLEVEL_HIDDEN skips them).
+ */
+function wordOpens(condition: string): boolean {
+  const bits = condition
+    .toLowerCase()
+    .replace(/\b(?:(lt|lte|gt|gte)\s+)?mso(?:\s+(\d+(?:\.\d+)?))?/g, (_, op?: string, n?: string) => {
+      if (!n) return "1";
+      const v = Number.parseFloat(n);
+      const ok =
+        op === "lt" ? WORD_MSO_VERSION < v
+        : op === "lte" ? WORD_MSO_VERSION <= v
+        : op === "gt" ? WORD_MSO_VERSION > v
+        : op === "gte" ? WORD_MSO_VERSION >= v
+        : Math.floor(v) === WORD_MSO_VERSION;
+      return ok ? "1" : "0";
+    })
+    .replace(/\b(?:vml|true)\b/g, "1")
+    .replace(/[a-z]\w*(?:\s+\d+(?:\.\d+)?)?/g, "0")
+    .replace(/\s+/g, "");
+  // ponytail: | and & only, no precedence beyond parentheses, which is all
+  // the email conditionals seen in the wild use.
+  let s = bits;
+  for (let prev = ""; prev !== s; ) {
+    prev = s;
+    s = s.replace(/\(([01])\)/g, "$1").replace(/([01])&([01])/g, (_, a, b) => (a === "1" && b === "1" ? "1" : "0")).replace(/([01])\|([01])/g, (_, a, b) => (a === "1" || b === "1" ? "1" : "0"));
+  }
+  return s === "1";
+}
 
 /**
  * The Office configuration an `[if mso]` block carries beside its markup:
@@ -173,8 +214,12 @@ export function resolveMsoBranch(html: string): string {
     .replace(DOWNLEVEL_REVEALED, "")
     // A class font-size in an [if mso] <style> did nothing on a div (probe
     // outlook-word-flow, 2026-10-31; G2's heading stayed at its inline 30px).
-    .replace(DOWNLEVEL_HIDDEN, (_, inner: string) =>
-      /^\s*<style/i.test(inner) ? inner.replace(/(\.[\w-]+\s*\{[^}]*?)font-size\s*:[^;}]*;?/g, "$1") : inner,
+    .replace(DOWNLEVEL_HIDDEN, (_, condition: string, inner: string) =>
+      !wordOpens(condition)
+        ? ""
+        : /^\s*<style/i.test(inner)
+          ? inner.replace(/(\.[\w-]+\s*\{[^}]*?)font-size\s*:[^;}]*;?/g, "$1")
+          : inner,
     )
     // After the unwrap, never before: the settings block is inside the
     // conditional we just opened.
