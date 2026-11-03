@@ -362,6 +362,17 @@ describe("Word box model", () => {
     expect(tag(word(`<div id="d" style="display:none;mso-hide:all">text</div>`), 'id="d"')).toContain("display:none");
   });
 
+  test("a display:none label inside a VML textbox is drawn (Brevo button, real Outlook Classic 2026-11-02)", () => {
+    // Brevo's bulletproof button: the label sits in a display:none div inside
+    // v:textbox. Two real Outlook Classic captures (build 20527 and the
+    // provider's) show the label; the sim drew an empty pill.
+    const out = word(
+      `<table><tr><td><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://x.test/" style="v-text-anchor:middle;height:47px;width:479px;" arcsize="50%" fillcolor="#ff5b2b" strokecolor="#ff5b2b"><v:textbox inset="0,0,0,0"><div id="l" style="display:none;"><center>Get a quote online</center></div></v:textbox></v:roundrect><![endif]--><!--[if !mso]><!-- --><a href="https://x.test/">Get a quote online</a><!--<![endif]--></td></tr></table>`,
+    );
+    expect(out).toContain("Get a quote online");
+    expect(tag(out, 'id="l"')).not.toMatch(/display:\s*none|mso-hide/);
+  });
+
   test("a hidden cell or row stays hidden, but a table inside it is drawn (09 c21, c22)", () => {
     const cell = word(`<table><tr><td id="c" style="display:none"><img id="i" src="x.png">${TABLE}</td></tr></table>`);
     expect(tag(cell, 'id="c"')).not.toMatch(/display:\s*none/);

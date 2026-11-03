@@ -262,12 +262,15 @@ export function dropWordUnknownColors(html: string): string {
  * The strip pass removes `display` for Word, so hidden elements are marked
  * here, before it, for the mso-hide pass to hide. A table inside a hidden cell
  * still follows the mso-hide rules (c21, c22; not re-probed).
+ * Inside a VML textbox, display:none hides nothing: Brevo's button label sits
+ * in one, and two real Outlook Classic captures drew it (2026-11-02).
  */
 function markHiddenCells(html: string): string {
   if (!/display\s*:\s*none/i.test(html)) return html;
   return html.replace(
-    /(<(?:td|th|tr|span|div|table)\b[^>]*?\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
-    (whole, lead: string, dq?: string, sq?: string) => {
+    /<v:textbox\b[\s\S]*?<\/v:textbox>|(<(?:td|th|tr|span|div|table)\b[^>]*?\sstyle\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,
+    (whole, lead?: string, dq?: string, sq?: string) => {
+      if (lead === undefined) return whole;
       const style = dq ?? sq ?? "";
       if (!/display\s*:\s*none/i.test(style) || /mso-hide\s*:/i.test(style)) return whole;
       const quote = dq === undefined ? "'" : '"';
