@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Outlook for Mac now has a dark mode. It had none: the simulation showed the
+  light email while the real app recolours all of it. Measured on 223 cells
+  of one probe sheet, light capture identical to the input: in CIELAB (D65),
+  a pure grey background inverts along `L -> 88.5 - 0.772 L` and only ever
+  darkens; a background with any hue, light or dark, is set to `L 34.6` with
+  its a and b kept, so a cream card and a near-black header both turn the
+  same warm grey; text darker than `L 56.5` goes to `L -> 100 - 0.772 L`.
+  Where the email sets no colour the app paints `#1e1e1e` with white text.
+  `bgcolor`, inline styles and `<style>` rules are treated alike, and a
+  `color-scheme: light dark` declaration does not stop it. 221 of 222 cells
+  within 4/255, all 42 held-out colours included; pure red text is the miss.
+
 ## 0.18.12 - 2026-11-03
 
 ### Fixed

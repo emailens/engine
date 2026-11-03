@@ -79,6 +79,11 @@ export function simulateDarkMode(
       applyColorInversion($, "gmail-android", clientId);
       break;
 
+    case "outlook-macos":
+      // Measured on the real app: see outlookMacColor.
+      applyColorInversion($, "outlook-macos", clientId);
+      break;
+
     case "outlook-web":
       // Outlook.com applies its own dark mode with partial inversion
       // Also injects [data-ogsc] and [data-ogsb] attributes to store original colors
@@ -228,6 +233,13 @@ export function simulateDarkMode(
   }
 
   const bodyStyle = ($("body").attr("style") || "").toLowerCase();
+  const canvas = MEASURED_CANVAS[clientId];
+  if (canvas) {
+    // The body's own colours went through the client's rule above.
+    if (!/background(-color)?\s*:/.test(bodyStyle) && !$("body").attr("bgcolor")) $("body").css("background-color", canvas.bg);
+    if (!/(^|;)\s*color\s*:/.test(bodyStyle)) $("body").css("color", canvas.fg);
+    return { html: $.html(), warnings };
+  }
   if (!Object.values(SAMPLED_DARK[clientId] ?? {}).some((c) => bodyStyle.includes(c.slice(1)))) {
     $("body").css("background-color", "#1a1a1a");
   }
@@ -241,6 +253,11 @@ export function simulateDarkMode(
  * Returns null if the color can't be parsed or shouldn't be inverted.
  */
 // ponytail: exact 6-digit hex only. Expand #rgb when a sample arrives that way.
+/** What the client paints where an email sets no colour, measured. */
+const MEASURED_CANVAS: Record<string, { bg: string; fg: string }> = {
+  "outlook-macos": { bg: "#1e1e1e", fg: "#ffffff" },
+};
+
 const SAMPLED_DARK: Record<string, Record<string, string>> = {
   "outlook-web": { eeeae4: "#595651" },
   "gmail-ios": { eeeae4: "#4a4438" },
@@ -279,19 +296,59 @@ const dot = (m: number[], v: number[]) => m[0] * v[0] + m[1] * v[1] + m[2] * v[2
 const labF = (t: number) => (t > 216 / 24389 ? Math.cbrt(t) : (841 / 108) * t + 4 / 29);
 const labFInv = (t: number) => (t > 6 / 29 ? t ** 3 : (108 / 841) * (t - 4 / 29));
 
-function flipLabLightness(c: { r: number; g: number; b: number }): string {
+/** The colour with its CIELAB lightness set by `to(L)`, a and b kept, channels clipped. */
+function withLabLightness(
+  c: { r: number; g: number; b: number },
+  to: (l: number) => number,
+  [white, toXyz, fromXyz] = [D50, TO_XYZ, FROM_XYZ],
+): string {
   const linear = [c.r, c.g, c.b].map((v) => {
     const s = v / 255;
     return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   });
-  const [fx, fy, fz] = TO_XYZ.map((row, i) => labF(dot(row, linear) / D50[i]));
-  const y = (Math.min(110 - (116 * fy - 16), 100) + 16) / 116;
-  const xyz = [fx - fy + y, y, y - (fy - fz)].map((t, i) => labFInv(t) * D50[i]);
-  const [r, g, b] = FROM_XYZ.map((row) => {
+  const [fx, fy, fz] = toXyz.map((row, i) => labF(dot(row, linear) / white[i]));
+  const y = (to(116 * fy - 16) + 16) / 116;
+  const xyz = [fx - fy + y, y, y - (fy - fz)].map((t, i) => labFInv(t) * white[i]);
+  const [r, g, b] = fromXyz.map((row) => {
     const v = Math.min(1, Math.max(0, dot(row, xyz)));
     return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
   });
   return hex({ r, g, b });
+}
+
+// sRGB's own white point, which Outlook for Mac's rule is measured against.
+const D65: [number[], number[][], number[][]] = [
+  [0.95047, 1, 1.08883],
+  [
+    [0.4124564, 0.3575761, 0.1804375],
+    [0.2126729, 0.7151522, 0.072175],
+    [0.0193339, 0.119192, 0.9503041],
+  ],
+  [
+    [3.2404542, -1.5371385, -0.4985314],
+    [-0.969266, 1.8760108, 0.041556],
+    [0.0556434, -0.2040259, 1.0572252],
+  ],
+];
+
+const flipLabLightness = (c: { r: number; g: number; b: number }) =>
+  withLabLightness(c, (l) => Math.min(110 - l, 100));
+
+/**
+ * Outlook for Mac's dark mode, measured on 223 cells of one probe sheet
+ * (emailens.dev apps/app/fidelity/probes/outlook-mac-dark.ts, 2026-11-03).
+ * In CIELAB, with a and b kept: a pure grey background inverts along
+ * L -> 88.5 - 0.772 L, only ever darker; a background with any hue at all,
+ * light or dark, is set to L 34.6, which is why a cream card and a near-black
+ * header both turn the same warm grey. Text lighter than L 56.5 is kept; darker
+ * text goes to L -> 100 - 0.772 L. bgcolor, inline and <style> are treated alike.
+ */
+function outlookMacColor(value: string, role: "fg" | "bg"): string | null {
+  const c = parseColor(value);
+  if (!c || c.a === 0) return null;
+  if (role === "fg") return withLabLightness(c, (l) => Math.max(l, 100 - 0.772 * l), D65);
+  if (c.r === c.g && c.g === c.b) return withLabLightness(c, (l) => Math.min(l, 88.5 - 0.772 * l), D65);
+  return withLabLightness(c, () => 34.6, D65);
 }
 
 function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
@@ -303,8 +360,11 @@ function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   return APP_BACKGROUND.has(hex(parsed)) ? "#121212" : flipLabLightness(parsed);
 }
 
-function invertColor(value: string, mode: "full" | "partial" | "gmail-android", clientId?: string, role: "fg" | "bg" = "bg"): string | null {
+type InversionMode = "full" | "partial" | "gmail-android" | "outlook-macos";
+
+function invertColor(value: string, mode: InversionMode, clientId?: string, role: "fg" | "bg" = "bg"): string | null {
   if (mode === "gmail-android") return gmailAndroidColor(value, role);
+  if (mode === "outlook-macos") return outlookMacColor(value, role);
   const pinned = clientId && SAMPLED_DARK[clientId]?.[value.trim().replace("#", "").toLowerCase()];
   if (pinned) return pinned;
   const parsed = parseColor(value);
@@ -355,7 +415,7 @@ function extractBackgroundColor(value: string): string | null {
 
 function applyColorInversion(
   $: cheerio.CheerioAPI,
-  mode: "full" | "partial" | "gmail-android",
+  mode: InversionMode,
   clientId?: string,
 ): void {
   // Process inline styles using parseColor for accurate detection
