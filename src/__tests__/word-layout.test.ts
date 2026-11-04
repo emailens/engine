@@ -568,6 +568,20 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="d"')).not.toMatch(/padding/);
   });
 
+  test("a larger span keeps a px-spaced paragraph's line height", () => {
+    // Local Outlook 2026-11-04, run qCRl2f88rRPV: 18px spans in a 14px
+    // paragraph with mso-line-height-alt:25.2px spaced 25px apart; the browser
+    // stacked the 14px strut and the span and spaced them 27.
+    const out = word(
+      `<div style="font-size:14px;line-height:1.4"><p style="line-height:inherit;mso-line-height-alt:25.2px"><span id="s" style="font-size:18px;line-height:40px">x</span></p></div>` +
+        `<p style="font-size:14px;line-height:1.4"><span id="u" style="font-size:18px">x</span></p>` +
+        `<p style="font-size:14px;line-height:25px;mso-line-height-rule:exactly"><span id="e" style="font-size:18px">x</span></p>`,
+    );
+    expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
+    expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
+    expect(tag(out, 'id="e"')).not.toMatch(/line-height/);
+  });
+
   test("a row's cells share its largest top and bottom padding", () => {
     // Local Outlook 2026-11-04: next to an empty cell with padding-top 20 (40)
     // the other cell's text dropped 20 (40) even at vertical-align:top; with

@@ -498,6 +498,20 @@ export function applyWordBoxModel($: CheerioAPI): void {
       if (Number(lineHeight[1]) < natural) props.set("line-height", `${natural}px`);
     }
 
+    // Word spaces a paragraph's lines by its own px line-height and ignores an
+    // inline's: 18px spans in a 14px paragraph at mso-line-height-alt:25.2px
+    // sat 25px apart, where the browser stacked the strut and the span to 27
+    // (local Outlook, 2026-11-04, run qCRl2f88rRPV). A normal line-height keeps
+    // the line at the paragraph's height and still grows it for a larger font.
+    // ponytail: unitless and `exactly` paragraphs are left as they were.
+    if (/^(?:span|a|strong|b|em|i|u|font)$/.test(tag ?? "") && !/block/i.test(props.get("display") ?? "")) {
+      const block = $(el).parents().filter((_, up) => /line-height/i.test($(up).attr("style") ?? "")).first();
+      const spacing = parseInlineStyle(block.attr("style") || "");
+      if (/^[\d.]+px$/i.test(spacing.get("line-height") ?? "") && !/exactly/i.test(spacing.get("mso-line-height-rule") ?? "")) {
+        props.set("line-height", "normal");
+      }
+    }
+
     // Two properties Word does not apply at all: a 20px word-spacing left the
     // text at its normal width (04-typography c21), and a 10px outline drew
     // nothing (05-backgrounds c22).
