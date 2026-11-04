@@ -286,8 +286,19 @@ function markHiddenCells(html: string): string {
 
 /** Everything done to the source string for Word, before the downlevel and strip passes. */
 export function prepareWordSource(html: string): string {
-  return markHiddenCells(dropWordUnknownColors(html));
+  return wordSubstitutes(markHiddenCells(dropWordUnknownColors(html)));
 }
+
+/**
+ * Names Word knows but draws in another face, ahead of the rest of the stack:
+ * run fKVPhDLg6SJ1's `'Rubik', Arial` drew Calibri on the real Outlook Classic
+ * capture and on local Outlook, where an unknown name fell through to Arial
+ * (2026-11-04). ponytail: one name measured; add one when a capture shows it.
+ */
+const WORD_SUBSTITUTES: Record<string, string> = { rubik: "Calibri" };
+const SUBSTITUTED = new RegExp(String.raw`(font(?:-family)?\s*:[^;"}]*?)(['"]?)\b(${Object.keys(WORD_SUBSTITUTES).join("|")})\b\2`, "gi");
+const wordSubstitutes = (html: string) =>
+  html.replace(SUBSTITUTED, (_, lead: string, _q: string, name: string) => `${lead}${WORD_SUBSTITUTES[name.toLowerCase()]}`);
 
 /**
  * Faces Office downloads by name, so Word draws them whatever @font-face says:

@@ -181,6 +181,16 @@ describe("Word box model", () => {
     expect(tag(out, 'id="a"')).toContain("Nunito Sans");
   });
 
+  test("Rubik draws in Calibri, inline and from a stylesheet rule", () => {
+    // Run fKVPhDLg6SJ1's `'Rubik', Arial` (a Google Fonts <link>) drew Calibri
+    // on the real Outlook Classic capture, and locally too, where an unknown
+    // name fell to Arial (2026-11-04).
+    const head = `<style>.r{font-family:'Rubik', Arial, sans-serif !important}</style>`;
+    const out = word(`<p id="a" style="font-family:'Rubik', Arial, sans-serif">x</p><p id="b" class="r">x</p>`, head);
+    expect(tag(out, 'id="a"')).toMatch(/font-family:\s*Calibri/);
+    expect(out).not.toMatch(/Rubik/);
+  });
+
   test("a rule that wins the family keeps a @font-face `*` rule from drawing Times (AI Fix real-device round, 2026-10-22)", () => {
     // React Email's <Font>, then the Outlook-only element rule a fix adds.
     const head =
