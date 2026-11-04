@@ -517,6 +517,28 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="t"')).not.toMatch(/margin-(?:top|bottom)/);
   });
 
+  test("a 1px image outside any cell adds no line", () => {
+    // Local Outlook 2026-11-03: a body-level 1x1 pixel added ~0 height. Run
+    // qCRl2f88rRPV's tracking pixel sat the sim's email 16px lower than real.
+    const out = word(`<img id="p" src="x.gif" width="1" height="1" style="display:none!important"><table><tr><td><img id="q" src="y.gif" width="1" height="1"></td></tr></table>`);
+    expect(tag(out, 'id="p"')).toMatch(/display:\s*block/);
+    expect(tag(out, 'id="q"')).not.toMatch(/display:\s*block/);
+  });
+
+  test("a table's vertical margin goes to each row of bare text, and no other", () => {
+    // Local Outlook 2026-11-04: in a margin-bottom:30px table only the bare-text
+    // row grew 30px; rows holding a <p>, a <div>, a table or &nbsp; did not, and
+    // nothing went under the table. Three bare-text rows grew 48px each. Run
+    // gjAruZbzWbTa's heading row took its table's 48px; its list rows did not.
+    const rows = (cells: string[]) => cells.map((c, i) => `<tr><td id="r${i}">${c}</td></tr>`).join("");
+    const out = word(`<table style="margin-top:28px;margin-bottom:30px">${rows(["text", "<p>p</p>", "<div>d</div>", "<table><tr><td>n</td></tr></table>", "&nbsp;", "more <b>text</b>"])}</table>`);
+    for (const i of [0, 5]) {
+      expect(tag(out, `id="r${i}"`)).toMatch(/padding-bottom:\s*30px/);
+      expect(tag(out, `id="r${i}"`)).toMatch(/padding-top:\s*28px/);
+    }
+    for (const i of [1, 2, 3, 4]) expect(tag(out, `id="r${i}"`)).not.toMatch(/padding/);
+  });
+
   test("a para-border-div table is a dotted, centred Word frame", () => {
     const out = tag(word(`<table id="t" width="100%" style="max-width:650px;mso-element:para-border-div;mso-element-frame-width:650px"><tr><td>x</td></tr></table>`), 'id="t"');
     expect(out).toContain("dotted");

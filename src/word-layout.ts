@@ -551,6 +551,17 @@ export function applyWordBoxModel($: CheerioAPI): void {
     cell.empty().attr("style", serializeStyle(props));
   });
 
+  // A 1px tracking image outside any cell adds no line (local Outlook,
+  // 2026-11-03); drawn inline it took a whole line box (run qCRl2f88rRPV, 16px).
+  $("img").each((_, node) => {
+    const img = $(node);
+    const props = parseInlineStyle(img.attr("style") || "");
+    const height = Number.parseFloat(props.get("height") ?? img.attr("height") ?? "");
+    if (img.closest("td, th").length || !(height <= 1)) return;
+    props.set("display", "block");
+    img.attr("style", serializeStyle(props));
+  });
+
   // Whatever its border, an <hr> is a grey rule 9px tall plus its margins, and
   // always full width (probe outlook-word-flow hr, 2026-11-01: 9, 29, 9, 49).
   $("hr").each((_, node) => {
@@ -778,9 +789,21 @@ export function applyWordBoxModel($: CheerioAPI): void {
         $(cell).attr("style", serializeStyle(own));
       });
     };
-    if (!rows.length) return;
-    if (top > 0) grow(rows.first(), "top", top);
-    if (bottom > 0) grow(rows.last(), "bottom", bottom);
+    // Each row whose cell holds bare text takes the margin, top and bottom, and
+    // a row of blocks or &nbsp; does not (local Outlook, 2026-11-04: run
+    // gjAruZbzWbTa's heading row took 48px, its list rows and the table's foot none).
+    // ponytail: a <ul> row grew a little too; lists are left out until measured.
+    const bare = rows.filter((_, row) =>
+      $(row).children("td, th").toArray().some((cell) => {
+        const inline = $(cell).clone();
+        inline.find("table, div, p, ul, ol, h1, h2, h3, h4, h5, h6").remove();
+        return /[^\s ]/.test(inline.text());
+      }),
+    );
+    bare.each((_, row) => {
+      if (top > 0) grow($(row), "top", top);
+      if (bottom > 0) grow($(row), "bottom", bottom);
+    });
     props.delete("margin-top");
     props.delete("margin-bottom");
     if (box.length) {
