@@ -852,6 +852,30 @@ export function applyWordBoxModel($: CheerioAPI): void {
     table.attr("style", serializeStyle(props));
   });
 
+  // Word keeps one top and one bottom padding per row: every cell takes the
+  // row's largest, even at vertical-align:top (local Outlook, 2026-11-04: text
+  // beside an empty padding-top:20px cell dropped 20; run gjAruZbzWbTa's first
+  // bullet). ponytail: Word leaves a neighbour's borrowed top band unpainted;
+  // padding paints it. A transparent border-top would match if it ever shows.
+  $("tr").each((_, row) => {
+    const cells = $(row).children("td, th").toArray();
+    if (cells.length < 2) return;
+    const sides = cells.map((cell) => {
+      const style = parseInlineStyle($(cell).attr("style") || "");
+      const pad = (style.get("padding") ?? "").trim().split(/\s+/).filter(Boolean);
+      const read = (v?: string) => Number.parseFloat(v ?? "") || 0;
+      return { style, top: read(style.get("padding-top") ?? pad[0]), bottom: read(style.get("padding-bottom") ?? pad[2] ?? pad[0]) };
+    });
+    const top = Math.max(...sides.map((s) => s.top));
+    const bottom = Math.max(...sides.map((s) => s.bottom));
+    cells.forEach((cell, i) => {
+      const { style } = sides[i];
+      if (sides[i].top < top) style.set("padding-top", `${top}px`);
+      if (sides[i].bottom < bottom) style.set("padding-bottom", `${bottom}px`);
+      if (sides[i].top < top || sides[i].bottom < bottom) $(cell).attr("style", serializeStyle(style));
+    });
+  });
+
   // `mso-element:para-border-div` makes the table a Word frame: centred, dotted,
   // its text justified. Uneed's frame measured 667px around 650px of text, 5px in
   // from the left (round 2, 2026-11-01).

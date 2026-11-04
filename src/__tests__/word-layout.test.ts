@@ -568,6 +568,21 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="d"')).not.toMatch(/padding/);
   });
 
+  test("a row's cells share its largest top and bottom padding", () => {
+    // Local Outlook 2026-11-04: next to an empty cell with padding-top 20 (40)
+    // the other cell's text dropped 20 (40) even at vertical-align:top; with
+    // 20 and 8, both texts started at 20. Run gjAruZbzWbTa's first bullet.
+    const out = word(
+      `<table><tr><td id="a" style="padding-top:20px"> </td><td id="b" style="padding-top:8px;padding-bottom:4px">x</td><td id="c">y</td></tr></table>` +
+        `<table><tr><td id="d">x</td></tr></table>`,
+    );
+    for (const id of ["a", "b", "c"]) {
+      expect(tag(out, `id="${id}"`)).toMatch(/padding-top:\s*20px/);
+      expect(tag(out, `id="${id}"`)).toMatch(/padding-bottom:\s*4px/);
+    }
+    expect(tag(out, 'id="d"')).not.toMatch(/padding/);
+  });
+
   test("a para-border-div table is a dotted, centred Word frame", () => {
     const out = tag(word(`<table id="t" width="100%" style="max-width:650px;mso-element:para-border-div;mso-element-frame-width:650px"><tr><td>x</td></tr></table>`), 'id="t"');
     expect(out).toContain("dotted");
