@@ -512,9 +512,9 @@ describe("simulateDarkMode", () => {
   test("applies full inversion for Outlook Classic (legacy)", () => {
     const html = `<html><body style="background-color: #ffffff;"><p style="color: #000000;">Test</p></body></html>`;
     const result = simulateDarkMode(html, "outlook-windows-legacy");
-    // Outlook Classic (Word engine) applies full color inversion in dark mode
-    expect(result.html).toContain("#1a1a1a"); // white bg inverted to dark
-    expect(result.html).toContain("#e0e0e0"); // black text inverted to light
+    // Measured on the real app (outlook-classic-dark.test.ts)
+    expect(result.html).toContain("#262626"); // white bg inverted to dark
+    expect(result.html).toContain("#f6f6f6"); // black text inverted to light
     const infoWarning = result.warnings.find(
       (w) => w.message.includes("full color inversion")
     );

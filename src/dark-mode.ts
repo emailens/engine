@@ -135,8 +135,8 @@ export function simulateDarkMode(
       break;
 
     case "outlook-windows-legacy":
-      // Classic Outlook (Word engine) applies full color inversion in dark mode
-      applyColorInversion($, "full", clientId);
+      // Measured on the real app: see outlookClassicColor.
+      applyColorInversion($, "outlook-classic", clientId);
       if (!html.includes("prefers-color-scheme")) {
         warnings.push({
           severity: "info",
@@ -256,6 +256,8 @@ export function simulateDarkMode(
 /** What the client paints where an email sets no colour, measured. */
 const MEASURED_CANVAS: Record<string, { bg: string; fg: string }> = {
   "outlook-macos": { bg: "#1e1e1e", fg: "#ffffff" },
+  // ponytail: fg unmeasured; Word's automatic text is black, which maps here.
+  "outlook-windows-legacy": { bg: "#262626", fg: "#f6f6f6" },
 };
 
 const SAMPLED_DARK: Record<string, Record<string, string>> = {
@@ -351,6 +353,50 @@ function outlookMacColor(value: string, role: "fg" | "bg"): string | null {
   return withLabLightness(c, () => 34.6, D65);
 }
 
+/**
+ * Outlook Classic's (Word's) dark mode, measured on 223 cells of probe sheet 24
+ * (emailens.dev apps/app/fidelity/probes/outlook-mac-dark.ts, 2026-11-03); 212
+ * land within 4/255. Text and backgrounds take the same rule, and text does not
+ * depend on its background. In linear light, luminance Y flips along the
+ * measured greys (WORD_DARK_GREYS, in CIELAB L: white -> #262626, black -> #f6f6f6)
+ * and each channel keeps its distance from Y scaled by sqrt(Y'/Y), so hue holds:
+ * a dark green turns pale mint, a cream turns warm brown. Not modelled: the most
+ * saturated blues turn cyan (#2222c3 -> #00bcff) and strong yellows darken less.
+ */
+const WORD_DARK_GREYS: [number, number][] = [
+  [0x00, 0xf6], [0x0f, 0xe9], [0x1e, 0xe1], [0x2d, 0xd8], [0x3c, 0xce], [0x4b, 0xc4],
+  [0x5a, 0xb9], [0x69, 0xae], [0x78, 0xa3], [0x87, 0x97], [0x96, 0x8b], [0xa5, 0x7e],
+  [0xb4, 0x71], [0xc3, 0x63], [0xd2, 0x55], [0xe1, 0x46], [0xf0, 0x37], [0xff, 0x26],
+];
+const greyL = (v: number) => {
+  const s = v / 255;
+  return 116 * labF(s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4) - 16;
+};
+const WORD_DARK_L = WORD_DARK_GREYS.map(([from, to]) => [greyL(from), greyL(to)]);
+const wordDarkL = (l: number) => {
+  const i = Math.max(1, WORD_DARK_L.findIndex(([x]) => x >= Math.min(l, 100)));
+  const [[x0, y0], [x1, y1]] = [WORD_DARK_L[i - 1], WORD_DARK_L[i]];
+  return y0 + ((y1 - y0) * (l - x0)) / (x1 - x0);
+};
+
+function outlookClassicColor(value: string): string | null {
+  const c = parseColor(value);
+  if (!c || c.a === 0) return null;
+  const linear = [c.r, c.g, c.b].map((v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  const y = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const l = 116 * labF(y) - 16;
+  const out = labFInv((wordDarkL(l) + 16) / 116);
+  const k = y > 0 ? Math.sqrt(out / y) : 1;
+  const [r, g, b] = linear.map((v) => {
+    const t = Math.min(1, Math.max(0, out + k * (v - y)));
+    return Math.round(255 * (t <= 0.0031308 ? 12.92 * t : 1.055 * t ** (1 / 2.4) - 0.055));
+  });
+  return hex({ r, g, b });
+}
+
 function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   const parsed = parseColor(value);
   if (!parsed || parsed.a === 0) return null;
@@ -360,11 +406,12 @@ function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   return APP_BACKGROUND.has(hex(parsed)) ? "#121212" : flipLabLightness(parsed);
 }
 
-type InversionMode = "full" | "partial" | "gmail-android" | "outlook-macos";
+type InversionMode = "full" | "partial" | "gmail-android" | "outlook-macos" | "outlook-classic";
 
 function invertColor(value: string, mode: InversionMode, clientId?: string, role: "fg" | "bg" = "bg"): string | null {
   if (mode === "gmail-android") return gmailAndroidColor(value, role);
   if (mode === "outlook-macos") return outlookMacColor(value, role);
+  if (mode === "outlook-classic") return outlookClassicColor(value);
   const pinned = clientId && SAMPLED_DARK[clientId]?.[value.trim().replace("#", "").toLowerCase()];
   if (pinned) return pinned;
   const parsed = parseColor(value);
@@ -413,6 +460,20 @@ function extractBackgroundColor(value: string): string | null {
   return null;
 }
 
+const BORDER_SHORTHAND = /^border(-(top|right|bottom|left))?$/;
+
+/** A border shorthand with its colour inverted like border-color, or null. */
+function invertBorder(value: string, mode: InversionMode, clientId?: string): string | null {
+  let changed = false;
+  const next = value.replace(/#[0-9a-f]{3,8}(?![0-9a-z])|rgba?\([^)]*\)/gi, (token) => {
+    const inverted = invertColor(token, mode, clientId);
+    if (!inverted) return token;
+    changed = true;
+    return inverted;
+  });
+  return changed ? next : null;
+}
+
 function applyColorInversion(
   $: cheerio.CheerioAPI,
   mode: InversionMode,
@@ -423,10 +484,21 @@ function applyColorInversion(
     const style = $(el).attr("style") || "";
     const props = parseInlineStyle(style);
     let changed = false;
+    // Word leaves a VML shape's own fill and stroke alone; its label still
+    // flips (real KVWdnnChGCCI: the green roundrect kept green, its text went dark).
+    const keepFill = mode === "outlook-classic" && $(el).is("[data-vml]");
 
     props.forEach((value, prop) => {
+      if (keepFill && prop !== "color") return;
       if (COLOR_PROPS.has(prop)) {
         const inverted = invertColor(value, mode, clientId, prop === "color" ? "fg" : "bg");
+        if (inverted) {
+          props.set(prop, inverted);
+          changed = true;
+        }
+      }
+      if (BORDER_SHORTHAND.test(prop)) {
+        const inverted = invertBorder(value, mode, clientId);
         if (inverted) {
           props.set(prop, inverted);
           changed = true;
@@ -461,10 +533,17 @@ function applyColorInversion(
         enter(node: csstree.CssNode) {
           if (node.type !== "Declaration") return;
           const prop = node.property.toLowerCase();
-          if (!COLOR_PROPS.has(prop) && prop !== "background") return;
+          const border = BORDER_SHORTHAND.test(prop);
+          if (!COLOR_PROPS.has(prop) && prop !== "background" && !border) return;
 
           const valueStr = csstree.generate(node.value);
-          if (prop === "background") {
+          if (border) {
+            const inverted = invertBorder(valueStr, mode, clientId);
+            if (inverted) {
+              node.value = csstree.parse(inverted, { context: "value" }) as csstree.Value;
+              modified = true;
+            }
+          } else if (prop === "background") {
             const bgColor = extractBackgroundColor(valueStr);
             if (bgColor) {
               const inverted = invertColor(bgColor, mode, clientId);
