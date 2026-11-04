@@ -607,12 +607,10 @@ describe("Word bgcolor spelling", () => {
         `<div style="font-family:Arial"><p id="h" style="font:18px Arial;line-height:40px">x</p></div>`,
     );
     const shift = (id: string) => new RegExp(String.raw`id="${id}"[^>]*><span style="position:\s*relative;\s*top:\s*([\d.]+)px`).exec(out)?.[1];
-    expect(shift("a")).toBe("9.7");
-    expect(shift("b")).toBe("1.7");
+    const bottom = (id: string) => new RegExp(String.raw`id="${id}"[^>]*><span style="vertical-align:bottom;line-height:normal"`).test(out);
+    for (const id of ["a", "b", "g", "h"]) expect(bottom(id)).toBe(true);
     expect(shift("c")).toBe("11.8");
-    expect(shift("g")).toBe("9.7");
-    expect(shift("h")).toBe("9.7");
-    for (const id of ["d", "f"]) expect(shift(id)).toBeUndefined();
+    for (const id of ["d", "f"]) expect(bottom(id) || shift(id) !== undefined).toBe(false);
   });
 
   test("a block's own background skips its first line's extra leading", () => {
@@ -628,6 +626,41 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="a"')).not.toMatch(/background-color/);
     expect(tag(out, 'id="b"')).toMatch(/background-color:\s*#99ccff/);
     expect(tag(out, 'id="c"')).toMatch(/background-color:\s*#99ccff/);
+  });
+
+  test("stylesheet line-heights and sizes count as inline ones do", () => {
+    // Local Outlook 2026-11-04: class rules for font-size, line-height,
+    // mso-line-height-rule and background drew exactly as the inline probe.
+    const head =
+      `<style>.l40{font-size:18px;line-height:40px}.x60{font-size:18px;line-height:60px;mso-line-height-rule:exactly}` +
+      `td.cell{font-size:18px;line-height:40px}.bg{background-color:#99ccff}.alt{font-size:14px;mso-line-height-alt:25.2px}</style>`;
+    const out = word(
+      `<p id="a" class="l40">x</p><p id="b" class="x60">x</p>` +
+        `<table><tr><td id="c" class="cell">x</td></tr></table>` +
+        `<p id="d" class="l40 bg">x</p>` +
+        `<p id="e" class="alt">x <span id="s" style="font-size:18px">y</span></p>`,
+      head,
+    );
+    const shift = (id: string) => new RegExp(String.raw`id="${id}"[^>]*><span style="position:\s*relative;\s*top:\s*([\d.]+)px`).exec(out)?.[1];
+    const bottom = (id: string) => new RegExp(String.raw`id="${id}"[^>]*><span style="vertical-align:bottom;line-height:normal"`).test(out);
+    expect(bottom("a")).toBe(true);
+    expect(shift("b")).toBe("11.8");
+    expect(bottom("c")).toBe(true);
+    expect(tag(out, 'id="d"')).toMatch(/linear-gradient\(transparent 19\.3px,\s*#99ccff 19\.3px\)/);
+    expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
+    expect(bottom("e")).toBe(true);
+  });
+
+  test("a span sized by a class keeps a px-spaced paragraph's line height", () => {
+    // The class-sized twin of qCRl2f88rRPV's 18px spans: Word spaces by the
+    // paragraph alike (local Outlook, 2026-11-04).
+    const out = word(
+      `<p style="font-size:14px;line-height:25.2px"><span id="s" class="big">x</span></p>` +
+        `<p style="font-size:14px;line-height:1.4"><span id="u" class="big">x</span></p>`,
+      `<style>.big{font-size:18px}</style>`,
+    );
+    expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
+    expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
   });
 
   test("a row's cells share its largest top and bottom padding", () => {

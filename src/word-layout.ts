@@ -376,8 +376,43 @@ function leftPadding(props: Map<string, string>): number {
   return /^\d+(?:\.\d+)?(?:px)?$/.test(value ?? "") ? parseFloat(value) : 0;
 }
 
+/**
+ * The line-spacing declarations each element takes from top-level stylesheet
+ * rules: local Outlook drew class font-size, line-height, mso-line-height-rule
+ * and background as it drew the inline ones (2026-11-04).
+ * ponytail: the last matching rule wins, specificity unweighed.
+ */
+const SPACING = /^(?:line-height|mso-line-height-rule|mso-line-height-alt|font-size|font|background|background-color)$/;
+function sheetSpacing($: CheerioAPI): Map<Element, Map<string, string>> {
+  const found = new Map<Element, Map<string, string>>();
+  $("style").each((_, block) => {
+    for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
+      const rule = [...parseInlineStyle(body.replace(/!important/gi, ""))].filter(([k]) => SPACING.test(k));
+      if (!rule.length) continue;
+      for (const one of selector.split(",")) {
+        for (const el of matchedByWord($, one)) {
+          const has = found.get(el) ?? new Map<string, string>();
+          for (const [k, v] of rule) has.set(k, v);
+          found.set(el, has);
+        }
+      }
+    }
+  });
+  return found;
+}
+
 export function applyWordBoxModel($: CheerioAPI): void {
   const faces = declaredFaces($);
+  const sheet = sheetSpacing($);
+  // An element's spacing: its stylesheet rules under its inline style, with
+  // mso-line-height-alt read as the line-height (as the inline pass does).
+  const spacingOf = (el: Element) => {
+    const all = new Map([...(sheet.get(el) ?? []), ...parseInlineStyle($(el).attr("style") || "")]);
+    const alt = all.get("mso-line-height-alt")?.trim();
+    const altEm = /^([\d.]+)em$/i.exec(alt ?? "");
+    if (alt) all.set("line-height", altEm ? `${Number(altEm[1]) * 16}px` : alt);
+    return all;
+  };
 
   $("[style]").each((_, node) => {
     const el = node as Element;
@@ -507,20 +542,6 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (lineHeight && fontSize && !/exactly/i.test(props.get("mso-line-height-rule") ?? "")) {
       const natural = Math.round(Number(fontSize[1]) * NATURAL_LINE);
       if (Number(lineHeight[1]) < natural) props.set("line-height", `${natural}px`);
-    }
-
-    // Word spaces a paragraph's lines by its own px line-height and ignores an
-    // inline's: 18px spans in a 14px paragraph at mso-line-height-alt:25.2px
-    // sat 25px apart, where the browser stacked the strut and the span to 27
-    // (local Outlook, 2026-11-04, run qCRl2f88rRPV). A normal line-height keeps
-    // the line at the paragraph's height and still grows it for a larger font.
-    // ponytail: unitless and `exactly` paragraphs are left as they were.
-    if (/^(?:span|a|strong|b|em|i|u|font)$/.test(tag ?? "") && !/block/i.test(props.get("display") ?? "")) {
-      const block = $(el).parents().filter((_, up) => /line-height/i.test($(up).attr("style") ?? "")).first();
-      const spacing = parseInlineStyle(block.attr("style") || "");
-      if (/^[\d.]+px$/i.test(spacing.get("line-height") ?? "") && !/exactly/i.test(spacing.get("mso-line-height-rule") ?? "")) {
-        props.set("line-height", "normal");
-      }
     }
 
     // Two properties Word does not apply at all: a 20px word-spacing left the
@@ -972,43 +993,65 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (after) p.attr("style", after);
   });
 
+  // Word spaces a paragraph's lines by its own px line-height and ignores an
+  // inline's: 18px spans in a 14px paragraph at mso-line-height-alt:25.2px
+  // sat 25px apart, where the browser stacked the strut and the span to 27
+  // (local Outlook, 2026-11-04, run qCRl2f88rRPV), and a span sized by a class
+  // alike. A normal line-height keeps the line at the paragraph's height and
+  // still grows it for a larger font.
+  // ponytail: unitless and `exactly` paragraphs are left as they were.
+  $("span, a, strong, b, em, i, u, font").each((_, node) => {
+    const el = node as Element;
+    const props = parseInlineStyle($(el).attr("style") || "");
+    if (/block/i.test(props.get("display") ?? "")) return;
+    const spacing = $(el).parents().toArray().map(spacingOf).find((st) => st.has("line-height"));
+    if (!/^[\d.]+px$/i.test(spacing?.get("line-height") ?? "") || /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "")) return;
+    props.set("line-height", "normal");
+    $(el).attr("style", serializeStyle(props));
+  });
+
   // Under a px line-height Word puts the extra leading above the text, where
   // the browser splits it: at 18px Arial the gap under the glyphs stayed 4px at
   // line-height 25, 40 and 60, and with `exactly` about 0.3 of it moved down
   // (local Outlook, 2026-11-04; run qCRl2f88rRPV's text sat 2-5px lower). Text
-  // right in a cell moves alike. Every line moves the same, so a positioned
-  // span around the text shifts it and leaves the layout and the box alone.
+  // right in a cell moves alike. A span around the text, bottom-aligned in
+  // each line, puts it there by the face's own metrics and leaves the layout
+  // and the box alone.
   // A block's own background starts below its first line's extra leading and
   // covers the rest; with `exactly`, and in a cell, it fills the box.
   // ponytail: bordered blocks are left alone; stylesheet values are not read.
-  const inherited = (el: Element, prop: string) => {
-    const up = [el, ...$(el).parents().toArray()].find((n) => parseInlineStyle($(n).attr("style") || "").has(prop));
-    return up ? parseInlineStyle($(up).attr("style") || "") : undefined;
-  };
+  const inherited = (el: Element, prop: string) => [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has(prop));
   $("p, div, h1, h2, h3, h4, h5, h6, li, td, th").each((_, node) => {
     const el = node as Element;
     const block = $(el);
     if (block.find("p, div, h1, h2, h3, h4, h5, h6, li, table, ul, ol").length || !/[^\s ]/.test(block.text())) return;
     const own = parseInlineStyle(block.attr("style") || "");
     if (hasBorder(own)) return;
+    const mine = spacingOf(el);
     const spacing = inherited(el, "line-height");
     const line = /^([\d.]+)px$/i.exec(spacing?.get("line-height") ?? "");
     // The size from font-size or the font shorthand, whichever is nearer.
-    const sized = [el, ...$(el).parents().toArray()].map((n) => parseInlineStyle($(n).attr("style") || "")).find((st) => st.has("font-size") || /\d(?:\.\d+)?px/.test(st.get("font") ?? ""));
+    const sized = [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has("font-size") || /\d(?:\.\d+)?px/.test(st.get("font") ?? ""));
     const size = /^([\d.]+)px$/i.exec(sized?.get("font-size") ?? "") ?? /(?:^|\s)([\d.]+)px/.exec(sized?.get("font") ?? "");
     if (!line || !size) return;
     let largest = Number(size[1]);
-    block.find("[style]").each((_, inner) => {
-      const px = /^([\d.]+)px$/i.exec(parseInlineStyle($(inner).attr("style") || "").get("font-size") ?? "");
+    block.find("*").each((_, inner) => {
+      const px = /^([\d.]+)px$/i.exec(spacingOf(inner).get("font-size") ?? "");
       if (px) largest = Math.max(largest, Number(px[1]));
     });
     const leading = Math.round((Number(line[1]) - largest * NATURAL_LINE) * 10) / 10;
     const exactly = /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "");
     const shift = Math.round(leading * (exactly ? 0.3 : 0.5) * 10) / 10;
     if (shift <= 0) return;
-    block.wrapInner(`<span style="position:relative;top:${shift}px"></span>`);
+    // Bottom alignment lets the browser place each line by the face's own
+    // metrics; `exactly` keeps 0.2 of the leading under the text.
+    block.wrapInner(
+      exactly
+        ? `<span style="position:relative;top:${shift}px"></span>`
+        : `<span style="vertical-align:bottom;line-height:normal"></span>`,
+    );
     const tag = el.tagName.toLowerCase();
-    const fill = own.get("background-color") ?? own.get("background");
+    const fill = mine.get("background-color") ?? mine.get("background");
     if (exactly || tag === "td" || tag === "th" || !fill || /\(|\s/.test(fill.trim())) return;
     own.delete("background-color");
     own.set("background", `linear-gradient(transparent ${leading}px, ${fill.trim()} ${leading}px)`);
