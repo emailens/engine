@@ -77,6 +77,15 @@ describe("vmlToCss: roundrect", () => {
     expect(out).toContain("Go");
   });
 
+  test("width:auto is 48pt and shows only the label's first line", () => {
+    // Local Outlook (2026-11-04): Save / Go / a long label all drew one 48pt box
+    // with the first word centred; run WSG7EFj4uHsB's real capture: 64x40, "Save".
+    const out = vmlToCss(`<v:roundrect style="height:40px;v-text-anchor:middle;width:auto;" arcsize="10%" fillcolor="#4346ce"><w:anchorlock/><center style="font-size:18px">Save your spot</center></v:roundrect>`);
+    expect(out).toContain("width:64px");
+    expect(out).toContain("border-radius:4px");
+    expect(out).toMatch(/<span style="display:block;max-height:1lh;overflow:hidden;padding:0 9.6px;font-size:18px">Save your spot/);
+  });
+
   test("keeps the label and drops the scaffolding around it", () => {
     const out = vmlToCss(`<v:roundrect style="width:200px;height:40px;"><w:anchorlock/><center>Click</center></v:roundrect>`);
     expect(out).toContain("Click");

@@ -443,7 +443,12 @@ export function vmlToCss(html: string): string {
     (_m, rawAttrs: string, inner: string) => {
       const a = attrs(rawAttrs);
       const s = styleProps(a.style ?? "");
-      const w = px(s.width) ?? 0;
+      // width:auto is 48pt whatever the label, which wraps and shows its first
+      // line only, inside the textbox's default 0.1in inset (local Outlook,
+      // 2026-11-04: "A much longer…" drew "A"; run WSG7EFj4uHsB drew "Save").
+      // ponytail: inset modelled for width:auto only, where wrapping shows it.
+      const auto = /^auto$/i.test(s.width?.trim() ?? "");
+      const w = auto ? 64 : (px(s.width) ?? 0);
       const h = px(s.height) ?? 0;
       // No arcsize means the VML default of 0.2, not a square corner.
       const radius = arcsizeToRadius(a.arcsize ?? "20%", w, h);
@@ -475,7 +480,9 @@ export function vmlToCss(html: string): string {
         .replace(/<\/?w:anchorlock[^>]*>/gi, "")
         .replace(/<center\b/gi, "<span")
         .replace(/<\/center>/gi, "</span>")
-        .trim();
+        .trim()
+        .replace(/^<span(?: style="([^"]*)")?/i, (tag, style?: string) =>
+          auto ? `<span style="display:block;max-height:1lh;overflow:hidden;padding:0 9.6px;${style ?? ""}"` : tag);
       const box = [
         w ? `width:${w}px` : "",
         h ? `height:${h}px` : "",
