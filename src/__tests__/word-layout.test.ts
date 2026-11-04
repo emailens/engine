@@ -547,6 +547,27 @@ describe("Word bgcolor spelling", () => {
     for (const i of [1, 2, 3, 4]) expect(tag(out, `id="r${i}"`)).not.toMatch(/padding/);
   });
 
+  test("a bare-text cell's own margin replaces its table's, and counts without one", () => {
+    // Local Outlook 2026-11-04 (15px text in a margin:28px/30px table): class
+    // margin 48/48 drew 111px, inline margin-top:48px 93, margin-top:0 45; with
+    // no table margin the class drew 111 and a <p> inside it 15. Run
+    // gjAruZbzWbTa's heading class (48/48) beat its table's 28px top.
+    const head = `<style>.h{margin-top:48px;margin-bottom:48px}</style>`;
+    const out = word(
+      `<table style="margin-top:28px;margin-bottom:30px"><tr><td id="a" class="h">x</td></tr></table>` +
+        `<table style="margin-top:28px;margin-bottom:30px"><tr><td id="b" style="margin-top:0">x</td></tr></table>` +
+        `<table><tr><td id="c" class="h">x</td></tr></table>` +
+        `<table><tr><td id="d" class="h"><p>x</p></td></tr></table>`,
+      head,
+    );
+    expect(tag(out, 'id="a"')).toMatch(/padding-top:\s*48px/);
+    expect(tag(out, 'id="a"')).toMatch(/padding-bottom:\s*48px/);
+    expect(tag(out, 'id="b"')).not.toMatch(/padding-top/);
+    expect(tag(out, 'id="b"')).toMatch(/padding-bottom:\s*30px/);
+    expect(tag(out, 'id="c"')).toMatch(/padding-top:\s*48px/);
+    expect(tag(out, 'id="d"')).not.toMatch(/padding/);
+  });
+
   test("a para-border-div table is a dotted, centred Word frame", () => {
     const out = tag(word(`<table id="t" width="100%" style="max-width:650px;mso-element:para-border-div;mso-element-frame-width:650px"><tr><td>x</td></tr></table>`), 'id="t"');
     expect(out).toContain("dotted");

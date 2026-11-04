@@ -779,38 +779,69 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // the first or last row: 20px rows measured 60px with margin-top:40px and with
   // margin-bottom:40px (probe outlook-word-flow margin, 2026-11-01; DevHunt's
   // sponsor box and button).
+  // A cell of bare text takes its own margin, inline or from the stylesheet, in
+  // place of its table's, and with no table margin too (local Outlook,
+  // 2026-11-04: run gjAruZbzWbTa's heading class set 48px over its table's 28px).
+  // ponytail: the last matching rule wins, specificity unweighed.
+  const sheetMargins = new Map<Element, Map<string, string>>();
+  $("style").each((_, block) => {
+    for (const { selector, body } of topLevelRules($(block).html() ?? "")) {
+      if (!/margin/i.test(body)) continue;
+      let cells: Element[] = [];
+      try {
+        cells = $(selector).filter("td, th").toArray();
+      } catch {
+        continue;
+      }
+      const rule = parseInlineStyle(body.replace(/!important/gi, ""));
+      for (const cell of cells) {
+        const has = sheetMargins.get(cell) ?? new Map<string, string>();
+        for (const [k, v] of rule) if (/^margin(?:-top|-bottom)?$/.test(k)) has.set(k, v);
+        sheetMargins.set(cell, has);
+      }
+    }
+  });
+  const verticalMargins = (props: Map<string, string>) => {
+    const box = (props.get("margin") ?? "").trim().split(/\s+/).filter(Boolean);
+    const read = (v?: string) => (v === undefined ? undefined : Number.parseFloat(v) || 0);
+    return { top: read(props.get("margin-top") ?? box[0]), bottom: read(props.get("margin-bottom") ?? box[2] ?? box[0]) };
+  };
+  const holdsBareText = (cell: Element) => {
+    const inline = $(cell).clone();
+    inline.find("table, div, p, ul, ol, h1, h2, h3, h4, h5, h6").remove();
+    return /[^\s ]/.test(inline.text());
+  };
   $("table").each((_, node) => {
     const table = $(node);
     const props = parseInlineStyle(table.attr("style") || "");
     const box = (props.get("margin") ?? "").trim().split(/\s+/).filter(Boolean);
-    const top = Number.parseFloat(props.get("margin-top") ?? box[0] ?? "") || 0;
-    const bottom = Number.parseFloat(props.get("margin-bottom") ?? box[2] ?? box[0] ?? "") || 0;
-    if ((top <= 0 && bottom <= 0) || /center/i.test(table.attr("align") ?? "")) return;
-    const rows = table.find("> tr, > tbody > tr");
-    const grow = (row: ReturnType<typeof rows.first>, side: "top" | "bottom", by: number) => {
-      row.children("td, th").each((_, cell) => {
-        const own = parseInlineStyle($(cell).attr("style") || "");
-        const pad = (own.get("padding") ?? "").trim().split(/\s+/).filter(Boolean);
-        const was = Number.parseFloat(own.get(`padding-${side}`) ?? (side === "top" ? pad[0] : (pad[2] ?? pad[0])) ?? "") || 0;
-        own.set(`padding-${side}`, `${was + by}px`);
-        $(cell).attr("style", serializeStyle(own));
-      });
-    };
+    const centred = /center/i.test(table.attr("align") ?? "");
+    const margins = verticalMargins(props);
+    const top = centred ? 0 : (margins.top ?? 0);
+    const bottom = centred ? 0 : (margins.bottom ?? 0);
     // Each row whose cell holds bare text takes the margin, top and bottom, and
     // a row of blocks or &nbsp; does not (local Outlook, 2026-11-04: run
     // gjAruZbzWbTa's heading row took 48px, its list rows and the table's foot none).
     // ponytail: a <ul> row grew a little too; lists are left out until measured.
-    const bare = rows.filter((_, row) =>
-      $(row).children("td, th").toArray().some((cell) => {
-        const inline = $(cell).clone();
-        inline.find("table, div, p, ul, ol, h1, h2, h3, h4, h5, h6").remove();
-        return /[^\s ]/.test(inline.text());
-      }),
-    );
-    bare.each((_, row) => {
-      if (top > 0) grow($(row), "top", top);
-      if (bottom > 0) grow($(row), "bottom", bottom);
+    table.find("> tr, > tbody > tr").each((_, row) => {
+      const cells = $(row).children("td, th").toArray();
+      const bare = cells.filter(holdsBareText);
+      if (!bare.length) return;
+      for (const cell of cells) {
+        const mine = bare.includes(cell)
+          ? verticalMargins(new Map([...(sheetMargins.get(cell) ?? []), ...parseInlineStyle($(cell).attr("style") || "")]))
+          : { top: undefined, bottom: undefined };
+        const style = parseInlineStyle($(cell).attr("style") || "");
+        const pad = (style.get("padding") ?? "").trim().split(/\s+/).filter(Boolean);
+        for (const [side, by] of [["top", mine.top ?? top], ["bottom", mine.bottom ?? bottom]] as const) {
+          if (by <= 0) continue;
+          const was = Number.parseFloat(style.get(`padding-${side}`) ?? (side === "top" ? pad[0] : (pad[2] ?? pad[0])) ?? "") || 0;
+          style.set(`padding-${side}`, `${was + by}px`);
+        }
+        $(cell).attr("style", serializeStyle(style));
+      }
     });
+    if ((top <= 0 && bottom <= 0) || centred) return;
     props.delete("margin-top");
     props.delete("margin-bottom");
     if (box.length) {
