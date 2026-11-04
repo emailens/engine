@@ -972,6 +972,41 @@ export function applyWordBoxModel($: CheerioAPI): void {
     if (after) p.attr("style", after);
   });
 
+  // Under a px line-height Word puts the extra leading above the text, where
+  // the browser splits it: at 18px Arial the gap under the glyphs stayed 4px at
+  // line-height 25, 40 and 60, and with `exactly` about 0.3 of it moved down
+  // (local Outlook, 2026-11-04; run qCRl2f88rRPV's text sat 2-5px lower). Each
+  // line moves alike, so a paint offset on the text's block keeps the layout.
+  // ponytail: a cell's own text and a block with a background are left alone;
+  // stylesheet line-heights and font sizes are not read.
+  const inherited = (el: Element, prop: string) => {
+    const up = $(el).closest(`[style*="${prop}"]`).toArray().find((n) => parseInlineStyle($(n).attr("style") || "").has(prop));
+    return up ? parseInlineStyle($(up).attr("style") || "") : undefined;
+  };
+  $("p, div, h1, h2, h3, h4, h5, h6, li").each((_, node) => {
+    const el = node as Element;
+    const block = $(el);
+    if (block.find("p, div, h1, h2, h3, h4, h5, h6, li, table, ul, ol").length || !/[^\s ]/.test(block.text())) return;
+    const own = parseInlineStyle(block.attr("style") || "");
+    if (own.has("background") || own.has("background-color") || hasBorder(own) || own.has("position")) return;
+    const spacing = inherited(el, "line-height");
+    const line = /^([\d.]+)px$/i.exec(spacing?.get("line-height") ?? "");
+    const size = /^([\d.]+)px$/i.exec(inherited(el, "font-size")?.get("font-size") ?? "");
+    if (!line || !size) return;
+    let largest = Number(size[1]);
+    block.find("[style]").each((_, inner) => {
+      const px = /^([\d.]+)px$/i.exec(parseInlineStyle($(inner).attr("style") || "").get("font-size") ?? "");
+      if (px) largest = Math.max(largest, Number(px[1]));
+    });
+    const leading = Number(line[1]) - largest * NATURAL_LINE;
+    const share = /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "") ? 0.3 : 0.5;
+    const shift = Math.round(leading * share * 10) / 10;
+    if (shift <= 0) return;
+    own.set("position", "relative");
+    own.set("top", `${shift}px`);
+    block.attr("style", serializeStyle(own));
+  });
+
   // Word's own paragraph margin is 14pt, not a browser's 1em: TAAFT's paragraphs
   // sit 39.5px apart on real Outlook, a 21px line plus 18.67px.
   const reset = "<style>h2{margin:0}p{margin:14pt 0}</style>";

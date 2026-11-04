@@ -592,6 +592,25 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="e"')).not.toMatch(/line-height/);
   });
 
+  test("a px line's extra leading goes above the text", () => {
+    // Local Outlook 2026-11-04, 18px Arial: the gap under the glyphs stayed
+    // 4px at line-height 25, 40 and 60, where the browser split the leading;
+    // with `exactly` about 0.3 of it moved down. Run qCRl2f88rRPV's text sat
+    // 2-5px lower than the simulation.
+    const out = word(
+      `<div style="font-size:18px;line-height:40px"><p id="a">x</p></div>` +
+        `<p id="b" style="font-size:14px;line-height:24px">x <span style="font-size:18px">y</span></p>` +
+        `<p id="c" style="font-size:18px;line-height:60px;mso-line-height-rule:exactly">x</p>` +
+        `<p id="d" style="font-size:18px;line-height:1.5">x</p>` +
+        `<p id="e" style="font-size:18px;line-height:40px;background-color:#eee">x</p>` +
+        `<div id="f" style="font-size:18px;line-height:40px"><p>x</p></div>`,
+    );
+    expect(tag(out, 'id="a"')).toMatch(/position:\s*relative;\s*top:\s*9\.7px/);
+    expect(tag(out, 'id="b"')).toMatch(/top:\s*1\.7px/);
+    expect(tag(out, 'id="c"')).toMatch(/top:\s*11\.8px/);
+    for (const id of ["d", "e", "f"]) expect(tag(out, `id="${id}"`)).not.toMatch(/position/);
+  });
+
   test("a row's cells share its largest top and bottom padding", () => {
     // Local Outlook 2026-11-04: next to an empty cell with padding-top 20 (40)
     // the other cell's text dropped 20 (40) even at vertical-align:top; with
