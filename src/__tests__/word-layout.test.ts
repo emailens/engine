@@ -663,6 +663,55 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
   });
 
+  test("a Gill Sans line grows to Word's VDMX height under a px line-height", () => {
+    // Gill Sans MT's VDMX gives Word 23px for 16px text: run gjAruZbzWbTa's
+    // 16px/22px class lines sat 23.25px apart on the real capture (2026-11-04).
+    const head = `<style>.body{font-family:'Gill Sans', 'Gill Sans MT', Arial;font-size:16px;line-height:22px}</style>`;
+    const out = word(
+      `<p id="a" class="body">x</p>` +
+        `<p id="b" style="font-family:'Gill Sans MT';font-size:16px;line-height:20px">x</p>` +
+        `<p id="c" style="font-family:Arial;font-size:16px;line-height:22px">x</p>` +
+        `<p id="d" style="font-family:'Gill Sans MT';font-size:16px;line-height:30px">x</p>`,
+      head,
+    );
+    expect(tag(out, 'id="a"')).toMatch(/line-height:\s*23px/);
+    expect(tag(out, 'id="b"')).toMatch(/line-height:\s*23px/);
+    expect(tag(out, 'id="c"')).not.toMatch(/line-height:\s*23/);
+    expect(tag(out, 'id="d"')).toMatch(/line-height:\s*30px/);
+  });
+
+  // Real capture of run gjAruZbzWbTa (96 DPI): 18px spans in its 16px/22px Gill
+  // paragraph sat 22px apart, the rounded-up win height, not the VDMX's 27; its
+  // plain 16px text grew to 23. Only the block's own size takes the VDMX.
+  test("a larger Gill run inside a block takes the unhinted height, not the VDMX", () => {
+    const head = `<style>.b{font-family:'Gill Sans', 'Gill Sans MT', Arial;font-size:16px;line-height:22px}</style>`;
+    const out = word(`<p id="a" class="b"><span id="s" style="font-size:18px">x</span><span id="t" style="font-size:14px">y</span></p><p id="b" class="b">x</p>`, head);
+    expect(tag(out, 'id="a"')).not.toMatch(/line-height:\s*27px/);
+    expect(tag(out, 'id="s"')).toMatch(/font-family:\s*'Gill Sans MT Large'/);
+    expect(tag(out, 'id="t"')).not.toMatch(/Large/);
+    expect(tag(out, 'id="b"')).toMatch(/line-height:\s*23px/);
+  });
+
+  test("Gill Sans above 22px takes its unhinted height and the large stand-in", () => {
+    // Word lays Gill Sans MT out by its VDMX up to 22px (the font's first gasp
+    // range) and by ceil(0.9292 s) + ceil(0.2305 s) above: local Outlook drew
+    // 35px lines 42px apart, and run gjAruZbzWbTa's 28px heading sat in its
+    // 36px line (2026-11-04).
+    const head = `<style>.h{font-family:'Gill Sans', 'Gill Sans MT', Arial;font-size:28px;line-height:30px}</style>`;
+    const out = word(
+      `<p id="a" class="h">x</p>` +
+        `<p id="b" style="font-family:'Gill Sans MT';font-size:35px">x</p>` +
+        `<p id="c" style="font-family:'Gill Sans MT';font-size:16px">x</p>` +
+        `<div style="font-family:'Gill Sans', Arial;font-size:16px"><span id="d" style="font-size:30px">x</span></div>`,
+      head,
+    );
+    expect(tag(out, 'id="a"')).toMatch(/line-height:\s*34px/);
+    for (const id of ["a", "b", "d"]) expect(tag(out, `id="${id}"`)).toMatch(/font-family:\s*'Gill Sans MT Large'/);
+    expect(tag(out, 'id="c"')).not.toMatch(/Large/);
+    const back = word(`<div style="font-family:'Gill Sans', Arial;font-size:30px">x<p id="e" style="font-size:16px">y</p></div>`);
+    expect(tag(back, 'id="e"')).toMatch(/font-family: 'Gill Sans', Arial/);
+  });
+
   test("a row's cells share its largest top and bottom padding", () => {
     // Local Outlook 2026-11-04: next to an empty cell with padding-top 20 (40)
     // the other cell's text dropped 20 (40) even at vertical-align:top; with

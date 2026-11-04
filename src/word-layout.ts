@@ -41,6 +41,25 @@ const BORDER_WIDTH = [
 
 /** A line of text is this many times its font size tall when nothing forces it shorter (02-widths c27; 04-typography c02). */
 const NATURAL_LINE = 1.15;
+/**
+ * Word's natural line height in px. Gill Sans MT goes by its VDMX up to 22px,
+ * the font's first gasp range (16px: 23, real capture of run gjAruZbzWbTa's
+ * 16px/22px lines 23.25px apart), and by its rounded-up win metrics above
+ * (local Outlook drew 35px lines 42px apart; gjAr's 28px heading sat in 36px),
+ * 2026-11-04. A larger inline run takes the rounded-up height at any size:
+ * gjAr's 18px spans in its 16px paragraph sat 22px apart, not the VDMX's 27
+ * (real capture; local Outlook at 125% grew them, so it is no judge here).
+ * ponytail: other faces use Arial's 1.15.
+ */
+const GILL_VDMX = [14, 14, 15, 16, 18, 18, 21, 21, 23, 25, 27, 27, 29, 30, 31]; // 8-22px
+const isGill = (family = "") => /^\s*['"]?gill sans/i.test(family);
+const naturalHeight = (size: number, family = "") => {
+  if (!isGill(family)) return Math.round(size * NATURAL_LINE);
+  const ppem = Math.round(size);
+  return ppem <= 22 ? GILL_VDMX[Math.max(ppem, 8) - 8] : Math.ceil(0.9292 * size) + Math.ceil(0.2305 * size);
+};
+/** The stand-in for Gill Sans MT where Word drops the VDMX: above 22px, or in a run larger than its block (the preview defines it). */
+const GILL_LARGE = "'Gill Sans MT Large'";
 /** Space on each side of a table floated with the align attribute (03-columns c02). */
 const TABLE_GUTTER = 3.5;
 
@@ -382,7 +401,7 @@ function leftPadding(props: Map<string, string>): number {
  * and background as it drew the inline ones (2026-11-04).
  * ponytail: the last matching rule wins, specificity unweighed.
  */
-const SPACING = /^(?:line-height|mso-line-height-rule|mso-line-height-alt|font-size|font|background|background-color)$/;
+const SPACING = /^(?:line-height|mso-line-height-rule|mso-line-height-alt|font-size|font|font-family|background|background-color)$/;
 function sheetSpacing($: CheerioAPI): Map<Element, Map<string, string>> {
   const found = new Map<Element, Map<string, string>>();
   $("style").each((_, block) => {
@@ -540,7 +559,7 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const lineHeight = /^([\d.]+)px$/i.exec(props.get("line-height") ?? "");
     const fontSize = /^([\d.]+)px$/i.exec(props.get("font-size") ?? "");
     if (lineHeight && fontSize && !/exactly/i.test(props.get("mso-line-height-rule") ?? "")) {
-      const natural = Math.round(Number(fontSize[1]) * NATURAL_LINE);
+      const natural = naturalHeight(Number(fontSize[1]), props.get("font-family"));
       if (Number(lineHeight[1]) < natural) props.set("line-height", `${natural}px`);
     }
 
@@ -1021,6 +1040,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // covers the rest; with `exactly`, and in a cell, it fills the box.
   // ponytail: bordered blocks are left alone; stylesheet values are not read.
   const inherited = (el: Element, prop: string) => [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has(prop));
+  // The px size from font-size or the font shorthand, whichever is nearer.
+  const sizeOf = (el: Element) => {
+    const sized = [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has("font-size") || /\d(?:\.\d+)?px/.test(st.get("font") ?? ""));
+    const px = /^([\d.]+)px$/i.exec(sized?.get("font-size") ?? "") ?? /(?:^|\s)([\d.]+)px/.exec(sized?.get("font") ?? "");
+    return px ? Number(px[1]) : undefined;
+  };
   $("p, div, h1, h2, h3, h4, h5, h6, li, td, th").each((_, node) => {
     const el = node as Element;
     const block = $(el);
@@ -1030,17 +1055,24 @@ export function applyWordBoxModel($: CheerioAPI): void {
     const mine = spacingOf(el);
     const spacing = inherited(el, "line-height");
     const line = /^([\d.]+)px$/i.exec(spacing?.get("line-height") ?? "");
-    // The size from font-size or the font shorthand, whichever is nearer.
-    const sized = [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has("font-size") || /\d(?:\.\d+)?px/.test(st.get("font") ?? ""));
-    const size = /^([\d.]+)px$/i.exec(sized?.get("font-size") ?? "") ?? /(?:^|\s)([\d.]+)px/.exec(sized?.get("font") ?? "");
+    const size = sizeOf(el);
     if (!line || !size) return;
-    let largest = Number(size[1]);
+    let largest = size;
     block.find("*").each((_, inner) => {
       const px = /^([\d.]+)px$/i.exec(spacingOf(inner).get("font-size") ?? "");
       if (px) largest = Math.max(largest, Number(px[1]));
     });
-    const leading = Math.round((Number(line[1]) - largest * NATURAL_LINE) * 10) / 10;
     const exactly = /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "");
+    // A line below the face's natural height grows to it (the inline pass does
+    // this for inline values; stylesheet ones arrive here). Only the block's own
+    // size: a larger run grows the line through its own line-height:normal.
+    const natural = naturalHeight(size, inherited(el, "font-family")?.get("font-family"));
+    if (!exactly && largest === size && Number(line[1]) < natural) {
+      own.set("line-height", `${natural}px`);
+      block.attr("style", serializeStyle(own));
+      return;
+    }
+    const leading = Math.round((Number(line[1]) - largest * NATURAL_LINE) * 10) / 10;
     const shift = Math.round(leading * (exactly ? 0.3 : 0.5) * 10) / 10;
     if (shift <= 0) return;
     // Bottom alignment lets the browser place each line by the face's own
@@ -1056,6 +1088,24 @@ export function applyWordBoxModel($: CheerioAPI): void {
     own.delete("background-color");
     own.set("background", `linear-gradient(transparent ${leading}px, ${fill.trim()} ${leading}px)`);
     block.attr("style", serializeStyle(own));
+  });
+
+  // Gill Sans text above 22px, or larger than its block's own size, draws in the
+  // large stand-in; other text that inherits it goes back to the face's stack.
+  $("body *").each((_, node) => {
+    const el = node as Element;
+    if (!$(el).contents().toArray().some((n) => n.type === "text" && /[^\s ]/.test((n as unknown as { data: string }).data))) return;
+    const family = inherited(el, "font-family")?.get("font-family") ?? "";
+    const size = sizeOf(el);
+    if (!isGill(family) || size === undefined) return;
+    const block = $(el).closest("p, div, li, td, th, h1, h2, h3, h4, h5, h6").get(0) as Element | undefined;
+    const blockSize = block && block !== el ? sizeOf(block) : undefined;
+    const large = family.trim().startsWith(GILL_LARGE);
+    if (large === (size > 22 || (blockSize !== undefined && size > blockSize))) return;
+    const props = parseInlineStyle($(el).attr("style") || "");
+    const stack = family.replace(new RegExp(String.raw`^\s*${GILL_LARGE},\s*`), "");
+    props.set("font-family", large ? stack : `${GILL_LARGE}, ${stack}`);
+    $(el).attr("style", serializeStyle(props));
   });
 
   // Word's own paragraph margin is 14pt, not a browser's 1em: TAAFT's paragraphs
