@@ -555,11 +555,11 @@ export function applyWordBoxModel($: CheerioAPI): void {
     $(node).attr("style", serializeStyle(set));
   });
 
-  // A link around a div leaves an empty line on each side: a 24px line took
+  // A link around a div or a p leaves an empty line on each side: a 24px line took
   // 65px. Around a table, an image or text it adds nothing (probe
   // outlook-word-flow anchor, 2026-11-01; Mobbin's rows).
   $("a").each((_, node) => {
-    if (!$(node).children("div").length) return;
+    if (!$(node).children("div, p").length) return;
     $(node).before('<div style="height:21px"></div>').after('<div style="height:20px"></div>');
   });
 

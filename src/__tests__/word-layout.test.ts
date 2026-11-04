@@ -497,6 +497,9 @@ describe("Word bgcolor spelling", () => {
   test("a link around a div leaves an empty line each side", () => {
     expect(word(`<a href="#"><div>x</div></a>`)).toContain("height:21px");
     expect(word(`<a href="#">x</a>`)).not.toContain("height:21px");
+    // A <p> does the same (local Outlook probe 2026-11-04: 35px drew 77px;
+    // run vVjSBAtUBClR's tile labels sat 19px further from their buttons).
+    expect(word(`<a href="#"><p>x</p></a>`)).toContain("height:21px");
   });
 
   test("a left table paints its vertical margin as row height", () => {
