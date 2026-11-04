@@ -1110,8 +1110,11 @@ export function applyWordBoxModel($: CheerioAPI): void {
 
   // Word's own paragraph margin is 14pt, not a browser's 1em: TAAFT's paragraphs
   // sit 39.5px apart on real Outlook, a 21px line plus 18.67px.
-  const reset = "<style>h2{margin:0}p{margin:14pt 0}</style>";
+  // A cell's width includes its padding and border: TmXr's 169px and 327px
+  // cells kept those widths with 20px and 24px padding (capture and local
+  // Outlook, 2026-11-04), where the browser grew them and shifted the columns.
+  const reset = "<style>h2{margin:0}p{margin:14pt 0}td,th{box-sizing:border-box}</style>";
   const head = $("head");
   if (head.length) head.prepend(reset);
-  else if ($("p,h2").length) $.root().prepend(reset);
+  else if ($("p,h2,td,th").length) $.root().prepend(reset);
 }

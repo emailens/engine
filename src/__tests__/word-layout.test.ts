@@ -129,6 +129,13 @@ describe("Word box model", () => {
     expect(word(`<h2>a</h2>`, `<style>h2{margin:12px}</style>`)).toContain("h2{margin:0}");
   });
 
+  // A 169px cell with padding-right:20px beside a 327px one with padding-left:24px
+  // kept 169 and 327 in run TmXr3QgioWat's capture and in local Outlook, padding
+  // or not (2026-11-04); the browser adds the padding and shifts the columns.
+  test("a cell's width includes its padding and border", () => {
+    expect(word(TABLE)).toContain("td,th{box-sizing:border-box}");
+  });
+
   test("the same rules reach declarations delivered by a class", () => {
     const out = word(
       `<div id="pad" class="card">text</div><div id="wrap" class="bg">${TABLE}</div><table id="tb" class="bg"><tr><td>x</td></tr></table>`,
