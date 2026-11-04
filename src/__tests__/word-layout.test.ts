@@ -595,20 +595,39 @@ describe("Word bgcolor spelling", () => {
   test("a px line's extra leading goes above the text", () => {
     // Local Outlook 2026-11-04, 18px Arial: the gap under the glyphs stayed
     // 4px at line-height 25, 40 and 60, where the browser split the leading;
-    // with `exactly` about 0.3 of it moved down. Run qCRl2f88rRPV's text sat
-    // 2-5px lower than the simulation.
+    // with `exactly` about 0.3 of it moved down. Text right in a cell moved
+    // alike. Run qCRl2f88rRPV's text sat 2-5px lower than the simulation.
     const out = word(
       `<div style="font-size:18px;line-height:40px"><p id="a">x</p></div>` +
         `<p id="b" style="font-size:14px;line-height:24px">x <span style="font-size:18px">y</span></p>` +
         `<p id="c" style="font-size:18px;line-height:60px;mso-line-height-rule:exactly">x</p>` +
         `<p id="d" style="font-size:18px;line-height:1.5">x</p>` +
-        `<p id="e" style="font-size:18px;line-height:40px;background-color:#eee">x</p>` +
-        `<div id="f" style="font-size:18px;line-height:40px"><p>x</p></div>`,
+        `<div id="f" style="font-size:18px;line-height:40px"><p>x</p></div>` +
+        `<table><tr><td id="g" style="font-size:18px;line-height:40px">x</td></tr></table>` +
+        `<div style="font-family:Arial"><p id="h" style="font:18px Arial;line-height:40px">x</p></div>`,
     );
-    expect(tag(out, 'id="a"')).toMatch(/position:\s*relative;\s*top:\s*9\.7px/);
-    expect(tag(out, 'id="b"')).toMatch(/top:\s*1\.7px/);
-    expect(tag(out, 'id="c"')).toMatch(/top:\s*11\.8px/);
-    for (const id of ["d", "e", "f"]) expect(tag(out, `id="${id}"`)).not.toMatch(/position/);
+    const shift = (id: string) => new RegExp(String.raw`id="${id}"[^>]*><span style="position:\s*relative;\s*top:\s*([\d.]+)px`).exec(out)?.[1];
+    expect(shift("a")).toBe("9.7");
+    expect(shift("b")).toBe("1.7");
+    expect(shift("c")).toBe("11.8");
+    expect(shift("g")).toBe("9.7");
+    expect(shift("h")).toBe("9.7");
+    for (const id of ["d", "f"]) expect(shift(id)).toBeUndefined();
+  });
+
+  test("a block's own background skips its first line's extra leading", () => {
+    // Local Outlook 2026-11-04: a <p> and a <div> at 18px/40px painted their
+    // background from 19.3px down, all lines below included; with `exactly`
+    // the whole box, as a cell's own background always does.
+    const out = word(
+      `<p id="a" style="font-size:18px;line-height:40px;background-color:#99ccff">x</p>` +
+        `<p id="b" style="font-size:18px;line-height:40px;mso-line-height-rule:exactly;background-color:#99ccff">x</p>` +
+        `<table><tr><td id="c" style="font-size:18px;line-height:40px;background-color:#99ccff">x</td></tr></table>`,
+    );
+    expect(tag(out, 'id="a"')).toMatch(/linear-gradient\(transparent 19\.3px,\s*#99ccff 19\.3px\)/);
+    expect(tag(out, 'id="a"')).not.toMatch(/background-color/);
+    expect(tag(out, 'id="b"')).toMatch(/background-color:\s*#99ccff/);
+    expect(tag(out, 'id="c"')).toMatch(/background-color:\s*#99ccff/);
   });
 
   test("a row's cells share its largest top and bottom padding", () => {

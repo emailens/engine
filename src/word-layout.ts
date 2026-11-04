@@ -975,35 +975,43 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // Under a px line-height Word puts the extra leading above the text, where
   // the browser splits it: at 18px Arial the gap under the glyphs stayed 4px at
   // line-height 25, 40 and 60, and with `exactly` about 0.3 of it moved down
-  // (local Outlook, 2026-11-04; run qCRl2f88rRPV's text sat 2-5px lower). Each
-  // line moves alike, so a paint offset on the text's block keeps the layout.
-  // ponytail: a cell's own text and a block with a background are left alone;
-  // stylesheet line-heights and font sizes are not read.
+  // (local Outlook, 2026-11-04; run qCRl2f88rRPV's text sat 2-5px lower). Text
+  // right in a cell moves alike. Every line moves the same, so a positioned
+  // span around the text shifts it and leaves the layout and the box alone.
+  // A block's own background starts below its first line's extra leading and
+  // covers the rest; with `exactly`, and in a cell, it fills the box.
+  // ponytail: bordered blocks are left alone; stylesheet values are not read.
   const inherited = (el: Element, prop: string) => {
-    const up = $(el).closest(`[style*="${prop}"]`).toArray().find((n) => parseInlineStyle($(n).attr("style") || "").has(prop));
+    const up = [el, ...$(el).parents().toArray()].find((n) => parseInlineStyle($(n).attr("style") || "").has(prop));
     return up ? parseInlineStyle($(up).attr("style") || "") : undefined;
   };
-  $("p, div, h1, h2, h3, h4, h5, h6, li").each((_, node) => {
+  $("p, div, h1, h2, h3, h4, h5, h6, li, td, th").each((_, node) => {
     const el = node as Element;
     const block = $(el);
     if (block.find("p, div, h1, h2, h3, h4, h5, h6, li, table, ul, ol").length || !/[^\s ]/.test(block.text())) return;
     const own = parseInlineStyle(block.attr("style") || "");
-    if (own.has("background") || own.has("background-color") || hasBorder(own) || own.has("position")) return;
+    if (hasBorder(own)) return;
     const spacing = inherited(el, "line-height");
     const line = /^([\d.]+)px$/i.exec(spacing?.get("line-height") ?? "");
-    const size = /^([\d.]+)px$/i.exec(inherited(el, "font-size")?.get("font-size") ?? "");
+    // The size from font-size or the font shorthand, whichever is nearer.
+    const sized = [el, ...$(el).parents().toArray()].map((n) => parseInlineStyle($(n).attr("style") || "")).find((st) => st.has("font-size") || /\d(?:\.\d+)?px/.test(st.get("font") ?? ""));
+    const size = /^([\d.]+)px$/i.exec(sized?.get("font-size") ?? "") ?? /(?:^|\s)([\d.]+)px/.exec(sized?.get("font") ?? "");
     if (!line || !size) return;
     let largest = Number(size[1]);
     block.find("[style]").each((_, inner) => {
       const px = /^([\d.]+)px$/i.exec(parseInlineStyle($(inner).attr("style") || "").get("font-size") ?? "");
       if (px) largest = Math.max(largest, Number(px[1]));
     });
-    const leading = Number(line[1]) - largest * NATURAL_LINE;
-    const share = /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "") ? 0.3 : 0.5;
-    const shift = Math.round(leading * share * 10) / 10;
+    const leading = Math.round((Number(line[1]) - largest * NATURAL_LINE) * 10) / 10;
+    const exactly = /exactly/i.test(spacing?.get("mso-line-height-rule") ?? "");
+    const shift = Math.round(leading * (exactly ? 0.3 : 0.5) * 10) / 10;
     if (shift <= 0) return;
-    own.set("position", "relative");
-    own.set("top", `${shift}px`);
+    block.wrapInner(`<span style="position:relative;top:${shift}px"></span>`);
+    const tag = el.tagName.toLowerCase();
+    const fill = own.get("background-color") ?? own.get("background");
+    if (exactly || tag === "td" || tag === "th" || !fill || /\(|\s/.test(fill.trim())) return;
+    own.delete("background-color");
+    own.set("background", `linear-gradient(transparent ${leading}px, ${fill.trim()} ${leading}px)`);
     block.attr("style", serializeStyle(own));
   });
 
