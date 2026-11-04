@@ -173,6 +173,14 @@ describe("Word box model", () => {
     expect(tag(alone, 'id="d"')).toContain("Aptos");
   });
 
+  test("a family Office downloads draws even when the email declares it with @font-face", () => {
+    // Run WSG7EFj4uHsB declares Nunito Sans in @media screen; the real Outlook
+    // Classic capture draws its body copy in Nunito Sans, not Arial (2026-11-04).
+    const face = `<style>@media screen{@font-face{font-family:'Nunito Sans';src:url(x.woff2)}}</style>`;
+    const out = word(`<div id="a" style="font-family: 'Nunito Sans', Arial, sans-serif">x</div>`, face);
+    expect(tag(out, 'id="a"')).toContain("Nunito Sans");
+  });
+
   test("a rule that wins the family keeps a @font-face `*` rule from drawing Times (AI Fix real-device round, 2026-10-22)", () => {
     // React Email's <Font>, then the Outlook-only element rule a fix adds.
     const head =

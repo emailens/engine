@@ -289,7 +289,19 @@ export function prepareWordSource(html: string): string {
   return markHiddenCells(dropWordUnknownColors(html));
 }
 
-/** Families the email declares with @font-face, each with its mso-font-alt (null when it has none). */
+/**
+ * Faces Office downloads by name, so Word draws them whatever @font-face says:
+ * real Outlook Classic drew run WSG7EFj4uHsB's declared Nunito Sans (2026-11-04),
+ * and local Outlook's CloudFonts cache held the rest (2026-11-02).
+ * ponytail: Microsoft's cloud catalogue is larger; add a face when a capture shows it.
+ */
+const OFFICE_CLOUD_FONTS = [
+  "Work Sans", "Lato", "Montserrat", "Nunito", "Nunito Sans", "Open Sans", "DM Sans",
+  "IBM Plex Sans", "Ubuntu", "Source Code Pro", "Raleway", "Playfair Display", "Poppins",
+];
+const CLOUD = new Set(OFFICE_CLOUD_FONTS.map((f) => f.toLowerCase()));
+
+/** Families the email declares with @font-face that Word cannot fetch, each with its mso-font-alt (null when it has none). */
 type Faces = Map<string, string | null>;
 function declaredFaces($: CheerioAPI): Faces {
   const faces: Faces = new Map();
@@ -300,7 +312,7 @@ function declaredFaces($: CheerioAPI): Faces {
       const named = props.get("mso-font-alt")?.replace(/["']/g, "").trim() || null;
       // Mobbin's quoted "sans-serif" drew Word's default, not a font of that name.
       const alt = named && /^sans-serif$/i.test(named) ? WORD_DEFAULT : named;
-      if (family) faces.set(firstFamily(family), alt ?? faces.get(firstFamily(family)) ?? null);
+      if (family && !CLOUD.has(firstFamily(family))) faces.set(firstFamily(family), alt ?? faces.get(firstFamily(family)) ?? null);
     }
   });
   return faces;
