@@ -551,6 +551,13 @@ export function applyWordBoxModel($: CheerioAPI): void {
     cell.empty().attr("style", serializeStyle(props));
   });
 
+  // A paragraph of only whitespace adds no height and no margin (local Outlook,
+  // 2026-11-04: run gjAruZbzWbTa's 38px-margin <p> under its button). &nbsp;
+  // is text to Word and stays.
+  $("p").each((_, node) => {
+    if (!$(node).children().length && !/[^ \t\r\n]/.test($(node).text())) $(node).remove();
+  });
+
   // A 1px tracking image outside any cell adds no line (local Outlook,
   // 2026-11-03); drawn inline it took a whole line box (run qCRl2f88rRPV, 16px).
   $("img").each((_, node) => {

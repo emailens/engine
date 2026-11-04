@@ -517,6 +517,14 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="t"')).not.toMatch(/margin-(?:top|bottom)/);
   });
 
+  test("an empty paragraph adds nothing, margins included", () => {
+    // Local Outlook 2026-11-04: run gjAruZbzWbTa's `<p style="margin-bottom:38px"> </p>`
+    // under its button left no gap; the sim drew 38px.
+    const out = word(`<p id="e" style="margin-bottom:38px"> </p><p id="n" style="margin-bottom:20px">&nbsp;</p>`);
+    expect(out).not.toContain('id="e"');
+    expect(out).toContain('id="n"');
+  });
+
   test("a 1px image outside any cell adds no line", () => {
     // Local Outlook 2026-11-03: a body-level 1x1 pixel added ~0 height. Run
     // qCRl2f88rRPV's tracking pixel sat the sim's email 16px lower than real.
