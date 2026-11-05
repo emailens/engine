@@ -21,8 +21,22 @@
  * not gets an inline override instead.
  */
 import type { CheerioAPI } from "cheerio";
-import type { Element } from "domhandler";
+import type { AnyNode, Element, Text } from "domhandler";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
+
+const INLINE_TAGS = new Set(["span", "a", "b", "strong", "i", "em", "u", "font", "small", "big", "sub", "sup"]);
+/** Declarations Word's HTML reader parses, measured on spans (local Outlook, 2026-11-05). */
+const WORD_PARSED = /^(?:mso-.*|font(?:-(?:family|size|weight|style|variant))?|color|background(?:-color)?|line-height|letter-spacing|white-space|word-wrap|text-(?:align|decoration|transform|indent|shadow)|vertical-align|direction|unicode-bidi|width|height|(?:margin|padding)(?:-(?:top|right|bottom|left))?|border(?:-(?:top|right|bottom|left))?(?:-(?:color|style|width))?)$/;
+/** Properties Word parses only for some values. */
+const WORD_PARSED_VALUES: Record<string, RegExp> = { "word-break": /^normal$/i, display: /^(?:inline|none)$/i };
+// ponytail: unprobed properties count as unparsed (float, position, overflow...); probe one before trusting it.
+function wordParsesAll(props: Map<string, string>): boolean {
+  for (const [name, value] of props) {
+    const values = WORD_PARSED_VALUES[name];
+    if (values ? !values.test(value.replace(/\s*!important$/i, "").trim()) : !WORD_PARSED.test(name)) return false;
+  }
+  return true;
+}
 
 const PADDING = ["padding", "padding-top", "padding-right", "padding-bottom", "padding-left"];
 const MARGIN = ["margin", "margin-top", "margin-right", "margin-bottom", "margin-left"];
@@ -305,8 +319,19 @@ function markHiddenCells(html: string): string {
 
 /** Everything done to the source string for Word, before the downlevel and strip passes. */
 export function prepareWordSource(html: string): string {
-  return wordSubstitutes(markHiddenCells(dropWordUnknownColors(html)));
+  return markUnparsedInlines(wordSubstitutes(markHiddenCells(dropWordUnknownColors(html))));
 }
+
+const UNPARSED_MARK = "data-word-unparsed";
+const INLINE_STYLE = new RegExp(String.raw`<(${[...INLINE_TAGS].join("|")})(?=\s)(?=[^>]*?\sstyle\s*=\s*(?:"([^"]*)"|'([^']*)'))`, "gi");
+/**
+ * Flags inline elements carrying a declaration Word cannot parse, while the
+ * declaration is still there: the strip pass removes it before the box model
+ * reads the trailing <br>s.
+ */
+const markUnparsedInlines = (html: string) =>
+  html.replace(INLINE_STYLE, (open, _tag, dq?: string, sq?: string) =>
+    wordParsesAll(parseInlineStyle(dq ?? sq ?? "")) ? open : `${open} ${UNPARSED_MARK}`);
 
 /**
  * Names Word knows but draws in another face, ahead of the rest of the stack:
@@ -772,11 +797,34 @@ export function applyWordBoxModel($: CheerioAPI): void {
         const style = parseInlineStyle($(item).attr("style") || "");
         return style.has("margin") || style.has("margin-top") || style.has("margin-bottom");
       });
-    props.set("margin-top", afterBreak || (previous && !tight) ? "1lh!important" : "0!important");
+    // Nested in an item, it sits straight under the item's text (f93z, 2026-11-05).
+    const nested = el.parent?.type === "tag" && el.parent.name === "li";
+    props.set("margin-top", afterBreak || (previous && !tight && !nested) ? "1lh!important" : "0!important");
     props.set("margin-bottom", tight ? "0!important" : `${LIST_TRAILING_PX}px!important`);
     props.set("padding-left", `${LIST_TEXT_INDENT_PX}px!important`);
     $(el).attr("style", serializeStyle(props));
   });
+
+  // A browser folds away the <br> that ends a block. Word does too, unless an
+  // inline element around it carries a declaration Word cannot parse
+  // (word-break:break-word, box-sizing, max-width, display:inline-block...):
+  // then that <br> keeps its full line. One more <br> gives the browser the
+  // same line (f93z real capture + local Outlook probes, 2026-11-05).
+  $("br").each((_, node) => {
+    let at: AnyNode = node as Element;
+    let unparsed = false;
+    for (;;) {
+      for (let next = at.next; next; next = next.next) {
+        if (next.type !== "text" || !/^[ \t\r\n]*$/.test((next as Text).data)) return;
+      }
+      const parent: AnyNode | null = at.parent;
+      if (parent?.type !== "tag" || !INLINE_TAGS.has((parent as Element).name)) break;
+      if ($(parent).attr(UNPARSED_MARK) !== undefined) unparsed = true;
+      at = parent;
+    }
+    if (unparsed) $(node).after("<br>");
+  });
+  $(`[${UNPARSED_MARK}]`).removeAttr(UNPARSED_MARK);
 
   // <picture> falls back to its <img>: a WebP <source> was passed over for
   // the PNG beside it (06-images c27).

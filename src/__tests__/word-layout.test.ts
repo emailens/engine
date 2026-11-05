@@ -441,6 +441,33 @@ describe("Word box model", () => {
     expect(afterBreak).toMatch(/margin-top:\s*1lh/);
   });
 
+  test("a list nested in an item sits straight under the item's text (f93z real capture + local Outlook, 2026-11-05)", () => {
+    const nested = tag(word(`<ul><li><span>Topic</span><ul id="t"><li>a</li></ul></li></ul>`), 'id="t"');
+    expect(nested).toMatch(/margin-top:\s*0\s*!important/);
+  });
+
+  test("a <br> ending a span Word cannot fully parse keeps its line (f93z + local Outlook, 2026-11-05)", () => {
+    const count = (html: string) => (html.match(/<br\b/g) ?? []).length;
+    // An unknown property or value: each <br> is a full line, the last one included.
+    for (const style of ["word-break:break-word", "box-sizing:border-box", "max-width:100%", "display:inline-block", "foo:bar"]) {
+      expect(count(word(`<ul><li><span style="font-size:14px;${style}">a<br><br></span></li></ul>`))).toBe(3);
+      expect(count(word(`<p><span style="${style}">a<br></span></p>`))).toBe(2);
+    }
+    // Only declarations Word reads: the last <br> folds away as in a browser.
+    for (const style of ["font-size:14px", "color:#000", "word-break:normal", "word-wrap:break-word", "white-space:nowrap", "border-top:0", "mso-line-height-rule:exactly"]) {
+      expect(count(word(`<ul><li><span style="${style}">a<br><br></span></li></ul>`))).toBe(2);
+    }
+    // Not the last thing in its block: nothing folds, nothing to add.
+    expect(count(word(`<p><span style="box-sizing:border-box">a<br></span>b</p>`))).toBe(1);
+  });
+
+  test("the <br> pass leaves VML in an a: namespace alone (bYJO, 2026-11-05)", () => {
+    const vml = `<!--[if mso]><a:roundrect xmlns:a="urn:schemas-microsoft-com:vml" style="v-text-anchor:middle;width:103.5pt;height:36pt;" fillcolor="#171717"><center>Go</center></a:roundrect><![endif]-->`;
+    const out = word(vml);
+    expect(out).not.toContain("data-word-unparsed");
+    expect(out).toContain('data-vml="roundrect"');
+  });
+
   test("list text sits 48px in whatever padding-left says, and margin-left adds to it (local Outlook 2026-11-02)", () => {
     for (const style of ["padding-left:0", "padding-left:22px", "padding:0", "margin:0;padding-left:60px", ""]) {
       const list = tag(word(`<ol id="t" style="${style}"><li>a</li></ol>`), 'id="t"');
