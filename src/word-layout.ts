@@ -68,8 +68,13 @@ const NATURAL_LINE = 1.15;
  */
 const GILL_VDMX = [14, 14, 15, 16, 18, 18, 21, 21, 23, 25, 27, 27, 29, 30, 31]; // 8-22px
 const isGill = (family = "") => /^\s*['"]?gill sans/i.test(family);
+/**
+ * Faces whose single spacing is not Arial's 1.15, from their win metrics.
+ * Arial Black 1.41: kV0j's 56px heading lines sat 80px apart (real capture, 2026-11-05).
+ */
+const FACE_LINE: [RegExp, number][] = [[/^\s*['"]?arial black\b/i, 1.41]];
 const naturalHeight = (size: number, family = "") => {
-  if (!isGill(family)) return Math.round(size * NATURAL_LINE);
+  if (!isGill(family)) return Math.round(size * (FACE_LINE.find(([face]) => face.test(family))?.[1] ?? NATURAL_LINE));
   const ppem = Math.round(size);
   return ppem <= 22 ? GILL_VDMX[Math.max(ppem, 8) - 8] : Math.ceil(0.9292 * size) + Math.ceil(0.2305 * size);
 };

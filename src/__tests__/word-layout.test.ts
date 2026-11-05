@@ -715,6 +715,14 @@ describe("Word bgcolor spelling", () => {
     expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
   });
 
+  test("an Arial Black line grows to its own single spacing, 1.41 (kV0j real capture, 2026-11-05)", () => {
+    // 56px Arial Black at line-height:58px sat 80px apart; its win metrics give 1.41.
+    const out = word(`<h1 id="h" style="margin:0;font-family:Arial Black, Arial, sans-serif;font-size:56px;line-height:58px">A<br>B</h1>`);
+    expect(tag(out, 'id="h"')).toMatch(/line-height:\s*79px/);
+    // Plain Arial keeps 1.15: 56px grows to 64.
+    expect(tag(word(`<h1 id="h" style="margin:0;font-family:Arial;font-size:56px;line-height:58px">A</h1>`), 'id="h"')).toMatch(/line-height:\s*64px/);
+  });
+
   test("a Gill Sans line grows to Word's VDMX height under a px line-height", () => {
     // Gill Sans MT's VDMX gives Word 23px for 16px text: run gjAruZbzWbTa's
     // 16px/22px class lines sat 23.25px apart on the real capture (2026-11-04).
