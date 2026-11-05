@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.18.15 - 2026-11-05
+
+### Fixed
+
+Outlook Classic (Word engine) layout, measured in local Outlook and against
+real Outlook Classic captures. On the Emailens fidelity board, Classic pairs
+judged good went from 9 to 13 of 29, none worse.
+
+- Dark mode uses Outlook Classic's measured rule instead of a generic invert.
+  Fitted on 223 cells: in linear light, luminance flips along 18 measured
+  greys and each channel keeps its distance from it. Text and backgrounds
+  share the rule; the unset canvas is `#262626`. 212 of 223 cells land within
+  4/255 (saturated blues and strong yellows are the known misses). VML fills
+  and strokes keep their colour, as in Word; their labels flip. A `border`
+  shorthand's colour now flips like `border-color` in every mode.
+- A table's vertical margin goes to every row whose cell holds bare text, and
+  to no other row. A bare-text cell's own margin replaces its table's on that
+  side.
+- A row's cells share its largest top and bottom padding, even at
+  `vertical-align:top`.
+- A cell's width includes its padding and border (`box-sizing:border-box`).
+- A px line's extra leading goes above the text, about 0.3 of it below under
+  `mso-line-height-rule:exactly`. This also applies to a cell's own text, and
+  a block's background starts below its first line's leading.
+- An inline keeps a px-spaced paragraph's line height; stylesheet
+  `font-size`, `line-height`, `mso-line-height-rule` and `background` count
+  like inline ones.
+- Gill Sans MT lines are as tall as Word sets them: by its VDMX up to 22px,
+  by its rounded-up win metrics above, and for runs larger than their block.
+- A `<p>` wrapped in a link leaves an empty line above and below, like a
+  `<div>`. A whitespace-only `<p>` adds nothing (`&nbsp;` still counts). A 1px
+  image outside any cell adds no line.
+- Office's cloud fonts (Nunito Sans, Work Sans and the rest) draw even when
+  the email also declares them with `@font-face`. `Rubik` draws in Calibri.
+- A `<v:roundrect style="width:auto">` is a 48pt box showing only its label's
+  first line.
+
 ## 0.18.14 - 2026-11-04
 
 ### Fixed
