@@ -24,6 +24,7 @@ import type { CheerioAPI } from "cheerio";
 import type { AnyNode, Element, Text } from "domhandler";
 import { parseInlineStyle, serializeStyle } from "./style-utils";
 
+const LINK_LINE_BLOCKS = new Set(["div", "p", "table", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "center", "blockquote", "hr"]);
 const INLINE_TAGS = new Set(["span", "a", "b", "strong", "i", "em", "u", "font", "small", "big", "sub", "sup"]);
 /** Declarations Word's HTML reader parses, measured on spans (local Outlook, 2026-11-05). */
 const WORD_PARSED = /^(?:mso-.*|font(?:-(?:family|size|weight|style|variant))?|color|background(?:-color)?|line-height|letter-spacing|white-space|word-wrap|text-(?:align|decoration|transform|indent|shadow)|vertical-align|direction|unicode-bidi|width|height|(?:margin|padding)(?:-(?:top|right|bottom|left))?|border(?:-(?:top|right|bottom|left))?(?:-(?:color|style|width))?)$/;
@@ -678,9 +679,22 @@ export function applyWordBoxModel($: CheerioAPI): void {
   // A link around a div or a p leaves an empty line on each side: a 24px line took
   // 65px. Around a table, an image or text it adds nothing (probe
   // outlook-word-flow anchor, 2026-11-01; Mobbin's rows).
+  // The line above comes only at the start of its container or after a block;
+  // after inline content (an image, a link, text, a VML shape) there is none.
+  // The line below goes when it ends its cell (vVjS's tiles and store labels;
+  // local Outlook probes, 2026-11-05).
+  const blank = (n: AnyNode) => n.type === "comment" || (n.type === "text" && !(n as Text).data.trim());
   $("a").each((_, node) => {
     if (!$(node).children("div, p").length) return;
-    $(node).before('<div style="height:21px"></div>').after('<div style="height:20px"></div>');
+    let before = node.prev;
+    while (before && blank(before)) before = before.prev;
+    let after = node.next;
+    while (after && blank(after)) after = after.next;
+    const parent = node.parent;
+    const endsCell = !after && parent?.type === "tag" && /^t[dh]$/.test((parent as Element).name);
+    if (!before || (before.type === "tag" && LINK_LINE_BLOCKS.has((before as Element).name)))
+      $(node).before('<div style="height:21px"></div>');
+    if (!endsCell) $(node).after('<div style="height:20px"></div>');
   });
 
   // text-decoration-line means nothing to Word: a link it sets to none stays

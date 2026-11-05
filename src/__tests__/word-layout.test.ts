@@ -554,6 +554,24 @@ describe("Word bgcolor spelling", () => {
     expect(word(`<a href="#"><p>x</p></a>`)).toContain("height:21px");
   });
 
+  test("the link's lines: none above after a VML shape, none below at the end of its cell (local Outlook, 2026-11-05)", () => {
+    const vml = `<!--[if gte mso 9]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" fillcolor="#e00" style="width:118px;height:60px;"><v:textbox inset="0,0,0,0"><![endif]--><table width="118"><tr><td height="60">&nbsp;</td></tr></table><!--[if gte mso 9]></v:textbox></v:rect><![endif]-->`;
+    const link = `<a href="#" style="display:block"><p>Label</p></a>`;
+    const cell = (body: string) => word(`<table><tr><td>${body}</td></tr></table>`);
+    // vVjS's store tiles: shape, then the label as the cell's last thing.
+    expect(cell(vml + link)).not.toMatch(/height:2[01]px/);
+    // Something after it in the cell: the line below stays.
+    expect(cell(`${vml}${link}<div>more</div>`)).toContain("height:20px");
+    expect(cell(`${vml}${link}<div>more</div>`)).not.toContain("height:21px");
+    // After a table, the line above stays; at the cell's end, none below.
+    expect(cell(`<table><tr><td>x</td></tr></table>${link}`)).toContain("height:21px");
+    expect(cell(`<table><tr><td>x</td></tr></table>${link}`)).not.toContain("height:20px");
+    // After inline content (vVjS's tile icons), none above; first in its cell, one.
+    for (const lead of [`<a href="#"><img src="x.png" width="80" height="40"></a>`, `<img src="x.png" width="80" height="40">`, "text"])
+      expect(cell(`${lead}${link}<div>more</div>`)).not.toContain("height:21px");
+    expect(cell(`${link}<div>more</div>`)).toContain("height:21px");
+  });
+
   test("a left table paints its vertical margin as row height", () => {
     const out = word(`<table id="t" style="margin:4px 0 18px"><tr><td id="c" style="padding:9px">x</td></tr></table>`);
     expect(tag(out, 'id="c"')).toMatch(/padding-bottom:\s*27px/);
