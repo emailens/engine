@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.18.16 - 2026-11-05
+
+### Fixed
+
+Outlook Classic (Word engine), measured in local Outlook and against real
+Outlook Classic captures.
+
+- A `<br>` that ends a block keeps its empty line when an inline around it
+  carries a declaration Word cannot parse (`max-width`, `border-radius`,
+  `-webkit-*`, `display:inline-block` and the like); otherwise Word folds it
+  as before.
+- A list nested in an `<li>` has no top margin.
+- A link wrapped around a `<div>` or `<p>` leaves the empty line above only at
+  the start of its container or after a block, and the line below only when it
+  does not end its cell.
+- Without a px `line-height`, a line is as tall as the spans on it (12px spans
+  sit 14.4px apart in a 16px cell). A block holding a link keeps its own line:
+  Word does not shrink it.
+- Arial Black lines grow to its single spacing, 1.41 of the font size.
+
 ## 0.18.15 - 2026-11-05
 
 ### Fixed
