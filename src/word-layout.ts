@@ -1096,6 +1096,37 @@ export function applyWordBoxModel($: CheerioAPI): void {
     $(el).attr("style", serializeStyle(props));
   });
 
+  // Without a px line-height, each line is as tall as the runs on it: 12px
+  // spans sat 14.4px apart in a 16px or 30px block, unitless 1.5 or none, the
+  // last line too (local Outlook, 2026-11-05; run VQs6sjeqLmY5's 12px footer
+  // in a 16px cell, 14-15px apart on the real device). A browser keeps the
+  // block's own line as a floor. A zero block line-height takes the floor away
+  // and its inline children set the line. Only blocks whose text is all inside
+  // inline elements: direct text or a <br> would lose its line.
+  // ponytail: % and whole-number line-heights are left as they were.
+  $("p, div, td, th, li, h1, h2, h3, h4, h5, h6").each((_, node) => {
+    const el = node as Element;
+    const kids = $(el).contents().toArray().filter((n) => !(n.type === "comment" || (n.type === "text" && !/[^\s]/.test((n as Text).data))));
+    if (!kids.length || !kids.every((n) => n.type === "tag" && INLINE_TAGS.has((n as Element).name))) return;
+    // Text only: lines holding an image or a box were not measured, and
+    // taking their floor away moved 8kZz's and kV0j's image rows.
+    // A link keeps the block's line (a 14px link in a 16px cell stood 18.4px,
+    // a 14px span 16.8px, local Outlook 2026-11-05), so a block holding one is left.
+    if ($(el).find("img, table, svg, a, [style*='display']").length) return;
+    const spacing = [el, ...$(el).parents().toArray()].map(spacingOf).find((st) => st.has("line-height"));
+    const line = (spacing?.get("line-height") ?? "normal").replace(/\s*!important$/i, "").trim();
+    if (!(line === "normal" || (/^\d*\.\d+$/.test(line) && Number(line) >= 1))) return;
+    const own = parseInlineStyle($(el).attr("style") || "");
+    own.set("line-height", "0");
+    $(el).attr("style", serializeStyle(own));
+    for (const kid of kids) {
+      const props = parseInlineStyle($(kid).attr("style") || "");
+      if (props.has("line-height")) continue;
+      props.set("line-height", "normal");
+      $(kid).attr("style", serializeStyle(props));
+    }
+  });
+
   // Under a px line-height Word puts the extra leading above the text, where
   // the browser splits it: at 18px Arial the gap under the glyphs stayed 4px at
   // line-height 25, 40 and 60, and with `exactly` about 0.3 of it moved down

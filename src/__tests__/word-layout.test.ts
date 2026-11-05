@@ -640,8 +640,33 @@ describe("Word bgcolor spelling", () => {
         `<p style="font-size:14px;line-height:25px;mso-line-height-rule:exactly"><span id="e" style="font-size:18px">x</span></p>`,
     );
     expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
-    expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
+    // Unitless: the runs set the line (next test), so the span is normal too.
+    expect(tag(out, 'id="u"')).toMatch(/line-height:\s*normal/);
     expect(tag(out, 'id="e"')).not.toMatch(/line-height/);
+  });
+
+  test("without a px line-height, each line is as tall as its runs (VQs6 + local Outlook, 2026-11-05)", () => {
+    // 12px spans spaced 14.4px apart in a 16px or 30px block, a unitless 1.5
+    // or none; the block's own size added nothing, not even on its last line.
+    for (const block of ["font-size:16px;line-height:1.5", "font-size:16px", "font-size:30px;line-height:normal"]) {
+      const out = word(`<table><tr><td><p id="p" style="margin:0;${block}"><span id="s" style="font-size:12px">A<br>B</span><span>C</span></p></td></tr></table>`);
+      expect(tag(out, 'id="p"')).toMatch(/line-height:\s*0(?![.\d])/);
+      expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
+    }
+    // A px line-height spaces by itself; text or a <br> straight in the block keeps its strut.
+    for (const html of [
+      `<p id="p" style="font-size:16px;line-height:24px"><span style="font-size:12px">A</span></p>`,
+      `<p id="p" style="font-size:16px;mso-line-height-alt:24px"><span style="font-size:12px">A</span></p>`,
+      `<p id="p" style="font-size:16px">A <span style="font-size:12px">B</span></p>`,
+      `<p id="p" style="font-size:16px"><span style="font-size:12px">A</span><br><span style="font-size:12px">B</span></p>`,
+      // A link keeps the block's line: a 14px link in a 16px Arial cell stood 18.4px,
+      // a 14px span 16.8px (local Outlook, 2026-11-05; 9OIC mailto cells, vVjS button).
+      `<p id="p" style="font-size:16px"><a href="#" style="font-size:14px">A</a></p>`,
+      `<p id="p" style="font-size:16px"><span style="font-size:12px"><a href="#">A</a></span></p>`,
+      // Image lines were not measured (8kZz regressed): left alone.
+      `<p id="p" style="font-size:16px"><a href="#"><img src="x.png" width="20" height="20"></a></p>`,
+    ])
+      expect(tag(word(html), 'id="p"')).not.toMatch(/line-height:\s*0(?![.\d])/);
   });
 
   test("a px line's extra leading goes above the text", () => {
@@ -712,7 +737,7 @@ describe("Word bgcolor spelling", () => {
       `<style>.big{font-size:18px}</style>`,
     );
     expect(tag(out, 'id="s"')).toMatch(/line-height:\s*normal/);
-    expect(tag(out, 'id="u"')).not.toMatch(/line-height/);
+    expect(tag(out, 'id="u"')).toMatch(/line-height:\s*normal/);
   });
 
   test("an Arial Black line grows to its own single spacing, 1.41 (kV0j real capture, 2026-11-05)", () => {
