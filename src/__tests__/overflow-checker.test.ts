@@ -46,6 +46,18 @@ describe("checkOverflow: unbreakable strings", () => {
       .toContain("unbreakable-string");
   });
 
+  test("is a note, not an overflow: it claims no scrolling and sets no hasOverflow", () => {
+    // Users' emails, 2026-11-06: right on 2 of 15. A phone overflows when
+    // side-by-side cells cannot shrink past their longest words, which no
+    // run length predicts; the longest runs in the emails that did overflow
+    // were 235px, narrower than any phone.
+    const report = checkOverflow(`<p>Visit https://example.com/very/long/tracking/aaaaaaaaaaaaaaaaaaaaaaaa now</p>`);
+    const issue = report.issues.find((i) => i.rule === "unbreakable-string");
+    expect(issue?.severity).toBe("info");
+    expect(issue?.message).not.toMatch(/scroll/i);
+    expect(report.hasOverflow).toBe(false);
+  });
+
   test("allows normal wrapping text", () => {
     expect(rules(`<p>these are perfectly normal short words that wrap fine</p>`)).toEqual([]);
   });

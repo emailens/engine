@@ -295,8 +295,11 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
       const loc = locateInNodes(nodes, starts, start, token.length, source);
       issues.push({
         rule: "unbreakable-string",
-        severity: "warning",
-        message: `A ${token.length}-character unbroken string ("${preview}") can't wrap and will force horizontal scrolling on narrow screens.`,
+        // ponytail: a note. Measured on users' emails (2026-11-06) it was
+        // right on 2 of 15: phones overflow when side-by-side cells cannot
+        // shrink past their words, which only a real layout shows.
+        severity: "info",
+        message: `A ${token.length}-character unbroken string ("${preview}") can't wrap; in a narrow column it can widen the layout.`,
         detail: `Add overflow-wrap: anywhere (or word-break: break-word) to its container.`,
         ...(loc ? { loc, locs: [loc] } : {}),
       });
@@ -351,7 +354,7 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
     }
   }
 
-  return { hasOverflow: issues.length > 0, issues };
+  return { hasOverflow: issues.some((i) => i.severity !== "info"), issues };
 }
 
 /**
