@@ -1521,8 +1521,19 @@ export function transformForClient(
   // Deliberately NOT gated on `wordEngine`, which only means "this email has an
   // Outlook branch to resolve". An email can hide its preheader with
   // mso-hide:all and carry no conditional comment at all.
-  if (isWordEngineClient(clientId)) result.html = applyMsoHide(result.html);
+  if (isWordEngineClient(clientId)) result.html = standardsMode(applyMsoHide(result.html));
   return result;
+}
+
+/**
+ * Word has no quirks mode, and the Word layout pass is measured against a
+ * browser in standards mode: in quirks mode a line made only of inline
+ * elements loses the block's line-height. A Beefree newsletter with no
+ * doctype (preview guYL7gkFIgOm, run 2zHY5TVR71vV, 2026-11-06) drew 27px
+ * lines in real Outlook Classic and 21px in the quirks-mode sim.
+ */
+function standardsMode(html: string): string {
+  return /^\s*(?:<!--[\s\S]*?-->\s*)*<!doctype/i.test(html) ? html : `<!DOCTYPE html>${html}`;
 }
 
 export function transformForAllClients(html: string, framework?: Framework): TransformResult[] {
@@ -1586,7 +1597,7 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
     // See transformForClient: translation must follow the strip pass, and
     // mso-hide is not gated on there being an Outlook branch.
     if (wordEngine) result.html = vmlToCss(result.html);
-    if (isWordEngineClient(clientId)) result.html = applyMsoHide(result.html);
+    if (isWordEngineClient(clientId)) result.html = standardsMode(applyMsoHide(result.html));
     return result;
   });
 }
