@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.18 - 2026-11-06
+
+### Fixed
+
+- A gradient's colour stops are no longer read as a `background` shorthand's
+  solid colour. A `radial-gradient(73% 826% at 100% 50%, #F024F6 0%, ...)`
+  button got a magenta fill in Outlook Classic; real Word paints none.
+- Yahoo Mail web ignores `box-sizing`, so a `width:100%` button with padding
+  overflows its column there, as it does in real Yahoo. The Yahoo apps are
+  unchanged until measured.
+
 ## 0.18.17 - 2026-11-06
 
 ### Fixed
