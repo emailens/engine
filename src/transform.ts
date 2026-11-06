@@ -671,6 +671,13 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
       { prop: "background", pattern: /linear-gradient|radial-gradient|url\(/ },
       { prop: "background-image", pattern: /linear-gradient|radial-gradient|url\(/ },
     ],
+    // The same in <style> blocks: a `.mh-cta{background-image:radial-gradient}`
+    // rule drew a magenta box in the sim where real Outlook Classic drew no
+    // fill (real-device capture of preview J9vFS4nm_LGl, 2026-11-06).
+    // ponytail: background-image only; a `background:` shorthand in <style>
+    // still draws (it may carry the fallback colour Word keeps). Split it like
+    // backgroundShorthandColor when a capture shows one.
+    dropValues: /^background-image:.*(?:linear-gradient|radial-gradient|url)\(/,
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
     stripForms: false,
@@ -1554,24 +1561,28 @@ export function transformForAllClients(html: string, framework?: Framework): Tra
 
   return clientIds.map((clientId) => {
     const config = CLIENT_CONFIGS[clientId];
-    const dropSource = prepareDropSource(html, config);
-    if (dropSource !== html) {
-      // Its own source, like the Word engine's: see prepareDropSource.
-      const own = downlevelCSS(dropSource);
-      const result = applyTransformDom(cheerio.load(own), own, config, framework);
-      result.warnings.unshift(...dropWarnings(html, config, clientId, framework));
-      return result;
-    }
     const wordEngine = isWordEngineClient(clientId) && hasOutlookBranch;
     const ownSource = isWordEngineClient(clientId) && ownWordSource;
-    const source = ownSource ? outlookSource : downleveled;
-    const parsedDom = ownSource ? outlookDom : baseDom;
-    // Each transform mutates an isolated DOM. The last client using a source
-    // can safely take ownership of its pristine tree instead of cloning it.
-    const clientDom = lastClientForSource.get(parsedDom) === clientId
-      ? parsedDom
-      : cheerio.load(parsedDom.root().clone().toArray()[0]);
-    const result = applyTransformDom(clientDom, source, CLIENT_CONFIGS[clientId], framework);
+    // The drops start from the client's own source: the Word engine's branch
+    // and colours, like transformForClient.
+    const raw = ownSource ? wordRaw : html;
+    const dropSource = prepareDropSource(raw, config);
+    let result: TransformResult;
+    if (dropSource !== raw) {
+      // Its own source, like the Word engine's: see prepareDropSource.
+      const own = downlevelCSS(dropSource);
+      result = applyTransformDom(cheerio.load(own), own, config, framework);
+      result.warnings.unshift(...dropWarnings(raw, config, clientId, framework));
+    } else {
+      const source = ownSource ? outlookSource : downleveled;
+      const parsedDom = ownSource ? outlookDom : baseDom;
+      // Each transform mutates an isolated DOM. The last client using a source
+      // can safely take ownership of its pristine tree instead of cloning it.
+      const clientDom = lastClientForSource.get(parsedDom) === clientId
+        ? parsedDom
+        : cheerio.load(parsedDom.root().clone().toArray()[0]);
+      result = applyTransformDom(clientDom, source, config, framework);
+    }
     // See transformForClient: translation must follow the strip pass, and
     // mso-hide is not gated on there being an Outlook branch.
     if (wordEngine) result.html = vmlToCss(result.html);

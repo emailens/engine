@@ -164,3 +164,19 @@ describe("Outlook Classic and a radial-gradient CTA (J9vFS4nm_LGl)", () => {
     expect(tag).not.toMatch(/background/);
   });
 });
+
+describe("Outlook Classic and a gradient in a <style> rule (J9vFS4nm_LGl)", () => {
+  const html = `<html><head><style>.cta{color:#fff!important;background-color:#8200FA;background-image:radial-gradient(73.32% 826.89% at 100% 50%,#F024F6 0%,#8200FA 100%)!important}.hero{background-image:url(https://x.test/a.png)}</style></head><body><a class="cta" href="#">Watch</a><div class="hero">Hi</div></body></html>`;
+  const style = async () => {
+    const { transformForClient } = await import("../index");
+    const out = transformForClient(html, "outlook-windows-legacy");
+    return [...(typeof out === "string" ? out : out.html).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join(" ");
+  };
+  test("Word paints neither a gradient nor an image from <style>", async () => {
+    const css = await style();
+    expect(css).not.toMatch(/gradient|url\(/);
+  });
+  test("the flat colour beside them stays", async () => {
+    expect(await style()).toMatch(/\.cta\{[^}]*background-color:#8200FA/);
+  });
+});
