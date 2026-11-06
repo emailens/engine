@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.18.17 - 2026-11-06
+
+### Fixed
+
+Overflow checker, measured against 252 real users' emails.
+
+- `image-container-overflow` no longer fires for an image whose container has
+  a width of 0. Both hits in the sample were hidden containers, not overflows.
+- `unbreakable-string` is now an `info` note, not a warning, and no longer sets
+  `hasOverflow`. It was right on 2 of 15 real emails: a long run only widens a
+  layout in a narrow column.
+
 ## 0.18.16 - 2026-11-05
 
 ### Fixed
