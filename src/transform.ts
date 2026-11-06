@@ -584,6 +584,9 @@ const YAHOO_WEB_STRIPPED = new Set([
   ...[...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"),
   "flex",
   "flex-basis",
+  // A width:100% + padding + border-box CTA came out 566px in a 534px column
+  // (J9vFS4nm_LGl, 2026-10-30): box-sizing is ignored, as caniemail lists.
+  "box-sizing",
 ]);
 
 // Real Gmail web drops the same flex item sizing (2026-10-28,
