@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.19 - 2026-11-06
+
+### Fixed
+
+- Outlook Classic now drops a `background-image` gradient or `url()` from
+  `<style>` blocks too, not only inline. A `.cta{background-image:radial-gradient(...)}`
+  rule drew a coloured box where real Word paints no fill.
+- `transformForAllClients` builds a Word client's drops from its Outlook
+  branch and keeps the VML translation, matching `transformForClient`.
+
 ## 0.18.18 - 2026-11-06
 
 ### Fixed
