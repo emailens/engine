@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend } from "../color-utils";
+import { parseColor, relativeLuminance, contrastRatio, wcagGrade, alphaBlend, backgroundShorthandColor } from "../color-utils";
 
 // ============================================================================
 // parseColor
@@ -132,5 +132,35 @@ describe("color-utils: alphaBlend", () => {
     expect(r).toBe(128);
     expect(g).toBe(128);
     expect(b).toBe(128);
+  });
+});
+
+// Preview J9vFS4nm_LGl (2026-10-30): a CTA with
+// `background: radial-gradient(73.32% 826.89% at 100% 50%, #F024F6 0%, ...)`.
+// Splitting on spaces left `#F024F6` outside any "(" token, so the stop was
+// taken as the fallback colour and Outlook Classic got a magenta button; real
+// Word painted nothing.
+describe("backgroundShorthandColor skips gradient stops", () => {
+  test("a gradient with spaced arguments has no solid colour", () => {
+    expect(
+      backgroundShorthandColor(
+        "radial-gradient(73.32% 826.89% at 100% 50%, #F024F6 0%, #8200FA 100%)",
+      ),
+    ).toBeNull();
+  });
+  test("a colour beside the gradient is still found", () => {
+    expect(
+      backgroundShorthandColor("#111 linear-gradient(90deg, #F024F6 0%, #000 100%)"),
+    ).toBe("#111");
+  });
+});
+
+describe("Outlook Classic and a radial-gradient CTA (J9vFS4nm_LGl)", () => {
+  test("Word paints no fill, so the button keeps no background", async () => {
+    const { transformForClient } = await import("../index");
+    const html = `<html><body><a href="#" style="display:block;color:#ffffff;background:radial-gradient(73.32% 826.89% at 100% 50%, #F024F6 0%, #8200FA 100%);padding:14px 16px">Start</a></body></html>`;
+    const out = transformForClient(html, "outlook-windows-legacy");
+    const tag = (typeof out === "string" ? out : out.html).match(/<a[^>]*>/)?.[0];
+    expect(tag).not.toMatch(/background/);
   });
 });

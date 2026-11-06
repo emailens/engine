@@ -371,8 +371,14 @@ export function backgroundShorthandColor(value: string | undefined): string | nu
   if (!value) return null;
   const trimmed = value.trim();
   if (parseColor(trimmed)) return trimmed; // background: #fff / rgb(255 255 255)
-  for (const token of trimmed.split(/\s+/)) {
-    if (token.includes("(")) continue; // url(), gradients, not a solid colour
+  // Drop url(), gradients and other groups whole, innermost first: their
+  // arguments hold spaces, so a token-level "(" check let a stop slip through.
+  let outer = trimmed;
+  for (let prev = ""; prev !== outer; ) {
+    prev = outer;
+    outer = outer.replace(/[\w-]*\([^()]*\)/g, " ");
+  }
+  for (const token of outer.split(/\s+/)) {
     if (parseColor(token)) return token;
   }
   return null;
