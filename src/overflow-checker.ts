@@ -249,7 +249,9 @@ export function checkOverflowFromDom($: CheerioAPI, source?: string): OverflowRe
     if (!$parent.length) return;
 
     const parentWidth = fixedPxWidth($parent);
-    if (parentWidth !== null && imgWidth > parentWidth) {
+    // A zero-width container hides what is in it (a hide-on-desktop block);
+    // its images draw 0px wide and squeeze nothing (users' emails, 2026-11-06).
+    if (parentWidth !== null && parentWidth > 0 && imgWidth > parentWidth) {
       const key = `img-overflow:${imgWidth}:${parentWidth}`;
       if (!seen.has(key)) {
         const loc = locOfAttr(imgEl, "width") || locOfElement(imgEl);

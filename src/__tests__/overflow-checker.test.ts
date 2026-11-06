@@ -190,6 +190,17 @@ describe("checkOverflow: table row width summation & image bounding", () => {
     expect(imgIssue?.message).toContain("300px");
   });
 
+  test("does not flag an image in a zero-width container: that hides it, it does not squeeze it", () => {
+    // Users' emails IV5D and VHNU (2026-11-06): icons in a width:0 hidden
+    // block were flagged as "exceeding its container's width (0px)"; they
+    // drew 0px wide in a browser.
+    for (const cell of [`<td style="width:0;max-height:0;overflow:hidden;display:none">`, `<td width="0">`, `<div style="width:0px;overflow:hidden">`]) {
+      const tag = cell.slice(1, 4).trim();
+      const html = `<table><tr>${cell}<img src="i.png" width="24" height="24"></${tag}></tr></table>`;
+      expect(checkOverflow(html).issues.find((i) => i.rule === "image-container-overflow")).toBeUndefined();
+    }
+  });
+
   test("does not flag image with responsive max-width: 100%", () => {
     const html = `
       <table>
