@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.20 - 2026-11-06
+
+### Fixed
+
+- Outlook Classic renders are laid out in standards mode even when the email
+  has no doctype. Word has no quirks mode; in the browser's, lines made only
+  of inline elements lost their line-height, so 27px lines drew at 21px.
+- Outlook Classic keeps a negative left or right margin on a `<div>`: a list
+  in `<div style="margin-left:-20px">` sits 20px further left, as in real
+  Outlook. Negative top and bottom margins, and a table's, are still ignored.
+
 ## 0.18.19 - 2026-11-06
 
 ### Fixed
