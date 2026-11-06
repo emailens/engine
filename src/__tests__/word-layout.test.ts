@@ -64,6 +64,15 @@ describe("Word box model", () => {
     expect(tag(word(`<div id="t" style="margin-top:-10px">text</div>`), 'id="t"')).toMatch(/margin-top:\s*0/);
   });
 
+  test("a negative side margin on a div moves it (guYL7gkFIgOm, run 2zHY5TVR71vV)", () => {
+    // A list in <div style="margin-left:-20px"> sat 20px left of the 48px
+    // indent in real Outlook Classic, on the provider's device and on local
+    // Outlook at 125% alike (2026-11-06). Top and bottom stay flattened.
+    expect(tag(word(`<div id="t" style="margin-left:-20px">text</div>`), 'id="t"')).toMatch(/margin-left:\s*-20px/);
+    expect(tag(word(`<div id="t" style="margin:-10px -20px">text</div>`), 'id="t"')).toMatch(/margin:\s*0 -20px/);
+    expect(tag(word(`<div id="t" style="margin:-5px auto">text</div>`), 'id="t"')).toMatch(/margin:\s*0 0/);
+  });
+
   test("a margin given in lengths is kept on a div (01 c12)", () => {
     expect(tag(word(`<div id="t" style="margin:20px">text</div>`), 'id="t"')).toMatch(/margin:\s*20px/);
   });

@@ -105,6 +105,16 @@ const flattenMargin = (value: string) =>
     .map((part) => (part === "auto" || /^-/.test(part) ? "0" : part))
     .join(" ");
 
+/** flattenMargin for a div: `auto` and a negative top or bottom go to 0, a
+ * negative side stays. Shorthand parts are top, right, bottom, left. */
+const flattenDivMargin = (prop: string, value: string) => {
+  if (prop === "margin-left" || prop === "margin-right") return value.trim() === "auto" ? "0" : value;
+  if (prop !== "margin") return flattenMargin(value);
+  const parts = value.trim().split(/\s+/);
+  const vertical = (i: number) => i === 0 || (i === 2 && parts.length >= 3);
+  return parts.map((part, i) => (part === "auto" || (/^-/.test(part) && vertical(i)) ? "0" : part)).join(" ");
+};
+
 /**
  * True when the element has no line of text for a background to sit behind.
  * Text inside a nested table belongs to that table's cells, not to this
@@ -532,9 +542,12 @@ export function applyWordBoxModel($: CheerioAPI): void {
       // on a table either: align, a parent's align or <center> does (probe
       // outlook-table-centre, 2026-10-31). A negative value does not pull the
       // box up (01 c17, c19, c20).
+      // On a div a negative side margin does move it: a list in
+      // <div style="margin-left:-20px"> sat 20px further left in real Outlook
+      // Classic (guYL7gkFIgOm, run 2zHY5TVR71vV, 2026-11-06).
       for (const prop of MARGIN) {
         const value = props.get(prop);
-        if (value !== undefined) props.set(prop, flattenMargin(value));
+        if (value !== undefined) props.set(prop, tag === "div" ? flattenDivMargin(prop, value) : flattenMargin(value));
       }
       // A table with align="center" loses its vertical margins, at any depth
       // (probe outlook-word-flow margin, 2026-11-01: rows 2, 4, 5 and 7).
