@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.18.21 - 2026-11-09
+
+### Fixed
+
+- React Email 6 templates compile. React Email 6 imports its components from
+  `react-email`; the JSX sandbox allowed only `react` and
+  `@react-email/components`, so a v6 template failed with "Import of
+  react-email is not allowed". Both sandboxes now accept `react-email`.
+
+### Changed
+
+- Tested against React 19.3.1, `@react-email/render` 2.2.0 and
+  `@react-email/components` 1.0.12. Peer ranges are unchanged.
+
 ## 0.18.20 - 2026-11-06
 
 ### Fixed
