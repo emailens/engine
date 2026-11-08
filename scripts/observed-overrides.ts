@@ -64,6 +64,14 @@ const gmailWeb = (level: SupportLevel, note: string): Observation => ({
   note,
 });
 
+/** Probe sheets 20 and 22 through the Emailens webmail worker, our seed inboxes. */
+const worker = (level: SupportLevel, source: string, note: string): Observation => ({
+  level,
+  observed: "2026-11-08",
+  source: `Emailens probe sheets 20-22, ${source}, our own seed inbox`,
+  note,
+});
+
 export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
   // Email Geeks #email-code, 2026-10-29: "Yahoo strips action and formaction".
   // Six forms sent to our Yahoo seed; the delivered HTML had neither.
@@ -105,6 +113,25 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
       "Plain track sizes work (`300px 300px`, `1fr 1fr`); a value with `repeat()` or `minmax()` is dropped, so the grid falls back to one column.",
     ),
   },
+  // Sheet 20 case 30: an orange block at visibility:hidden over a green cell
+  // stayed orange. Gmail web, on the same sheet, hid it.
+  visibility: {
+    "yahoo-mail": worker(
+      "unsupported",
+      "Yahoo Mail web (Chrome)",
+      "An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it.",
+    ),
+    "yahoo-mail-android": worker(
+      "unsupported",
+      "the Yahoo Mail Android app",
+      "An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it.",
+    ),
+    "outlook-android": worker(
+      "unsupported",
+      "the Outlook Android app",
+      "An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it.",
+    ),
+  },
   "box-shadow": {
     "yahoo-mail": seen(
       "supported",
@@ -112,7 +139,19 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
       "A box-shadow on a table cell rendered with its offset and colour.",
     ),
   },
+  // Sheet 22 case 13: a green text-shadow drew in Gmail and Outlook Android,
+  // not in either Yahoo.
   "text-shadow": {
+    "yahoo-mail": worker(
+      "unsupported",
+      "Yahoo Mail web (Chrome)",
+      "A green text-shadow did not draw; the text rendered plain.",
+    ),
+    "yahoo-mail-android": worker(
+      "unsupported",
+      "the Yahoo Mail Android app",
+      "A green text-shadow did not draw; the text rendered plain.",
+    ),
     "outlook-web": seen(
       "supported",
       "Emailens real-device probe, Outlook.com (Chrome)",

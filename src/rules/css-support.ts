@@ -2,7 +2,7 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix, auto-generated from caniemail.com.
- * Last synced: 2026-10-27
+ * Last synced: 2026-11-08
  * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
  * 300 features and 14 image formats across 21 email clients.
@@ -5240,8 +5240,8 @@ const CSS_SUPPORT_TABLE = {
     "outlook-macos": "unsupported",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
-    "yahoo-mail": "supported",
-    "yahoo-mail-android": "supported",
+    "yahoo-mail": "unsupported",
+    "yahoo-mail-android": "unsupported",
     "yahoo-mail-ios": "supported",
     "samsung-mail": "supported",
     "thunderbird": "supported",
@@ -5834,12 +5834,12 @@ const CSS_SUPPORT_TABLE = {
     "outlook-windows": "supported",
     "outlook-windows-legacy": "unsupported",
     "outlook-ios": "supported",
-    "outlook-android": "supported",
+    "outlook-android": "unsupported",
     "outlook-macos": "supported",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
-    "yahoo-mail": "supported",
-    "yahoo-mail-android": "supported",
+    "yahoo-mail": "unsupported",
+    "yahoo-mail-android": "unsupported",
     "yahoo-mail-ios": "supported",
     "samsung-mail": "supported",
     "thunderbird": "supported",
@@ -7850,6 +7850,8 @@ export const CSS_SUPPORT_NOTES: Record<
   },
   "text-shadow": {
     "outlook-web": ["Observed 2026-10-14 (Emailens real-device probe, Outlook.com (Chrome)): A red text-shadow rendered behind bold text."],
+    "yahoo-mail": ["Observed 2026-11-08 (Emailens probe sheets 20-22, Yahoo Mail web (Chrome), our own seed inbox): A green text-shadow did not draw; the text rendered plain."],
+    "yahoo-mail-android": ["Observed 2026-11-08 (Emailens probe sheets 20-22, the Yahoo Mail Android app, our own seed inbox): A green text-shadow did not draw; the text rendered plain."],
   },
   "text-transform": {
     "outlook-windows-legacy": ["Partial. `lowercase` value is not supported."],
@@ -7903,9 +7905,12 @@ export const CSS_SUPPORT_NOTES: Record<
   },
   "visibility": {
     "outlook-ios": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
+    "outlook-android": ["Observed 2026-11-08 (Emailens probe sheets 20-22, the Outlook Android app, our own seed inbox): An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it."],
     "outlook-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "apple-mail-macos": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "apple-mail-ios": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
+    "yahoo-mail": ["Observed 2026-11-08 (Emailens probe sheets 20-22, Yahoo Mail web (Chrome), our own seed inbox): An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it."],
+    "yahoo-mail-android": ["Observed 2026-11-08 (Emailens probe sheets 20-22, the Yahoo Mail Android app, our own seed inbox): An element at `visibility:hidden` stayed visible. Use `display:none` (or remove the element) to hide it."],
     "yahoo-mail-ios": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
     "protonmail": ["Buggy. `visibility:collapse` applied to a `<tr>` only hides content and does not \"remove\" it from layout."],
   },

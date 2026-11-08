@@ -2,6 +2,15 @@
 
 ## 0.18.21 - 2026-11-09
 
+### Changed
+
+- Support data from real clients (Emailens probe sheets through our own seed
+  inboxes, 2026-11-08): `visibility` is unsupported in Yahoo Mail web, Yahoo
+  Mail Android and Outlook Android (a `visibility:hidden` element stayed
+  visible), and `text-shadow` is unsupported in Yahoo Mail web and Yahoo Mail
+  Android (the shadow did not draw). caniemail listed all five as supported.
+  Each cell carries an "Observed" note with its source.
+
 ### Fixed
 
 - React Email 6 templates compile. React Email 6 imports its components from
