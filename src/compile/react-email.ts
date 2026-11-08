@@ -187,9 +187,13 @@ async function executeInVm(
 ): Promise<Record<string, unknown>> {
   const { createContext, Script } = await import("node:vm");
 
+  // React Email 6 exports the components from "react-email" itself.
+  // ponytail: served by @react-email/components, the same component set;
+  // load the react-email package if a v6-only export is ever needed.
   const ALLOWED_MODULES: Record<string, unknown> = {
     react: React,
     "@react-email/components": ReactEmailComponents,
+    "react-email": ReactEmailComponents,
   };
 
   const moduleExports: Record<string, unknown> = {};
@@ -201,7 +205,7 @@ async function executeInVm(
     }
     throw new Error(
       `Import of "${moduleName}" is not allowed. ` +
-        `Only "react" and "@react-email/components" can be imported.`,
+        `Only "react", "react-email" and "@react-email/components" can be imported.`,
     );
   };
 
@@ -317,8 +321,8 @@ async function executeInIsolatedVm(
         });
         function require(name) {
           if (name === "react") return React;
-          if (name === "@react-email/components") return componentsProxy;
-          throw new Error('Import of "' + name + '" is not allowed. Only "react" and "@react-email/components" can be imported.');
+          if (name === "@react-email/components" || name === "react-email") return componentsProxy;
+          throw new Error('Import of "' + name + '" is not allowed. Only "react", "react-email" and "@react-email/components" can be imported.');
         }
         try {
           ${code}

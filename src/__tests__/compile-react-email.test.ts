@@ -273,6 +273,17 @@ describe("compileReactEmail sandbox", () => {
     expect(html).toContain("Works");
   });
 
+  test("allows importing from react-email, where React Email 6 puts the components", async () => {
+    const source = `
+      import { Html, Body, Text } from "react-email";
+      export default function Email() {
+        return <Html><Body><Text>Six</Text></Body></Html>;
+      }
+    `;
+    const html = await compileReactEmail(source, VM_OPTS);
+    expect(html).toContain("Six");
+  });
+
   test("rejects source without exported component", async () => {
     const source = `
       const x = 42;
