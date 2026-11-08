@@ -107,6 +107,16 @@ describe("intent score", () => {
     expect(scoreOf(broken)).toBe(scoreOf(plain) - 3);
   });
 
+  test("zero padding loses nothing in Outlook Classic", () => {
+    // @react-email/body 0.3.0 moves the Body's style to a cell and writes
+    // padding:0 on <body>: every React Email 6 template carries it.
+    const reactEmailBody = `<!DOCTYPE html><html><body style="background-color:#fff;margin:0;padding:0"><table><tr><td style="padding:24px">Hi</td></tr></table></body></html>`;
+    const zeros = page(`<p style="padding:0px 0 0em;padding-top:0 !important">Hi</p>`);
+    expect(severityOf(reactEmailBody, "padding")).not.toBe("warning");
+    expect(severityOf(zeros, "padding")).not.toBe("warning");
+    expect(severityOf(page(`<p style="padding:0 12px">Hi</p>`), "padding")).toBe("warning");
+  });
+
   test("padding clears on a cell and on mso-padding-alt, and a row that disagrees counts", () => {
     const cell = page(`<table><tr><td style="padding:12px">Hi</td></tr></table>`);
     const alt = page(

@@ -60,6 +60,15 @@ export function applyIntent(
 }
 
 type Bucket = "open" | "covered";
+
+/**
+ * A padding declaration with a value other than zero. Dropping padding:0 loses
+ * nothing, and @react-email/body 0.3.0 writes it on every <body>.
+ */
+const nonZeroPadding = (style: string): boolean =>
+  [...style.matchAll(/(?:^|[^-])padding(?:-(?:top|right|bottom|left))?\s*:\s*([^;]*)/gi)].some(
+    ([, value]) => !/^(?:\s*0(?:px|em|rem|%|pt)?)+\s*(?:!important)?\s*$/i.test(value),
+  );
 type StyleTest = (style: string) => boolean;
 const hit = (re: RegExp): StyleTest => (style) => re.test(style);
 
@@ -148,7 +157,7 @@ function adjustOutlook(
   apply(word$, wordRules, WORD, "linear-gradient", hit(/linear-gradient\s*\(/i), wordFill, "Outlook Classic drops this linear-gradient, and no v:fill covers it.", true);
   apply(word$, wordRules, WORD, "max-width", hit(/max-width\s*:/i), (el, style) => maxWidthCovered(word$, el, style), "Outlook Classic only honours max-width on a table. Wrap the element in a table with a fixed width.", true);
   apply(word$, wordRules, WORD, "min-width", hit(/min-width\s*:/i), (el, style) => minWidthCovered(word$, el, style), "Outlook Classic ignores min-width. Give the box a width, or put it in a cell with one.", true);
-  apply(word$, wordRules, WORD, "padding", hit(/(?:^|[^-])padding(?:-(?:top|right|bottom|left))?\s*:/i), (el) => paddingCovered(word$, el, true), "Outlook Classic drops this padding. Put it on a table cell, or set mso-padding-alt on one.", true);
+  apply(word$, wordRules, WORD, "padding", nonZeroPadding, (el) => paddingCovered(word$, el, true), "Outlook Classic drops this padding. Put it on a table cell, or set mso-padding-alt on one.", true);
   apply(word$, wordRules, WORD, "float", hit(/float\s*:/i), never, "Outlook Classic drops this float. The MSO branch needs a table with align.", true);
   apply(word$, wordRules, WORD, "display:flex", hit(/display\s*:\s*(?:inline-)?flex\b/i), never, "Outlook Classic receives this flex box. The MSO branch needs a table.", true);
   apply(word$, wordRules, WORD, "display:grid", hit(/display\s*:\s*(?:inline-)?grid\b/i), never, "Outlook Classic receives this grid box. The MSO branch needs a table.", true);

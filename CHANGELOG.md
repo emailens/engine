@@ -8,6 +8,10 @@
   `react-email`; the JSX sandbox allowed only `react` and
   `@react-email/components`, so a v6 template failed with "Import of
   react-email is not allowed". Both sandboxes now accept `react-email`.
+- Zero padding no longer warns in Outlook Classic. `@react-email/body` 0.3.0
+  (in `@react-email/components` 1.0.12, and React Email 6) moves the Body's
+  style to a cell and writes `padding:0` on `<body>`, which cost every such
+  template 3 points for a padding that loses nothing when dropped.
 
 ### Changed
 
