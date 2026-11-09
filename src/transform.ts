@@ -364,6 +364,11 @@ interface ClientTransformConfig {
   /** At-rules the client drops from <style> blocks, matched on the rule's
    *  head as written, "@media screen" or "@supports (display:block)". */
   dropAtRules?: RegExp;
+  /** The width, in CSS px, @media width conditions are evaluated at when it
+   *  is not the layout's: a client that shows the email in a pane of a wider
+   *  window. A block false there goes; one true is unwrapped, so it applies
+   *  in a preview laid out at the pane's width (see mediaAtWidth). */
+  mediaWidth?: number;
   /** Properties the client ignores in <style> blocks and inline, matched on
    *  the name, keeping earlier declarations (strippedProperties collapses a
    *  style attribute to one value per property, so it cannot). */
@@ -738,6 +743,10 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     // No web font, as on Mac: postmark~welcome's @import of Nunito Sans drew
     // Arial on the worker's new Outlook (bench 2026-11-09); caniemail agrees.
     dropAtRules: /^@font-face\b|^@import\b/i,
+    // @media reads the window, not the reading pane: of 27 emails with a
+    // max-width query firing at 620, the worker's new Outlook drew none
+    // mobile (bench 2026-11-09). 766 is that read window, 957 px at 125%.
+    mediaWidth: 766,
     inlineAndStripStyles: false,
     stripExternalStylesheets: true,
     stripForms: false,
@@ -1070,8 +1079,30 @@ function dropWarnings(
 function hasDrops(config: ClientTransformConfig): boolean {
   return Boolean(
     config.dropSelectors || config.dropAtRules || config.dropValues || config.dropProperties ||
-      config.dropNesting || config.dropElements || config.dropAttributes,
+      config.dropNesting || config.dropElements || config.dropAttributes || config.mediaWidth,
   );
+}
+
+/**
+ * Whether an @media prelude matches a screen `width` CSS px wide. Null when
+ * it asks anything but the media type and min-/max-width in px: those are
+ * not this function's call, and the block is left for the browser.
+ */
+export function mediaAtWidth(prelude: string, width: number): boolean | null {
+  let any = false;
+  for (const query of prelude.toLowerCase().split(",")) {
+    const words = query.replace(/\([^)]*\)/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (words.some((w) => !["only", "screen", "all", "print", "and"].includes(w))) return null;
+    let match = !words.includes("print");
+    for (const f of query.matchAll(/\(([^)]*)\)/g)) {
+      const m = /^\s*(min|max)-width\s*:\s*([\d.]+)px\s*$/.exec(f[1]);
+      if (!m) return null;
+      const px = Number(m[2]);
+      if (m[1] === "min" ? width < px : width > px) match = false;
+    }
+    any ||= match;
+  }
+  return any;
 }
 
 function prepareDropSource(html: string, config: ClientTransformConfig): string {
@@ -1146,9 +1177,19 @@ function applyStyleDrops($: cheerio.CheerioAPI, config: ClientTransformConfig): 
           node.type === "Atrule"
             ? `@${node.name}${node.prelude ? ` ${csstree.generate(node.prelude)}` : ""}`
             : "";
+        const atWidth =
+          config.mediaWidth && node.type === "Atrule" && node.name === "media" && node.prelude
+            ? mediaAtWidth(csstree.generate(node.prelude), config.mediaWidth)
+            : null;
         if (dropAtRules && node.type === "Atrule" && dropAtRules.test(head)) {
           list.remove(item);
           dropped.add(`@${node.name}`);
+        } else if (atWidth === false) {
+          list.remove(item);
+          dropped.add("@media (width)");
+        } else if (atWidth === true && node.type === "Atrule" && node.block) {
+          list.insertList(node.block.children, item);
+          list.remove(item);
         } else if (dropSelectors && node.type === "Rule") {
           const m = csstree.generate(node.prelude).match(dropSelectors);
           if (m) {
