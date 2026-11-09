@@ -102,9 +102,28 @@ function mergeInline(state: Inlined, declText: string): string {
 }
 
 /**
+ * A selector's CSS specificity as one sortable number: ids, then classes and
+ * attributes, then types. Pseudo-classes and pseudo-elements never reach it:
+ * a rule with one is kept as a rule, not inlined.
+ * ponytail: a part count over 99 would carry into the next rank.
+ */
+function specificity(selector: csstree.CssNode): number {
+  let ids = 0;
+  let classes = 0;
+  let types = 0;
+  csstree.walk(selector, (node) => {
+    if (node.type === "IdSelector") ids++;
+    else if (node.type === "ClassSelector" || node.type === "AttributeSelector") classes++;
+    else if (node.type === "TypeSelector" && node.name !== "*") types++;
+  });
+  return ids * 10_000 + classes * 100 + types;
+}
+
+/**
  * `keepFontFace` is false for a client that ignores @font-face (Gmail): its
  * preview must not load a web font the real inbox never shows.
  */
+
 function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true): string {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
@@ -115,6 +134,8 @@ function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true): string {
 
   const preserved: string[] = [];
   const inlined = new WeakMap<object, Inlined>();
+  // One entry per selector of each rule: applied by weight, then source order.
+  const rules: { selector: string; weight: number; declText: string }[] = [];
 
   for (const block of styleBlocks) {
     let ast: csstree.CssNode;
@@ -167,20 +188,27 @@ function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true): string {
           return;
         }
 
-        try {
-          $(selectorText).each((_, el) => {
-            let state = inlined.get(el);
-            if (!state) {
-              state = { author: cascade(new Map(), $(el).attr("style") || ""), sheet: new Map() };
-              inlined.set(el, state);
-            }
-            $(el).attr("style", mergeInline(state, declText));
-          });
-        } catch {
-          // Invalid selector for cheerio, skip
-        }
+        node.prelude.children.forEach((selector) => {
+          rules.push({ selector: csstree.generate(selector), weight: specificity(selector), declText });
+        });
       },
     });
+  }
+
+  // Array.prototype.sort is stable: equal weights keep source order.
+  for (const { selector, declText } of rules.sort((a, b) => a.weight - b.weight)) {
+    try {
+      $(selector).each((_, el) => {
+        let state = inlined.get(el);
+        if (!state) {
+          state = { author: cascade(new Map(), $(el).attr("style") || ""), sheet: new Map() };
+          inlined.set(el, state);
+        }
+        $(el).attr("style", mergeInline(state, declText));
+      });
+    } catch {
+      // Invalid selector for cheerio, skip
+    }
   }
 
   return preserved.join("\n");
@@ -253,6 +281,11 @@ function detectAnimations($: cheerio.CheerioAPI): boolean {
 
 interface ClientTransformConfig {
   id: string;
+  /**
+   * The client's own colour for links, from a rule that outranks an email's
+   * tag and class rules but not an inline colour or !important.
+   */
+  linkColor?: string;
   /** CSS properties stripped from inline styles */
   strippedProperties: Set<string>;
   /** How stripped properties are treated: "strip" removes them, "info" just warns */
@@ -602,6 +635,9 @@ const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES, "flex", "flex-
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
+    // `.ii a[href]{color:#15c}`: 324 of 458 links with no inline colour came
+    // out #15c in real Gmail web (emailens fidelity bench, 2026-11-09).
+    linkColor: "#15c",
     // caniemail's set. A 2026-10-14 render said Gmail web kept box-shadow,
     // text-shadow, visibility, animation, gap and grid; caniemail's own tests in
     // real Gmail web (Chrome and Firefox, 2026-10-24) did not, and the <style>
@@ -1240,7 +1276,30 @@ function applyTransformDom(
 
   // 1b. Inline + strip <style> if needed
   if (config.inlineAndStripStyles) {
+    // Links the author did not colour inline; the client's own link rule
+    // outranks the email's sheet rules once they are inlined.
+    // ponytail: specificity is not compared (an email rule as heavy as the
+    // client's would win in the client), nor a colour from a kept @media rule.
+    // Only a link with a usable target: Gmail drops `#` or a bare `mailto:`,
+    // and then its a[href] rule misses (colorlib-07, derekpunsalan-simple).
+    // ponytail: "usable" is a scheme with something after it; a relative
+    // path is unobserved and treated as unusable.
+    const linkColor = config.linkColor;
+    const uncolored = linkColor
+      ? $("a[href]")
+          .filter(
+            (_, el) =>
+              /^(https?:\/\/|mailto:[^?]+|tel:.)/i.test($(el).attr("href")?.trim() ?? "") &&
+              !/(^|;)\s*color\s*:/i.test($(el).attr("style") ?? ""),
+          )
+          .toArray()
+      : [];
     const preserved = inlineStyles($, CSS_SUPPORT["@font-face"]?.[clientId] !== "unsupported");
+    for (const el of uncolored) {
+      const style = $(el).attr("style") ?? "";
+      if (/(^|;)\s*color\s*:[^;]*!important/i.test(style)) continue;
+      $(el).attr("style", serializeStyle(cascade(cascade(new Map(), style), `color: ${linkColor}`)));
+    }
     $("style").remove();
     if (preserved.trim()) {
       const head = $("head");

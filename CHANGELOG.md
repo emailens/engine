@@ -14,6 +14,17 @@
   probe sheets (2026-11-08) and the DOM of a real campaign in Yahoo web
   (2026-11-09) both show it applied, as caniemail says. Yahoo Mail iOS is
   unmeasured and keeps the old strip.
+- Inlining an email's `<style>` (Gmail and every client that inlines) follows
+  specificity: the more specific selector wins and source order breaks a
+  tie, each selector of a list with its own weight. Rules used to apply in
+  source order, so in a real Calendly email `.footer a.unsub` lost to a
+  later `.footer a` and the footer address took the wrong colour.
+- Gmail web links take Gmail's own `#15c` unless the email colours them
+  inline or with `!important`, as Gmail's `.ii a[href]` rule does. Inlining
+  had put the email's tag and class rules above Gmail's (324 of 458 links
+  with no inline colour were `#15c` in real Gmail web, emailens fidelity
+  bench 2026-11-09). A placeholder target (`#`, a bare `mailto:`) is
+  dropped by Gmail, so those links keep the email's colour.
 
 ### Changed
 
