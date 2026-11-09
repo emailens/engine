@@ -32,3 +32,18 @@ describe("Gmail's link colour against the email's Gmail-targeting rules", () => 
     expect(linkStyle("p{margin:0}")).toContain("color:#15c");
   });
 });
+
+// calendly-help, 2026-11-09: the email's CSS reaches the wrapper check
+// minified, `...}u+.body-fix h1{...}`, so the wrapper was never built and its
+// 24px Gmail heading drew at the 36px inline size.
+describe("the wrapper is built from minified CSS", () => {
+  test.each([
+    ["after another rule's brace", ".a{color:red}u+.body-fix h1{font-size:24px}"],
+    ["first in a media block", "@media screen{u+.body-fix h1{font-size:24px}}"],
+    ["in a selector list", ".a,u+.body-fix h1{font-size:24px}"],
+  ])("a `u +` rule %s", (_where, css) => {
+    const html = `<html><head><style>${css}</style></head><body class="x body-fix" id="body"><h1 style="font-size:36px">Hi</h1></body></html>`;
+    const out = transformForClient(html, "gmail-web").html;
+    expect(out).toMatch(/<u><\/u><div id="body" class="x body-fix">/);
+  });
+});

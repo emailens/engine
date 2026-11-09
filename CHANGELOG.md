@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Gmail's `<u></u><div>` wrapper is built when the email's CSS is minified
+  (`...}u+.body h1{...}`): since the simulation moved before inlining it saw
+  minified text and missed the rule, so a Gmail-only heading size (calendly,
+  24px) drew at its inline 36px.
 - The preview now follows every real-device observation on a plain property:
   observed "unsupported" is stripped, observed "supported" never is. 0.18.21
   marked `visibility` (Yahoo Mail web and Android, Outlook Android) and

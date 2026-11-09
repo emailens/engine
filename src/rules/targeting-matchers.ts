@@ -7,9 +7,10 @@ export type TargetingSimulate =
 
 /**
  * A selector aimed at Gmail's wrapper: `u + #body`, `u + .body`, any id or
- * class the body carries. The leading boundary keeps `.menu + .x` out.
+ * class the body carries. The leading boundary keeps `.menu + .x` out; a
+ * brace or comma counts as one, since a whole minified sheet is tested too.
  */
-export const GMAIL_WRAPPER_SELECTOR = /(?:^|[\s>~+(])u\s*\+\s*([.#][\w-]+)/i;
+export const GMAIL_WRAPPER_SELECTOR = /(?:^|[\s>~+(,{}])u\s*\+\s*([.#][\w-]+)/i;
 
 /**
  * Engine-owned matcher. `upstreamKey` is provenance into TARGETING_HACKS;
