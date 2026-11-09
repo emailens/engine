@@ -735,8 +735,11 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     strippedProperties: OUTLOOK_WEB_STRIPPED,
     stripMode: "strip",
     stripStyleAnimations: true,
+    // No web font, as on Mac: postmark~welcome's @import of Nunito Sans drew
+    // Arial on the worker's new Outlook (bench 2026-11-09); caniemail agrees.
+    dropAtRules: /^@font-face\b|^@import\b/i,
     inlineAndStripStyles: false,
-    stripExternalStylesheets: false,
+    stripExternalStylesheets: true,
     stripForms: false,
     stripSvg: false,
   },

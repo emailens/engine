@@ -37,3 +37,28 @@ describe("outlook-macos loads no web fonts", () => {
     expect(apple).toContain("@font-face");
   });
 });
+
+// New Outlook for Windows is the same: postmark~welcome asks for Nunito Sans
+// by @import and drew Arial on the worker's new Outlook (bench 2026-11-09),
+// where the simulation loaded Nunito and wrapped every paragraph earlier.
+describe("outlook-windows (new) loads no web fonts", () => {
+  const html = `<html><head>
+    <link href="https://fonts.googleapis.com/css?family=Rubik:400,700" rel="stylesheet">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Figtree');
+      @font-face{font-family:'Work Sans';src:url('https://example.com/ws.woff2') format('woff2')}
+      .h{font-family:'Rubik',Arial,sans-serif;color:#009c9c}
+    </style>
+  </head><body><h1 class="h">Headline</h1></body></html>`;
+  const out = transformForClient(html, "outlook-windows").html;
+
+  test("drops the font stylesheet link, @import and @font-face", () => {
+    expect(out).not.toContain("fonts.googleapis.com/css?family=Rubik");
+    expect(out).not.toContain("@import");
+    expect(out).not.toContain("@font-face");
+  });
+
+  test("keeps the rule that names the font", () => {
+    expect(out).toContain("color:#009c9c");
+  });
+});
