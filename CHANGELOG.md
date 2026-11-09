@@ -10,6 +10,8 @@
   visible), and `text-shadow` is unsupported in Yahoo Mail web and Yahoo Mail
   Android (the shadow did not draw). caniemail listed all five as supported.
   Each cell carries an "Observed" note with its source.
+- Tested against React 19.3.1, `@react-email/render` 2.2.0 and
+  `@react-email/components` 1.0.12. Peer ranges are unchanged.
 
 ### Fixed
 
@@ -21,11 +23,6 @@
   (in `@react-email/components` 1.0.12, and React Email 6) moves the Body's
   style to a cell and writes `padding:0` on `<body>`, which cost every such
   template 3 points for a padding that loses nothing when dropped.
-
-### Changed
-
-- Tested against React 19.3.1, `@react-email/render` 2.2.0 and
-  `@react-email/components` 1.0.12. Peer ranges are unchanged.
 
 ## 0.18.20 - 2026-11-06
 
