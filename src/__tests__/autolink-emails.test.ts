@@ -20,7 +20,8 @@ const links = (clientId: string) => {
   const $ = cheerio.load(transformForClient(html, clientId).html);
   return $("a")
     .toArray()
-    .map((a) => ({ text: $(a).text(), href: $(a).attr("href"), style: $(a).attr("style") ?? "" }));
+    // Whitespace in a style is formatting, not a difference.
+    .map((a) => ({ text: $(a).text(), href: $(a).attr("href"), style: ($(a).attr("style") ?? "").replace(/\s+/g, "") }));
 };
 
 describe("clients that turn a bare email address into a link", () => {

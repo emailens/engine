@@ -19,12 +19,12 @@
   tie, each selector of a list with its own weight. Rules used to apply in
   source order, so in a real Calendly email `.footer a.unsub` lost to a
   later `.footer a` and the footer address took the wrong colour.
-- Gmail web links take Gmail's own `#15c` unless the email colours them
-  inline or with `!important`, as Gmail's `.ii a[href]` rule does. Inlining
-  had put the email's tag and class rules above Gmail's (324 of 458 links
-  with no inline colour were `#15c` in real Gmail web, emailens fidelity
-  bench 2026-11-09). A placeholder target (`#`, a bare `mailto:`) is
-  dropped by Gmail, so those links keep the email's colour.
+- Gmail web links take Gmail's own `#15c` (324 of 458 links with no inline
+  colour in real Gmail web, emailens fidelity bench 2026-11-09). It enters
+  the inlining cascade as the rule it is, weighted between the email's
+  `a{color}`, which it beat, and `.logo a{color}`, which beat it; an inline
+  colour or `!important` wins as in any cascade. A bare `mailto:` loses its
+  target in Gmail and keeps the email's colour; `#` does not.
 
 ### Changed
 

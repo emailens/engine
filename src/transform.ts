@@ -101,6 +101,25 @@ function mergeInline(state: Inlined, declText: string): string {
   return serializeStyle(out);
 }
 
+interface InlineRule {
+  selector: string;
+  /** specificity(): ids x 10000 + classes x 100 + types */
+  weight: number;
+  declText: string;
+}
+
+/**
+ * A client's own link colour (Gmail web's #15c), as the rule it is. Measured
+ * in real Gmail web (emailens fidelity bench, 2026-11-09): it beat an email's
+ * `a{color}` (0,0,1) and lost to `.logo a{color}` (0,1,1), so it weighs just
+ * under one class and one type. A bare `mailto:` loses its target in Gmail,
+ * and the rule misses it; `#` keeps it.
+ * ponytail: the weight is bracketed by those two observations, not known.
+ */
+function linkRule(color: string): InlineRule {
+  return { selector: 'a[href]:not([href="mailto:"])', weight: 100.5, declText: `color: ${color}` };
+}
+
 /**
  * A selector's CSS specificity as one sortable number: ids, then classes and
  * attributes, then types. Pseudo-classes and pseudo-elements never reach it:
@@ -122,20 +141,21 @@ function specificity(selector: csstree.CssNode): number {
 /**
  * `keepFontFace` is false for a client that ignores @font-face (Gmail): its
  * preview must not load a web font the real inbox never shows.
+ * `clientRules` are the client's own stylesheet, cascaded with the email's.
  */
-
-function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true): string {
+function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true, clientRules: InlineRule[] = []): string {
   const styleBlocks: string[] = [];
   $("style").each((_, el) => {
     styleBlocks.push($(el).text());
   });
 
-  if (styleBlocks.length === 0) return "";
+  if (styleBlocks.length === 0 && clientRules.length === 0) return "";
 
   const preserved: string[] = [];
   const inlined = new WeakMap<object, Inlined>();
   // One entry per selector of each rule: applied by weight, then source order.
-  const rules: { selector: string; weight: number; declText: string }[] = [];
+  // The client's rules come first, so the email wins a tie.
+  const rules: InlineRule[] = [...clientRules];
 
   for (const block of styleBlocks) {
     let ast: csstree.CssNode;
@@ -635,8 +655,8 @@ const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES, "flex", "flex-
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   "gmail-web": {
     id: "gmail-web",
-    // `.ii a[href]{color:#15c}`: 324 of 458 links with no inline colour came
-    // out #15c in real Gmail web (emailens fidelity bench, 2026-11-09).
+    // 324 of 458 links with no inline colour came out #15c in real Gmail web
+    // (emailens fidelity bench, 2026-11-09); its weight: see linkRule().
     linkColor: "#15c",
     // caniemail's set. A 2026-10-14 render said Gmail web kept box-shadow,
     // text-shadow, visibility, animation, gap and grid; caniemail's own tests in
@@ -1276,30 +1296,11 @@ function applyTransformDom(
 
   // 1b. Inline + strip <style> if needed
   if (config.inlineAndStripStyles) {
-    // Links the author did not colour inline; the client's own link rule
-    // outranks the email's sheet rules once they are inlined.
-    // ponytail: specificity is not compared (an email rule as heavy as the
-    // client's would win in the client), nor a colour from a kept @media rule.
-    // Only a link with a usable target: Gmail drops `#` or a bare `mailto:`,
-    // and then its a[href] rule misses (colorlib-07, derekpunsalan-simple).
-    // ponytail: "usable" is a scheme with something after it; a relative
-    // path is unobserved and treated as unusable.
-    const linkColor = config.linkColor;
-    const uncolored = linkColor
-      ? $("a[href]")
-          .filter(
-            (_, el) =>
-              /^(https?:\/\/|mailto:[^?]+|tel:.)/i.test($(el).attr("href")?.trim() ?? "") &&
-              !/(^|;)\s*color\s*:/i.test($(el).attr("style") ?? ""),
-          )
-          .toArray()
-      : [];
-    const preserved = inlineStyles($, CSS_SUPPORT["@font-face"]?.[clientId] !== "unsupported");
-    for (const el of uncolored) {
-      const style = $(el).attr("style") ?? "";
-      if (/(^|;)\s*color\s*:[^;]*!important/i.test(style)) continue;
-      $(el).attr("style", serializeStyle(cascade(cascade(new Map(), style), `color: ${linkColor}`)));
-    }
+    const preserved = inlineStyles(
+      $,
+      CSS_SUPPORT["@font-face"]?.[clientId] !== "unsupported",
+      config.linkColor ? [linkRule(config.linkColor)] : [],
+    );
     $("style").remove();
     if (preserved.trim()) {
       const head = $("head");
