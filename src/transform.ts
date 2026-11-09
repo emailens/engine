@@ -938,17 +938,23 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
  * analysis cannot tell two stories (transform-agrees-with-data.test.ts).
  */
 const PLAIN_PROPERTY = /^[a-z][a-z-]*$/;
-for (const [property, byClient] of Object.entries(OBSERVED_OVERRIDES)) {
-  if (!PLAIN_PROPERTY.test(property)) continue;
-  for (const [clientId, o] of Object.entries(byClient)) {
-    const config = CLIENT_CONFIGS[clientId];
-    if (!config || o.level === "partial") continue;
-    const strip = new Set(config.strippedProperties);
-    if (o.level === "unsupported") strip.add(property);
-    else strip.delete(property);
-    config.strippedProperties = strip;
+export function applyObservations(
+  observations: typeof OBSERVED_OVERRIDES,
+  configs: Record<string, { strippedProperties: Set<string> }>,
+): void {
+  for (const [property, byClient] of Object.entries(observations)) {
+    if (!PLAIN_PROPERTY.test(property)) continue;
+    for (const [clientId, o] of Object.entries(byClient)) {
+      const config = configs[clientId];
+      if (!config || o.level === "partial") continue;
+      const strip = new Set(config.strippedProperties);
+      if (o.level === "unsupported") strip.add(property);
+      else strip.delete(property);
+      config.strippedProperties = strip;
+    }
   }
 }
+applyObservations(OBSERVED_OVERRIDES, CLIENT_CONFIGS);
 
 /** A text-decoration value that is only line keywords (`underline`, `none`...). */
 const TEXT_DECORATION_LINE = /^(?:none|underline|overline|line-through|blink)(?:\s+(?:underline|overline|line-through|blink))*\s*(?:!important)?$/i;

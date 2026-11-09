@@ -15,7 +15,7 @@
 import { describe, expect, test } from "bun:test";
 import { CSS_SUPPORT } from "../rules/css-support";
 import { OBSERVED_OVERRIDES } from "../rules/observed-overrides";
-import { transformForClient } from "../transform";
+import { applyObservations, transformForClient } from "../transform";
 
 const PROPERTY = /^[a-z][a-z-]*$/;
 // Kept means some declaration survived on the element: a logical property
@@ -52,6 +52,18 @@ describe("the preview follows every real-device observation", () => {
       .filter((v) => v.level === "supported" && !kept(v.property, v.client))
       .map((v) => `${v.client}: ${v.property}`);
     expect(wrong).toEqual([]);
+  });
+  test("a partial verdict, or a client the preview lacks, changes nothing", () => {
+    const configs = { gmail: { strippedProperties: new Set(["gap"]) } };
+    const seen = (level: string) => ({ level, date: "", source: "", note: "" });
+    applyObservations(
+      {
+        gap: { gmail: seen("partial") },
+        color: { "no-such-client": seen("unsupported") },
+      } as unknown as typeof OBSERVED_OVERRIDES,
+      configs,
+    );
+    expect([...configs.gmail.strippedProperties]).toEqual(["gap"]);
   });
   test("the support data carries every observation (sync was run)", () => {
     const stale = observed
