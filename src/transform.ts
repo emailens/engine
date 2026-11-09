@@ -16,6 +16,7 @@ import { applyMsoHide, resolveMsoBranch, vmlToCss } from "./vml-render";
 import { applyWordBoxModel, prepareWordSource } from "./word-layout";
 import { MAX_HTML_SIZE } from "./constants";
 import { shouldPreserveSelector, applyTargetingSimulation } from "./rules/targeting-matchers";
+import { OBSERVED_OVERRIDES } from "./rules/observed-overrides";
 
 // =============================================================================
 // Shared helpers
@@ -575,13 +576,18 @@ function superhumanAdditionalChecks(
 
 const EMPTY_SET: Set<string> = new Set();
 const OUTLOOK_WEB_STRIPPED = new Set(["position", "transform", "animation", "transition"]);
-const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition", "opacity"]);
+// No opacity: the worker probes (2026-11-08, sheets 20-22) and the fidelity
+// bench's DOM judge (2026-11-09) saw Yahoo web and Android apply it, as
+// caniemail says. Yahoo iOS is unmeasured and keeps the old strip
+// (YAHOO_IOS_STRIPPED, grandfathered in engine.test.ts).
+const YAHOO_STRIPPED = new Set(["position", "box-shadow", "transform", "animation", "transition"]);
+const YAHOO_IOS_STRIPPED = new Set([...YAHOO_STRIPPED, "opacity"]);
 // Real Yahoo Mail webmail drew a box-shadow (2026-10-14). The apps are unobserved.
 // It drops the flex item sizing (`flex`, `flex-basis`) and keeps display:flex
 // and width: a 34% label column collapsed to a letter wide (2026-10-27,
-// scripts/observed-overrides.ts).
+// src/rules/observed-overrides.ts).
 const YAHOO_WEB_STRIPPED = new Set([
-  ...[...YAHOO_STRIPPED].filter((p) => p !== "box-shadow"),
+  ...YAHOO_STRIPPED,
   "flex",
   "flex-basis",
   // A width:100% + padding + border-box CTA came out 566px in a 534px column
@@ -590,7 +596,7 @@ const YAHOO_WEB_STRIPPED = new Set([
 ]);
 
 // Real Gmail web drops the same flex item sizing (2026-10-28,
-// scripts/observed-overrides.ts). The apps are unobserved.
+// src/rules/observed-overrides.ts). The apps are unobserved.
 const GMAIL_WEB_STRIPPED = new Set([...GMAIL_STRIPPED_PROPERTIES, "flex", "flex-basis"]);
 
 const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
@@ -832,7 +838,7 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
   },
   "yahoo-mail-ios": {
     id: "yahoo-mail-ios",
-    strippedProperties: YAHOO_STRIPPED,
+    strippedProperties: YAHOO_IOS_STRIPPED,
     stripMode: "strip",
     inlineAndStripStyles: false,
     stripExternalStylesheets: false,
@@ -924,6 +930,25 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     additionalChecks: superhumanAdditionalChecks,
   },
 };
+
+/**
+ * A real device's verdict on a plain property wins over the strip sets
+ * above: observed "unsupported" is stripped, observed "supported" never is.
+ * The same records feed CSS_SUPPORT through the sync, so the preview and the
+ * analysis cannot tell two stories (transform-agrees-with-data.test.ts).
+ */
+const PLAIN_PROPERTY = /^[a-z][a-z-]*$/;
+for (const [property, byClient] of Object.entries(OBSERVED_OVERRIDES)) {
+  if (!PLAIN_PROPERTY.test(property)) continue;
+  for (const [clientId, o] of Object.entries(byClient)) {
+    const config = CLIENT_CONFIGS[clientId];
+    if (!config || o.level === "partial") continue;
+    const strip = new Set(config.strippedProperties);
+    if (o.level === "unsupported") strip.add(property);
+    else strip.delete(property);
+    config.strippedProperties = strip;
+  }
+}
 
 /** A text-decoration value that is only line keywords (`underline`, `none`...). */
 const TEXT_DECORATION_LINE = /^(?:none|underline|overline|line-through|blink)(?:\s+(?:underline|overline|line-through|blink))*\s*(?:!important)?$/i;

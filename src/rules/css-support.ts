@@ -2,7 +2,7 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix, auto-generated from caniemail.com.
- * Last synced: 2026-11-08
+ * Last synced: 2026-11-09
  * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
  * 300 features and 14 image formats across 21 email clients.
@@ -18,7 +18,7 @@ import type { SupportLevel } from "../types";
  * - hey-mail: caniemail.com (WebKit-based)
  * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)
  * - Observed overrides: cells a real-device screenshot contradicted, dated and
- *   sourced in scripts/observed-overrides.ts; each carries an "Observed" note
+ *   sourced in src/rules/observed-overrides.ts; each carries an "Observed" note
  *
  * A client we ship as one entry although caniemail tests it on several
  * platforms (Proton Mail, AOL, Thunderbird) is graded on its worst
@@ -2273,7 +2273,7 @@ const CSS_SUPPORT_TABLE = {
     "outlook-macos": "supported",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
-    "yahoo-mail": "supported",
+    "yahoo-mail": "unsupported",
     "yahoo-mail-android": "supported",
     "yahoo-mail-ios": "supported",
     "samsung-mail": "supported",
@@ -5236,7 +5236,7 @@ const CSS_SUPPORT_TABLE = {
     "outlook-windows": "unsupported",
     "outlook-windows-legacy": "unsupported",
     "outlook-ios": "unsupported",
-    "outlook-android": "unsupported",
+    "outlook-android": "supported",
     "outlook-macos": "unsupported",
     "apple-mail-macos": "supported",
     "apple-mail-ios": "supported",
@@ -7367,7 +7367,7 @@ export const CSS_SUPPORT_NOTES: Record<
     "gmail-android": ["Partial. Not supported with non Google accounts. But it can be used in the `background` shorthand property instead."],
     "gmail-ios": ["Partial. Not supported with non Google accounts. But it can be used in the `background` shorthand property instead."],
     "outlook-windows-legacy": ["Background images size can be used in VML with the `size` attribute. See [VML documentation](https://docs.microsoft.com/en-us/windows/win32/vml/size-attribute--fill--vml)."],
-    "yahoo-mail": ["Partial. Does not support multiple values. The comma between two values is removed."],
+    "yahoo-mail": ["Observed 2026-10-28 (Emailens real-device check, Yahoo Mail web (Chrome), foodpanda campaign): Background images drew at their natural size: background-size was ignored, alone and inside the background shorthand."],
     "yahoo-mail-android": ["Partial. Does not support multiple values. The comma between two values is removed."],
     "yahoo-mail-ios": ["Partial. Does not support multiple values. The comma between two values is removed."],
     "aol": ["Partial. Does not support multiple values. The comma between two values is removed."],
@@ -7850,6 +7850,7 @@ export const CSS_SUPPORT_NOTES: Record<
   },
   "text-shadow": {
     "outlook-web": ["Observed 2026-10-14 (Emailens real-device probe, Outlook.com (Chrome)): A red text-shadow rendered behind bold text."],
+    "outlook-android": ["Observed 2026-11-08 (Emailens probe sheets 20-22, the Outlook Android app, our own seed inbox): A green text-shadow drew behind the text."],
     "yahoo-mail": ["Observed 2026-11-08 (Emailens probe sheets 20-22, Yahoo Mail web (Chrome), our own seed inbox): A green text-shadow did not draw; the text rendered plain."],
     "yahoo-mail-android": ["Observed 2026-11-08 (Emailens probe sheets 20-22, the Yahoo Mail Android app, our own seed inbox): A green text-shadow did not draw; the text rendered plain."],
   },

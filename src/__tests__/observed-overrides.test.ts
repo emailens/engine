@@ -5,7 +5,7 @@ import { CSS_SUPPORT, CSS_SUPPORT_NOTES, transformForClient } from "../index";
  * Each expectation is what a real client showed on 2026-10-14, when the
  * Emailens probe sheets (one feature per row) were screenshotted in 40+ real
  * clients. Where caniemail disagreed, the screenshot wins; see
- * scripts/observed-overrides.ts.
+ * src/rules/observed-overrides.ts.
  */
 const run = (clientId: string, body: string, head = "") =>
   transformForClient(`<html><head>${head}</head><body>${body}</body></html>`, clientId).html;

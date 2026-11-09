@@ -11,7 +11,7 @@
  */
 
 import { SUPERHUMAN_OVERRIDES, SUPERHUMAN_NOTES } from "./superhuman-overrides";
-import { OBSERVED_OVERRIDES, observationNote } from "./observed-overrides";
+import { OBSERVED_OVERRIDES, observationNote } from "../src/rules/observed-overrides";
 import {
   GMAIL_STRIPPED_PROPERTIES,
   GRACEFUL_FEATURES,
@@ -809,7 +809,7 @@ function generateTsFile(
   lines.push(` * - hey-mail: caniemail.com (WebKit-based)`);
   lines.push(` * - superhuman: Manual overrides (Chromium/Blink-based, best-effort estimates)`);
   lines.push(` * - Observed overrides: cells a real-device screenshot contradicted, dated and`);
-  lines.push(` *   sourced in scripts/observed-overrides.ts; each carries an "Observed" note`);
+  lines.push(` *   sourced in src/rules/observed-overrides.ts; each carries an "Observed" note`);
   lines.push(` *`);
   lines.push(` * A client we ship as one entry although caniemail tests it on several`);
   lines.push(` * platforms (Proton Mail, AOL, Thunderbird) is graded on its worst`);

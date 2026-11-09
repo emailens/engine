@@ -417,9 +417,9 @@ describe("transform strip-sets stay consistent with CSS_SUPPORT", () => {
   // overrides caniemail; changing them is a downstream-visible behaviour change
   // (see showcase-transforms in the SaaS), so they're grandfathered here rather
   // than silently "fixed". Remove an entry only alongside the config change.
+  // Yahoo web and Android opacity left this list on 2026-11-09: measured
+  // applied (worker probes 2026-11-08, fidelity bench DOM judge 2026-11-09).
   const ACCEPTED_STRIP_DIVERGENCES = new Set([
-    "yahoo-mail|opacity",
-    "yahoo-mail-android|opacity",
     "yahoo-mail-ios|opacity",
     "hey-mail|transform",
     "hey-mail|animation",

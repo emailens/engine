@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The preview now follows every real-device observation on a plain property:
+  observed "unsupported" is stripped, observed "supported" never is. 0.18.21
+  marked `visibility` (Yahoo Mail web and Android, Outlook Android) and
+  `text-shadow` (both Yahoo) unsupported in the support data, but the preview
+  still drew them. A new test fails whenever the preview, the observations
+  and the support data disagree.
+- Yahoo Mail web and Yahoo Mail Android previews keep `opacity`. The worker
+  probe sheets (2026-11-08) and the DOM of a real campaign in Yahoo web
+  (2026-11-09) both show it applied, as caniemail says. Yahoo Mail iOS is
+  unmeasured and keeps the old strip.
+
+### Changed
+
+- Support data from real clients: `background-size` is unsupported in Yahoo
+  Mail web (real campaign, 2026-10-28: images drew at their natural size,
+  alone and in the shorthand); caniemail lists it as partial. `text-shadow`
+  is supported in Outlook Android (probe sheet 22, 2026-11-08: the shadow
+  drew); caniemail lists it as unsupported.
+- The observations moved from `scripts/observed-overrides.ts` to
+  `src/rules/observed-overrides.ts`, since the preview reads them now.
+
 ## 0.18.21 - 2026-11-09
 
 ### Changed

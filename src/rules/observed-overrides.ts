@@ -14,7 +14,7 @@
  * Probes: emailens.dev apps/app/fidelity/out/acq-probes.ts, screenshots in
  * apps/app/fidelity/out/acq-v2 (run 2026-10-14).
  */
-import type { SupportLevel } from "../src/types";
+import type { SupportLevel } from "../types";
 
 export interface Observation {
   level: SupportLevel;
@@ -157,6 +157,23 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
       "Emailens real-device probe, Outlook.com (Chrome)",
       "A red text-shadow rendered behind bold text.",
     ),
+    "outlook-android": worker(
+      "supported",
+      "the Outlook Android app",
+      "A green text-shadow drew behind the text.",
+    ),
+  },
+  // foodpanda's logos and coupon on real Yahoo Mail web (2026-10-28): drawn
+  // at their natural size, background-size ignored alone and in the
+  // shorthand (yahoo-background-size.test.ts). Seen again in its DOM on
+  // 2026-11-09 (fidelity bench).
+  "background-size": {
+    "yahoo-mail": {
+      level: "unsupported",
+      observed: "2026-10-28",
+      source: "Emailens real-device check, Yahoo Mail web (Chrome), foodpanda campaign",
+      note: "Background images drew at their natural size: background-size was ignored, alone and inside the background shorthand.",
+    },
   },
   "text-decoration": {
     "apple-mail-macos": seen(

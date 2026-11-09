@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { analyzeEmail, transformForClient } from "../index";
 
-// Real Yahoo Mail web, 2026-10-27 (scripts/observed-overrides.ts): flex item
+// Real Yahoo Mail web, 2026-10-27 (src/rules/observed-overrides.ts): flex item
 // sizing is dropped, display:flex and width are kept.
 const html = `<div style="display:flex;"><div style="flex:0 0 34%;">Focus Mode</div><div style="flex-basis:66%;width:66%;">Body</div></div>`;
 
