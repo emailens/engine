@@ -25,6 +25,10 @@
   `a{color}`, which it beat, and `.logo a{color}`, which beat it; an inline
   colour or `!important` wins as in any cascade. A bare `mailto:` loses its
   target in Gmail and keeps the email's colour; `#` does not.
+- Gmail's colour also loses to the email's own Gmail-targeting rules where
+  they outweigh it (`u + .body a{color:inherit}`, 0,1,2), as in a real
+  Claude email. The wrapper Gmail builds around the body is now simulated
+  before inlining, so the cascade sees what those rules match.
 
 ### Changed
 

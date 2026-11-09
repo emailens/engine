@@ -106,6 +106,15 @@ interface InlineRule {
   /** specificity(): ids x 10000 + classes x 100 + types */
   weight: number;
   declText: string;
+  /** The client's own rule, not the email's. */
+  client?: true;
+}
+
+/** Whether two declaration lists set a property in common. */
+function sameProperty(a: string, b: string): boolean {
+  const props = (d: string) => d.split(";").map((p) => p.split(":")[0].trim().toLowerCase());
+  const mine = new Set(props(b));
+  return props(a).some((p) => p && mine.has(p));
 }
 
 /**
@@ -117,7 +126,7 @@ interface InlineRule {
  * ponytail: the weight is bracketed by those two observations, not known.
  */
 function linkRule(color: string): InlineRule {
-  return { selector: 'a[href]:not([href="mailto:"])', weight: 100.5, declText: `color: ${color}` };
+  return { selector: 'a[href]:not([href="mailto:"])', weight: 100.5, declText: `color: ${color}`, client: true };
 }
 
 /**
@@ -156,6 +165,8 @@ function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true, clientRules: I
   // One entry per selector of each rule: applied by weight, then source order.
   // The client's rules come first, so the email wins a tie.
   const rules: InlineRule[] = [...clientRules];
+  // The email's rules kept as rules (client targeting such as `u + .body a`).
+  const kept: InlineRule[] = [];
 
   for (const block of styleBlocks) {
     let ast: csstree.CssNode;
@@ -205,6 +216,11 @@ function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true, clientRules: I
 
         if (hasPseudoSelector(selectorText) || isClientTargeting) {
           preserved.push(csstree.generate(node));
+          // Kept as a rule, it still outweighs the client's own (below).
+          if (!hasPseudoSelector(selectorText))
+            node.prelude.children.forEach((selector) => {
+              kept.push({ selector: csstree.generate(selector), weight: specificity(selector), declText });
+            });
           return;
         }
 
@@ -216,9 +232,13 @@ function inlineStyles($: cheerio.CheerioAPI, keepFontFace = true, clientRules: I
   }
 
   // Array.prototype.sort is stable: equal weights keep source order.
-  for (const { selector, declText } of rules.sort((a, b) => a.weight - b.weight)) {
+  for (const { selector, declText, weight, client } of rules.sort((a, b) => a.weight - b.weight)) {
     try {
       $(selector).each((_, el) => {
+        // Inlined, the client's rule would outrank the email's kept rules;
+        // in the client a heavier one setting the same property wins.
+        if (client && kept.some((k) => k.weight > weight && sameProperty(k.declText, declText) && $(el).is(k.selector)))
+          return;
         let state = inlined.get(el);
         if (!state) {
           state = { author: cascade(new Map(), $(el).attr("style") || ""), sheet: new Map() };
@@ -1294,6 +1314,11 @@ function applyTransformDom(
     warnings.push(...config.additionalChecks($, clientId, html, framework));
   }
 
+  // The structure a client builds around the email (Gmail's `<u></u><div
+  // class=body>`), before inlining: the cascade below must see what the
+  // email's targeting rules will match in the client.
+  applyTargetingSimulation($, clientId);
+
   // 1b. Inline + strip <style> if needed
   if (config.inlineAndStripStyles) {
     const preserved = inlineStyles(
@@ -1549,8 +1574,6 @@ function applyTransformDom(
   // Word honours several properties on some elements only. After the strip
   // pass, so it sees what that pass left.
   if (isWordEngineClient(clientId)) applyWordBoxModel($);
-
-  applyTargetingSimulation($, clientId);
 
   return { clientId, html: $.html(), warnings };
 }
