@@ -61,6 +61,25 @@ way. The Node-only parts live in subpaths: `@emailens/engine/compile` (React
 Email, MJML and Maizzle compilers) and `@emailens/engine/server` (DNS and
 SpamAssassin checks).
 
+### Does it still look like the design?
+
+A score counts the code a client supports. `@emailens/engine/design` judges
+the render: give it two DOM dumps (the email as designed and as a client drew
+it) and it says whether the client kept, changed or broke the design, and why
+in plain words. It also finds image links that are dead for every reader. You
+supply the render and the network; it supplies the rule.
+
+```typescript
+import { deadImages, explainDesign, keptOf, renderScores, verdictOf } from "@emailens/engine/design";
+
+const kept = keptOf(designNodes, clientNodes);
+const verdict = verdictOf(kept, pixelDiff); // "kept" | "changed" | "broken"
+explainDesign({ verdict, kept }, "Outlook").sentence;
+
+const dead = await deadImages(html, yourSafeFetcher); // refuse private IPs
+renderScores(engineScores, { "outlook-windows-legacy": verdict }, dead.length);
+```
+
 ## What It Catches
 
 - **CSS compatibility** across 21 clients
