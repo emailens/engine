@@ -164,15 +164,15 @@ export const OBSERVED_OVERRIDES: Record<string, Record<string, Observation>> = {
     ),
   },
   // foodpanda's logos and coupon on real Yahoo Mail web (2026-10-28): drawn
-  // at their natural size, background-size ignored alone and in the
-  // shorthand (yahoo-background-size.test.ts). Seen again in its DOM on
-  // 2026-11-09 (fidelity bench).
+  // at their natural size, the size written inside the `background` shorthand
+  // ignored (yahoo-background-size.test.ts). Written on its own it holds:
+  // AliExpress's 29 product photos drew fitted (fidelity bench, 2026-11-09).
   "background-size": {
     "yahoo-mail": {
-      level: "unsupported",
-      observed: "2026-10-28",
-      source: "Emailens real-device check, Yahoo Mail web (Chrome), foodpanda campaign",
-      note: "Background images drew at their natural size: background-size was ignored, alone and inside the background shorthand.",
+      level: "partial",
+      observed: "2026-11-09",
+      source: "Emailens real-device checks, Yahoo Mail web (Chrome): foodpanda campaign (2026-10-28), AliExpress (2026-11-09)",
+      note: "Partial. Ignored inside the background shorthand (`background: url() 0 0 / cover`): the image draws at its natural size. The background-size property written on its own works.",
     },
   },
   "text-decoration": {

@@ -894,7 +894,9 @@ const CLIENT_CONFIGS: Record<string, ClientTransformConfig> = {
     dropValues: /radial-gradient\(/i,
     // Real Yahoo web drew foodpanda's `url(...) center / cover` logos at their
     // 236px and its `0% 0% / 100% 100%` coupon at the picture's own size,
-    // cropped to the cell (emailens agreement run, 2026-10-28).
+    // cropped to the cell (emailens agreement run, 2026-10-28): the size inside
+    // the shorthand is ignored. Written on its own it holds (AliExpress,
+    // fidelity bench 2026-11-09).
     dropBackgroundSize: true,
     // A <style> with a comma-separated media query list is dropped whole: a
     // probe on real Yahoo web lost the block for `screen and
@@ -1491,12 +1493,12 @@ function applyTransformDom(
   if (config.dropBackgroundSize) {
     // url(...) first, so a path like /600/400.jpg is never read as a size.
     const SIZE = /url\([^)]*\)|\s*\/\s*(?:cover|contain|auto|[\d.]+(?:px|%|em|rem|vw|vh)?)(?:\s+(?:auto|[\d.]+(?:px|%|em|rem|vw|vh)?))?/gi;
+    // Only the shorthand's size: background-size on its own holds (AliExpress,
+    // 29 photos fitted in real Yahoo web, fidelity bench 2026-11-09).
     const unsize = (css: string) =>
-      css
-        .replace(/(^|[;{\s])background-size\s*:[^;}]*;?/gi, "$1")
-        .replace(/(background\s*:[^;}]*)/gi, (decl) =>
-          decl.replace(SIZE, (m) => (m.startsWith("url(") ? m : "")),
-        );
+      css.replace(/(background\s*:[^;}]*)/gi, (decl) =>
+        decl.replace(SIZE, (m) => (m.startsWith("url(") ? m : "")),
+      );
     let dropped = false;
     $("[style]").each((_, el) => {
       const style = $(el).attr("style") || "";
