@@ -1,9 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.18.22
 
 ### Fixed
 
+- Yahoo Mail web keeps `background-size` written on its own. The preview
+  stripped every `background-size`, so photos sized `cover` or `100% 100%`
+  drew at their own size, zoomed and cropped; real Yahoo web drew a real
+  AliExpress campaign's 29 inline-sized product photos fitted (emailens
+  fidelity bench, 2026-11-09). Only the size inside the `background`
+  shorthand (`url() 0 0 / cover`) is ignored, as the 2026-10-28 foodpanda
+  campaign showed and caniemail lists.
+- The new Outlook for Windows loads no web fonts: `@font-face` and `@import`
+  are dropped and external stylesheets stripped, as for Outlook for Mac. A
+  real `@import` of Nunito Sans drew Arial in the new Outlook (2026-11-09);
+  caniemail marks both unsupported there.
 - Gmail's `<u></u><div>` wrapper is built when the email's CSS is minified
   (`...}u+.body h1{...}`): since the simulation moved before inlining it saw
   minified text and missed the rule, so a Gmail-only heading size (calendly,
@@ -36,13 +47,19 @@
 
 ### Changed
 
-- Support data from real clients: `background-size` is unsupported in Yahoo
-  Mail web (real campaign, 2026-10-28: images drew at their natural size,
-  alone and in the shorthand); caniemail lists it as partial. `text-shadow`
+- Support data from real clients: `background-size` is partial in Yahoo
+  Mail web (ignored inside the `background` shorthand, works on its own:
+  real campaigns 2026-10-28 and 2026-11-09), as caniemail lists. `text-shadow`
   is supported in Outlook Android (probe sheet 22, 2026-11-08: the shadow
   drew); caniemail lists it as unsupported.
 - The observations moved from `scripts/observed-overrides.ts` to
   `src/rules/observed-overrides.ts`, since the preview reads them now.
+- The new Outlook for Windows applies `@media` width queries at its window
+  width (766 CSS px on our worker), not the reading pane's (620). New client
+  setting `mediaWidth`: a pure width query false at that width is dropped,
+  one true is unwrapped; queries with other features are left alone. None of
+  27 real emails with a max-width query firing at 620 drew its mobile layout
+  in the real client; the preview drew all 27 mobile.
 
 ## 0.18.21 - 2026-11-09
 
