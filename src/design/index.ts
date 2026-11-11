@@ -1,9 +1,16 @@
 // Whether an email still looks like its design once a client has drawn it,
 // and whether its images load: the rule the Emailens app scores by
 // (score-from-render). The caller supplies the browser and the network (an
-// image fetcher); this builds the two pages to draw (the client's live
+// image fetcher), or lets ./check.ts open one; this builds the two pages to draw (the client's live
 // preview and the design itself) and the functions that read them.
 
+export {
+  checkDesign,
+  checkDesignAcross,
+  type DesignResult,
+  openBrowser,
+  VERDICT_LABEL,
+} from "./check";
 export { type DomNode, dumpDom, markPictures, matchNodes, sameValue } from "./dom";
 export { type Explained, explainDesign } from "./explain";
 export { deadImages, type ImageAnswer, type ImageFetcher, imageUrls } from "./images";
