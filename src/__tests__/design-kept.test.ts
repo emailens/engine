@@ -603,10 +603,10 @@ describe("verdictOf", () => {
         verdictOf({ ...whole, components: [wrong("Go", kind)] }, 0.01),
       ).toBe("changed");
   });
-  // The owner, 2026-11-11, on Skeyon's CTA in Outlook Classic: squared,
-  // padding gone, flush to the card edge. Each under its line, together a
-  // button a strict QA client rejects.
-  test("broken when one element is wrong in two ways", () => {
+  // Vercel's "Register now" in Outlook Classic, 2026-11-11: narrower and
+  // squared, still a button that reads. The owner graded 16 of 18 such pairs
+  // changed; breaking them was a relabel, not a look (design-kept.md).
+  test("changed, not broken, when one element is wrong in two ways", () => {
     expect(
       verdictOf(
         {
@@ -615,7 +615,7 @@ describe("verdictOf", () => {
         },
         0.01,
       ),
-    ).toBe("broken");
+    ).toBe("changed");
   });
   test("two elements each wrong in one way only change the email", () => {
     expect(
@@ -636,5 +636,92 @@ describe("verdictOf", () => {
       verdictOf({ ...whole, content: 0.95, columns: 0.9, width: 0.85 }, 0.0249),
     ).toBe("kept");
     expect(verdictOf(whole, 0.025)).toBe("changed");
+  });
+});
+
+// Skeyon in Outlook Classic (2026-11-11): the orange button keeps its own
+// padding but loses its 24px inset, flush to the white card's edge while the
+// text above stays inset. The owner graded it broken.
+describe("keptOf: a button flush to its card", () => {
+  const white = { "background-color": "rgb(255, 255, 255)" };
+  const orange = { "background-color": "rgb(234, 88, 12)" };
+  const email = (cellX: number, introX = 24) => [
+    node("", { tag: "table", x: 0, y: 0, w: 600, h: 400 }, white),
+    node("Intro", { x: introX, y: 20, w: 600 - 2 * introX }),
+    node("", { x: cellX, y: 200, w: 140, h: 44 }, orange),
+    node(
+      "Go",
+      { tag: "a", x: cellX + 22, y: 212, w: 96, h: 20 },
+      { display: "inline-block" },
+    ),
+  ];
+  const flush = (d: number, c: number, introX = 24) =>
+    keptOf(email(d), email(c, introX)).components.filter(
+      (x) => x.kind === "flush",
+    );
+
+  test("inset in the design, at the card's edge in the client: breaks", () => {
+    expect(flush(24, 2)).toEqual([
+      {
+        text: "Go",
+        kind: "flush",
+        design: "24px",
+        client: "2px",
+        breaks: true,
+      },
+    ]);
+  });
+  // Protocol in Outlook Classic: the card lost its padding, text and button
+  // flush together. Graded broken by the owner.
+  test("the whole card flush together: broken too", () => {
+    expect(flush(24, 0, 0)[0]?.breaks).toBe(true);
+  });
+  test("still clear of the edge: not flush", () => {
+    expect(flush(24, 12)).toEqual([]);
+  });
+  test("full-bleed in the design too: not flush", () => {
+    expect(flush(0, 0)).toEqual([]);
+  });
+});
+
+// Vercel's "Register now" in Outlook Classic (2026-11-11): the link lost its
+// padding and corners, but the dark box around it kept 138x48 and its
+// rounding. A reader sees that box: no "43% too narrow".
+describe("keptOf: a button is its painted box, not its link", () => {
+  const white = { "background-color": "rgb(255, 255, 255)" };
+  const dark = { "background-color": "rgb(23, 23, 23)" };
+  const card = node("", { tag: "table", x: 0, y: 0, w: 600, h: 400 }, white);
+  const intro = node("Intro", { x: 24, y: 20, w: 552 });
+  const design = [
+    card,
+    intro,
+    node(
+      "Register now",
+      { tag: "a", x: 24, y: 200, w: 138, h: 48 },
+      { ...dark, "border-radius": "10px", display: "inline-block" },
+    ),
+  ];
+  const box = (radius: string) =>
+    node(
+      "",
+      { tag: "div", x: 24, y: 200, w: 138, h: 48 },
+      {
+        ...dark,
+        "border-radius": radius,
+      },
+    );
+  const link = node(
+    "Register now",
+    { tag: "a", x: 46, y: 214, w: 93, h: 19 },
+    { ...dark, display: "inline" },
+  );
+  const wrong = (client: DomNode[]) =>
+    keptOf(design, client).components.map((c) => c.kind);
+
+  test("the box kept its size and corners: nothing wrong", () => {
+    expect(wrong([card, intro, box("10.08px"), link])).toEqual([]);
+  });
+  test("the box squared: its corners, not a resize", () => {
+    expect(wrong([card, intro, box("0px"), link])).toEqual(["corners"]);
   });
 });

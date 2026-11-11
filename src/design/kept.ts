@@ -64,7 +64,7 @@ export interface Kept {
 
 export interface Component {
   text: string;
-  kind: "moved" | "resized" | "fill" | "corners";
+  kind: "moved" | "resized" | "fill" | "corners" | "flush";
   design: string;
   client: string;
   /** Far enough off to break the email; nearer, it only changes it. */
@@ -211,6 +211,40 @@ function componentsOf(boxes: Pair[], fd: Frame, fc: Frame, zoom: number) {
   ]);
 }
 
+/**
+ * The box a reader sees as a filled element: the outermost box of its own
+ * colour around it, narrower than half the email, named as the element.
+ * Vercel's link in Outlook Classic shrank to 93px inside a dark 138x48 box
+ * that kept its corners (2026-11-11): the box is the button.
+ */
+function seen(n: DomNode, all: DomNode[], colour: string, f: Frame): DomNode {
+  const box = all
+    .filter(
+      (o) =>
+        drawn(o) &&
+        o.style["background-color"] === colour &&
+        o.w <= f.w / 2 &&
+        holds(o, n),
+    )
+    .reduce((a, o) => (a.w * a.h >= o.w * o.h ? a : o), n);
+  return box === n ? n : { ...box, text: n.text, src: n.src };
+}
+
+/** Each filled text element as its painted box, on both sides. */
+function asSeen(
+  pairs: Pair[],
+  design: DomNode[],
+  client: DomNode[],
+  fd: Frame,
+  fc: Frame,
+): Pair[] {
+  return pairs.map(([d, c]) => {
+    const colour = d.style["background-color"];
+    if (d.tag === "img" || !d.text || CLEAR.test(colour)) return [d, c];
+    return [seen(d, design, colour, fd), seen(c, client, colour, fc)];
+  });
+}
+
 /** Moved or resized: where and how big the client drew a component. */
 function placed(d: DomNode, c: DomNode, fd: Frame, fc: Frame, zoom: number) {
   const out: Component[] = [];
@@ -236,6 +270,77 @@ function placed(d: DomNode, c: DomNode, fd: Frame, fc: Frame, zoom: number) {
       breaks: Math.abs(Math.log(cw / d.w)) > FAR_RESIZED,
     });
   return out;
+}
+
+const holds = (o: DomNode, n: DomNode) =>
+  o.x <= n.x + 0.5 &&
+  o.y <= n.y + 0.5 &&
+  o.x + o.w >= n.x + n.w - 0.5 &&
+  o.y + o.h >= n.y + n.h - 0.5;
+const smallest = (ns: DomNode[]) =>
+  ns.reduce<DomNode | undefined>(
+    (a, n) => (a && a.w * a.h <= n.w * n.h ? a : n),
+    undefined,
+  );
+
+// Skeyon's button in Outlook Classic (2026-11-11): 24px inside the card in
+// the design, 2px in the client, while the text above kept its inset.
+const [INSET, FLUSH] = [8, 2];
+
+/**
+ * How far a button sits inside its card, across: from its painted box (the
+ * filled boxes holding `n` in one colour, the outermost: Skeyon's link and
+ * its cell are both orange) to the sides of the card around it (the smallest
+ * larger box filled in another colour). Undefined when `n` sits in no
+ * painted box narrower than half the email, or no card holds it.
+ */
+// ponytail: scans the whole dump per text node, O(n^2); a few hundred nodes.
+function insetOf(n: DomNode, all: DomNode[], f: Frame) {
+  const fills = all.filter((o) => drawn(o) && filled(o) && holds(o, n));
+  const colour = smallest(fills)?.style["background-color"];
+  const card = smallest(
+    fills.filter((o) => o.style["background-color"] !== colour),
+  );
+  const paint = fills
+    .filter(
+      (o) =>
+        o.style["background-color"] === colour && (!card || holds(card, o)),
+    )
+    .reduce<DomNode | undefined>(
+      (a, o) => (a && a.w * a.h >= o.w * o.h ? a : o),
+      undefined,
+    );
+  if (!paint || !card || paint.w > f.w / 2) return undefined;
+  return Math.min(paint.x - card.x, card.x + card.w - paint.x - paint.w);
+}
+
+/** Buttons the client pushes against their card's edge: one per label. */
+function flushOf(
+  pairs: Pair[],
+  design: DomNode[],
+  client: DomNode[],
+  fd: Frame,
+  fc: Frame,
+  zoom: number,
+) {
+  const out = new Map<string, Component>();
+  for (const [d, c] of pairs) {
+    if (!d.text || out.has(label(d))) continue;
+    const di = insetOf(d, design, fd);
+    const ci = insetOf(c, client, fc);
+    if (di === undefined || ci === undefined) continue;
+    if (di >= INSET && ci / zoom <= FLUSH)
+      out.set(label(d), {
+        text: label(d),
+        kind: "flush",
+        design: `${Math.round(di)}px`,
+        client: `${Math.round(ci / zoom)}px`,
+        // Also when the whole card's padding goes (Protocol in Outlook
+        // Classic, graded broken by the owner): the text touches the edge too.
+        breaks: true,
+      });
+  }
+  return [...out.values()];
 }
 
 /** A fill dropped or changed, rounded corners squared off. */
@@ -316,7 +421,8 @@ export function keptOf(design: DomNode[], client: DomNode[], zoom = 1): Kept {
     changed: changedOf(kept),
     lost: lost.map(label),
     components: [
-      ...componentsOf(sized, fd, fc, zoom),
+      ...componentsOf(asSeen(sized, design, client, fd, fc), fd, fc, zoom),
+      ...flushOf(kept, design, client, fd, fc, zoom),
       ...pictured(design, client, new Set(pairs.map(([d]) => d))).flatMap(
         ([d, c]) => painted(d, c),
       ),
@@ -340,24 +446,12 @@ const SAME = 0.025;
  * font swap, spacing); broken: content lost, columns stacked, the email blown
  * up or collapsed, or any one component moved or resized far (FAR_MOVED,
  * FAR_RESIZED). A component nearer, or one that only loses its fill or
- * corners, changes the email (graded 2026-11-10). The DOM
+ * corners, changes the email (graded 2026-11-10), even wrong in several of
+ * those ways at once: a narrower, squared button still reads (Vercel in
+ * Outlook Classic; 16 of 18 such pairs graded changed, 2026-11-11). The DOM
  * decides a break: the pixel fit cannot line up a sparse white email
  * (colorlib~10 on Apple Mail iOS, match 0.51, the same design).
  */
-/**
- * One element wrong in two or more ways (moved, resized, unfilled, squared),
- * each under its own line: the owner, 2026-11-11, on Skeyon's CTA in Outlook
- * Classic, squared, its padding gone, flush to the card edge.
- */
-// ponytail: keyed by label, so two copies of one icon count as one element;
-// key by position if that ever flips a verdict.
-const wrongTwoWays = (cs: Component[]) => {
-  const kinds = new Map<string, Set<Component["kind"]>>();
-  for (const c of cs)
-    kinds.set(c.text, (kinds.get(c.text) ?? new Set()).add(c.kind));
-  return [...kinds.values()].some((k) => k.size > 1);
-};
-
 export function verdictOf(
   k: Pick<Kept, "content" | "columns" | "width" | "components" | "changed">,
   /** Share of pixels off, when screenshots were taken. Without them (the
@@ -369,8 +463,7 @@ export function verdictOf(
     k.content < CONTENT ||
     k.columns < COLUMNS ||
     k.width < WIDTH ||
-    k.components.some((c) => c.breaks) ||
-    wrongTwoWays(k.components)
+    k.components.some((c) => c.breaks)
   )
     return "broken";
   const looksSame =
