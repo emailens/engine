@@ -28,6 +28,9 @@ const TABLE = page(
 
 let browser: Awaited<ReturnType<typeof openBrowser>>;
 beforeAll(async () => {
+  // Local Chromium, always: the engine's .env points BROWSERLESS_URL at a
+  // remote instance, whose session timeout closed these runs midway.
+  delete process.env.BROWSERLESS_URL;
   browser = await openBrowser();
 });
 afterAll(async () => {
@@ -58,6 +61,23 @@ describe("checkDesign", () => {
   });
 });
 
+
+describe("the pixel step", () => {
+  // With sharp installed, both pages are shot and compared pixel by pixel,
+  // as the app's server check does: kappa 0.48 against the owner's grades
+  // where the structure alone reaches 0.29.
+  test("a shot pair comes back with its pixel diff", async () => {
+    const r = await checkDesign(browser, TABLE, "apple-mail-macos");
+    expect(r?.diff).toBeNumber();
+    expect(r?.diff).toBeLessThan(0.025);
+    expect(r?.aligned).toBe(true);
+  }, 60_000);
+
+  test("stacked columns differ in pixels too", async () => {
+    const r = await checkDesign(browser, FLEX, "outlook-windows-legacy");
+    expect(r?.diff).toBeGreaterThan(0.025);
+  }, 60_000);
+});
 
 describe("checkDesignAcross", () => {
   test("answers per client, in the order asked", async () => {

@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `@emailens/engine/design` runs the design check in a browser:
+  `checkDesign`, `checkDesignAcross` and `openBrowser`, with the live-preview
+  shell, the page builders and the DOM dump the email page uses.
+  `playwright-core` is an optional peer; a local Chromium or
+  `BROWSERLESS_URL` draws the pages.
+- The pixel line: with `sharp` installed (optional peer) each client's
+  preview and the design are shot at 2x and compared, as the app's server
+  check does, and results carry `diff` and `aligned`. Without it the verdict
+  is structure only. On 95 owner-graded pairs it gives the app's verdict
+  95/95 (kappa 0.47 with pixels, 0.29 without).
+
+### Fixed
+
+- `measureGap` fits at full size last. At half size an odd-width trimmed
+  margin had no grid point to land on, the fit drifted to 0.9975x, and two
+  identical shots read 0.025 different.
+
 ## 0.18.22
 
 ### Fixed
