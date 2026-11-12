@@ -27,8 +27,12 @@ jobs:
       # so a green run means the committed lockfile actually works.
       - run: bun install --frozen-lockfile
 
-      # The design check's tests draw pages in a real browser.
+      # The design check's tests draw pages in a real browser. Liberation
+      # gives Arial a metric-compatible face, as Windows, macOS and our
+      # Browserless have; a bare runner fell back to a wider face and read a
+      # plain table as changed in Apple Mail (diff 0.028).
       - run: bunx playwright-core install --with-deps chromium
+      - run: sudo apt-get install -y fonts-liberation
 
       - run: bun run typecheck
 
