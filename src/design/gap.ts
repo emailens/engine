@@ -295,10 +295,19 @@ export function measureGap(pane: Gray, real: Gray): Gap {
   // pass only searches near the last, so two identical shots of a one-line
   // table settled at 1.0063x (2026-11-12).
   const one = search(sim, real, 1, [1], { x: full.x, y: full.y, r: 3 });
-  const best = one.match > full.match ? one : full;
+  // Of the three placements, the one that leaves the least difference. A
+  // full-size match is noisier: on Proton it preferred 0.9988x to an exact
+  // 1:1 that differed less (0.0354 against 0.0234, fidelity board 2026-11-12).
+  const placed = [fine, full, one]
+    .map((fit) => ({ fit, ...compare(sim, real, fit) }))
+    .reduce((a, b) => (b.diff < a.diff ? b : a));
+  // The match stays the half-size one: ALIGNED was fitted on matches read at
+  // half size, where shrinking averages capture noise away. Read at full size
+  // the same placement scored lower and 8 board pairs fell to "unaligned".
+  const { fit, ...cmp } = placed;
   // Reported for the pane's top-left, as before the trim.
-  const x = Math.round(best.x - left * best.scale);
-  return { ...best, x, ...compare(sim, real, best) };
+  const x = Math.round(fit.x - left * fit.scale);
+  return { ...fit, match: fine.match, x, ...cmp };
 }
 
 type Summary = Pick<DeviceGap, "match" | "scale" | "diff">;
