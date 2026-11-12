@@ -73,6 +73,15 @@ describe("the pixel step", () => {
     expect(r?.aligned).toBe(true);
   }, 60_000);
 
+  // The preview draws Arial with its Arimo stand-in; the design page drew it
+  // with the host's own face: real Arial on Windows read 0.015, Liberation
+  // Sans on a bare Linux runner 0.033 ("changed"). Same faces both sides, so
+  // only the client's changes count, on any machine.
+  test("an email the client keeps reads no difference, whatever the host's fonts", async () => {
+    const r = await checkDesign(browser, TABLE, "apple-mail-macos");
+    expect(r?.diff).toBeLessThan(0.005);
+  }, 60_000);
+
   test("stacked columns differ in pixels too", async () => {
     const r = await checkDesign(browser, FLEX, "outlook-windows-legacy");
     expect(r?.diff).toBeGreaterThan(0.025);

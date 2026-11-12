@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import {
   type Gray,
@@ -83,6 +85,24 @@ describe("measureGap: how a real capture differs from the live preview", () => {
     for (let y = 0; y < 2600; y++)
       pane.data.set(email.data.subarray(y * 345, y * 345 + 345), y * 360 + 7);
     const gap = measureGap(pane, pane);
+    expect(gap.scale).toBe(1);
+    expect(gap.diff).toBeLessThan(0.001);
+  });
+
+  // A one-line table on Apple Mail (design check, 2026-11-12): two identical
+  // 900x66 shots, mostly blank, fit at 1.0063x and read 0.011. The coarse
+  // passes see a flat landscape and each finer one only searches near the
+  // last, so the cascade never got back to 1:1, where a right fit sits.
+  test("a short, mostly blank identical shot still fits 1:1", () => {
+    // The shot itself: our own one-line test email, greyscale at 1 CSS px.
+    const line: Gray = {
+      data: new Uint8Array(
+        readFileSync(join(import.meta.dir, "fixtures/gap-one-line-900x66.gray")),
+      ),
+      width: 900,
+      height: 66,
+    };
+    const gap = measureGap(line, line);
     expect(gap.scale).toBe(1);
     expect(gap.diff).toBeLessThan(0.001);
   });

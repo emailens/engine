@@ -290,9 +290,15 @@ export function measureGap(pane: Gray, real: Gray): Gap {
     range(fine.scale - 0.0025, fine.scale + 0.0025, 0.00125),
     { x: fine.x, y: fine.y, r: 2 },
   );
+  // And 1:1 itself, where a right fit sits (see ALIGNED_AT_1_1): on a short,
+  // mostly blank email the coarse passes see a flat landscape, and each finer
+  // pass only searches near the last, so two identical shots of a one-line
+  // table settled at 1.0063x (2026-11-12).
+  const one = search(sim, real, 1, [1], { x: full.x, y: full.y, r: 3 });
+  const best = one.match > full.match ? one : full;
   // Reported for the pane's top-left, as before the trim.
-  const x = Math.round(full.x - left * full.scale);
-  return { ...full, x, ...compare(sim, real, full) };
+  const x = Math.round(best.x - left * best.scale);
+  return { ...best, x, ...compare(sim, real, best) };
 }
 
 type Summary = Pick<DeviceGap, "match" | "scale" | "diff">;

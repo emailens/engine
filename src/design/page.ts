@@ -12,6 +12,7 @@ import {
   buildShellStyle,
   CLIENT_VIEWPORTS,
   DEFAULT_VIEWPORT,
+  FONT_FACE_STYLE,
   injectStyleIntoHtml,
 } from "./shell";
 
@@ -21,12 +22,17 @@ export const viewOf = (client: string) =>
 /**
  * The design itself: `html` as a plain web page in the frame the sim gave it
  * (`frameWidth`, from frameOf), at the client's window width, and nothing
- * else of the client: no fonts, colours or rewrites. Media queries see the
+ * else of the client: no colours or rewrites. Media queries see the
  * client's window, as in the sim; the email column gets the width the sim
  * laid it out at. Guessing the frame instead failed three ways (2026-11-10):
  * a phone's own width rewrapped a non-responsive email, a widened window
  * un-stacked Cerberus on Gmail Android, and raw HTML read as non-responsive
  * where the client's rewrite did not (Resend on Samsung).
+ *
+ * Fonts: the sim's metric-compatible stand-ins (Arimo for Arial, …), so a
+ * face is drawn the same on both pages and the host's own fonts do not count
+ * as a change (2026-11-12: real Arial read 0.015 on Windows, Liberation Sans
+ * 0.033 on a bare Linux runner, for a table the client keeps).
  *
  * `fits`: the sim fits images to their column there; run releaseImages.
  */
@@ -41,7 +47,7 @@ export function designDoc(html: string, client: string, frameWidth: number) {
   // plain html rule and laid the design out at the phone's width.
   const doc = injectStyleIntoHtml(
     html,
-    `<style>html,body{margin:0!important}:root{box-sizing:border-box!important;width:${frameWidth}px!important;padding:0 ${gutter}!important}${fits ? "img{max-width:100%;height:auto}" : ""}</style>`,
+    `<style>${FONT_FACE_STYLE}html,body{margin:0!important}:root{box-sizing:border-box!important;width:${frameWidth}px!important;padding:0 ${gutter}!important}${fits ? "img{max-width:100%;height:auto}" : ""}</style>`,
   );
   return { doc, fits };
 }

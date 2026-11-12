@@ -140,12 +140,26 @@ export async function openBrowser(): Promise<Browser> {
   ]).finally(() => clearTimeout(timer));
 }
 
-/** A font stand-in, from the cache or fetched once from the app. */
-async function font(name: string): Promise<Buffer | null> {
+let fontWarned = false;
+
+/**
+ * A font stand-in, from the cache or fetched once from the app. One that
+ * cannot be fetched is said once: the page then draws the host's own face and
+ * verdicts drift with it.
+ */
+export async function font(name: string): Promise<Buffer | null> {
   const file = join(FONT_CACHE, name);
   if (existsSync(file)) return readFileSync(file);
   const res = await fetch(FONTS_FROM + name).catch(() => null);
-  if (!res?.ok) return null;
+  if (!res?.ok) {
+    if (!fontWarned)
+      console.warn(
+        `emailens design: could not fetch the stand-in fonts from ${FONTS_FROM} (${res ? `HTTP ${res.status}` : "no connection"}). ` +
+          "Text is drawn in this machine's own fonts, so verdicts may read changes that are not there.",
+      );
+    fontWarned = true;
+    return null;
+  }
   const body = Buffer.from(await res.arrayBuffer());
   mkdirSync(FONT_CACHE, { recursive: true });
   writeFileSync(file, body);
