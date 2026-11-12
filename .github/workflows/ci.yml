@@ -27,6 +27,9 @@ jobs:
       # so a green run means the committed lockfile actually works.
       - run: bun install --frozen-lockfile
 
+      # The design check's tests draw pages in a real browser.
+      - run: bunx playwright-core install --with-deps chromium
+
       - run: bun run typecheck
 
       - run: bun test
