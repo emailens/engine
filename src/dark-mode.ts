@@ -152,18 +152,20 @@ export function simulateDarkMode(
 
     case "apple-mail-macos":
     case "apple-mail-ios":
-      // Apple Mail respects prefers-color-scheme but does NOT force inversion when absent;
-      // it leaves email content as-is (no color changes) unless the email opts in via
-      // <meta name="color-scheme" content="light dark"> or prefers-color-scheme media queries.
-      if (!html.includes("prefers-color-scheme")) {
+      // An email that declares dark support gets its own dark CSS. Any other
+      // email is force-darkened: see appleMailColor.
+      // ponytail: a prefers-color-scheme block without a color-scheme meta is
+      // taken as opting out too; no capture has measured that case yet.
+      if (!DECLARES_DARK.test(html) && !html.includes("prefers-color-scheme")) {
+        applyColorInversion($, "apple-invert-lightness", clientId);
         warnings.push({
           severity: "info",
           client: clientId,
           property: "dark-mode",
           message:
-            "Apple Mail supports @media (prefers-color-scheme: dark). Without it, email content renders unchanged in dark mode.",
+            "Apple Mail force-darkens an email with no color-scheme and no prefers-color-scheme styles: lightness flips and hue holds, so white turns #333333 and black text turns white.",
           suggestion:
-            "Add a @media (prefers-color-scheme: dark) block with inverted colors for the best dark mode experience.",
+            'Add <meta name="color-scheme" content="light dark"> with a @media (prefers-color-scheme: dark) block to choose your own dark colours.',
         });
       }
       break;
@@ -258,6 +260,9 @@ const MEASURED_CANVAS: Record<string, { bg: string; fg: string }> = {
   "outlook-macos": { bg: "#1e1e1e", fg: "#ffffff" },
   // ponytail: fg unmeasured; Word's automatic text is black, which maps here.
   "outlook-windows-legacy": { bg: "#262626", fg: "#f6f6f6" },
+  // Probe sheet 27-dark-grid, 2026-11-12. Unset text is black, which flips to white.
+  "apple-mail-macos": { bg: "#242a2b", fg: "#ffffff" },
+  "apple-mail-ios": { bg: "#000000", fg: "#ffffff" },
 };
 
 const SAMPLED_DARK: Record<string, Record<string, string>> = {
@@ -397,6 +402,33 @@ function outlookClassicColor(value: string): string | null {
   return hex({ r, g, b });
 }
 
+/** An email that opts into dark mode: a color-scheme meta or property naming dark. */
+const DECLARES_DARK =
+  /<meta\b(?=[^>]*\bname\s*=\s*["']?(?:color-scheme|supported-color-schemes)\b)[^>]*\bcontent\s*=\s*["'][^"']*\bdark\b|(?<!prefers-)color-scheme\s*:[^;}"']*\bdark\b/i;
+
+/**
+ * Apple Mail's forced dark mode is WebKit's apple-invert-lightness() colour
+ * filter: in sRGB, c -> 1 - 0.8 c + k.(r, g, b) with k = (-0.030, -0.059,
+ * 0.089) on every channel, then a 180 degree hue turn (each channel becomes
+ * max + min - itself), clamped only at the end. Fitted on 1,682 cells of probe
+ * sheet 27-dark-grid (emailens.dev apps/app/fidelity/probes/dark-grid.ts,
+ * 2026-11-12, Apple Mail on Mac and iPad): on 750 held-out colours 87% are
+ * exact and all are within 1/255. Text and backgrounds take the same rule. A
+ * pure black background is the app's canvas (MEASURED_CANVAS).
+ */
+function appleMailColor(value: string, role: "fg" | "bg", clientId?: string): string | null {
+  const c = parseColor(value);
+  if (!c || c.a === 0) return null;
+  if (role === "bg" && c.r === 0 && c.g === 0 && c.b === 0)
+    return MEASURED_CANVAS[clientId ?? ""]?.bg ?? null;
+  const v = [c.r / 255, c.g / 255, c.b / 255];
+  const shift = -0.03 * v[0] - 0.059 * v[1] + 0.089 * v[2];
+  const m = v.map((x) => 1 - 0.8 * x + shift);
+  const turn = Math.max(...m) + Math.min(...m);
+  const [r, g, b] = m.map((x) => Math.round(255 * Math.min(1, Math.max(0, turn - x))));
+  return hex({ r, g, b });
+}
+
 function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   const parsed = parseColor(value);
   if (!parsed || parsed.a === 0) return null;
@@ -406,12 +438,13 @@ function gmailAndroidColor(value: string, role: "fg" | "bg"): string | null {
   return APP_BACKGROUND.has(hex(parsed)) ? "#121212" : flipLabLightness(parsed);
 }
 
-type InversionMode = "full" | "partial" | "gmail-android" | "outlook-macos" | "outlook-classic";
+type InversionMode = "full" | "partial" | "gmail-android" | "outlook-macos" | "outlook-classic" | "apple-invert-lightness";
 
 function invertColor(value: string, mode: InversionMode, clientId?: string, role: "fg" | "bg" = "bg"): string | null {
   if (mode === "gmail-android") return gmailAndroidColor(value, role);
   if (mode === "outlook-macos") return outlookMacColor(value, role);
   if (mode === "outlook-classic") return outlookClassicColor(value);
+  if (mode === "apple-invert-lightness") return appleMailColor(value, role, clientId);
   const pinned = clientId && SAMPLED_DARK[clientId]?.[value.trim().replace("#", "").toLowerCase()];
   if (pinned) return pinned;
   const parsed = parseColor(value);
