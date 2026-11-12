@@ -166,7 +166,41 @@ export async function font(name: string): Promise<Buffer | null> {
   return body;
 }
 
-async function serve(route: any, doc: string) {
+export type Asset = { status: number; headers: Record<string, string>; body: Buffer } | null;
+type Assets = (url: string, fetchIt: () => Promise<Asset>) => Promise<Asset>;
+
+// An asset not back in this long fails, on both pages alike.
+const ASSET_DEADLINE = 20_000;
+
+/**
+ * Within one check, each asset fetched once: both pages get the same bytes or
+ * the same failure. Fetched per page, a slow image was a race (React Email's
+ * Matte has a 9.2 MB one that takes a minute) and the verdict flipped.
+ */
+export function sharedAssets(deadline = ASSET_DEADLINE): Assets {
+  const seen = new Map<string, Promise<Asset>>();
+  return (url, fetchIt) => {
+    let p = seen.get(url);
+    if (!p) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      p = Promise.race([
+        fetchIt().catch(() => null),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), deadline);
+        }),
+      ]).finally(() => clearTimeout(timer));
+      seen.set(url, p);
+    }
+    return p;
+  };
+}
+
+async function fetchVia(route: any): Promise<Asset> {
+  const res = await route.fetch({ timeout: ASSET_DEADLINE });
+  return { status: res.status(), headers: res.headers(), body: await res.body() };
+}
+
+async function serve(route: any, doc: string, assets: Assets) {
   const url: string = route.request().url();
   if (url === `${APP}/page`)
     return route.fulfill({ contentType: "text/html; charset=utf-8", body: doc });
@@ -180,18 +214,20 @@ async function serve(route: any, doc: string) {
   }
   // The email's own images and stylesheets load: the design depends on them.
   // The browser is the user's own, so only non-web schemes are refused.
-  return /^https?:\/\//i.test(url) ? route.continue() : route.abort();
+  if (!/^https?:\/\//i.test(url)) return route.abort();
+  const asset = await assets(url, () => fetchVia(route));
+  return asset ? route.fulfill(asset) : route.abort();
 }
 
 /** A page of `doc` at `width`, scripts off, loaded with its fonts. */
-async function open(browser: Browser, doc: string, width: number, scale: number) {
+async function open(browser: Browser, doc: string, width: number, scale: number, assets: Assets) {
   const context = await browser.newContext({
     viewport: { width, height: 900 },
     deviceScaleFactor: scale,
     javaScriptEnabled: false,
   });
   const page = await context.newPage();
-  await page.route("**/*", (route: any) => serve(route, doc).catch(() => {}));
+  await page.route("**/*", (route: any) => serve(route, doc, assets).catch(() => {}));
   await page.goto(`${APP}/page`, { waitUntil: "load", timeout: 30_000 }).catch(() => {});
   await page.evaluate("document.fonts.ready");
   return { page, close: () => context.close() };
@@ -212,12 +248,14 @@ async function drawSim(
   clientId: string,
   width: number,
   sharp: Sharp | null,
+  assets: Assets,
 ) {
   const sim = await open(
     browser,
     prepareIframeHtml(transformed, clientId, false, false, { scaleToFit: true }),
     width,
     sharp ? 2 : 1,
+    assets,
   );
   try {
     const drawn = (await sim.page.evaluate(`(${emailWidth})(document)`)) as number;
@@ -259,21 +297,31 @@ function resultOf(
  * page judges it, plus the pixel line when sharp is installed (as the app's
  * server check). Null when the email has no design to compare.
  */
-export async function checkDesign(
+export function checkDesign(
   browser: Browser,
   html: string,
   clientId: string,
   framework?: Framework,
+): Promise<DesignResult | null> {
+  return checkOne(browser, html, clientId, framework, sharedAssets());
+}
+
+async function checkOne(
+  browser: Browser,
+  html: string,
+  clientId: string,
+  framework: Framework | undefined,
+  assets: Assets,
 ): Promise<DesignResult | null> {
   if (!hasDesign(html)) return null;
   const name = EMAIL_CLIENTS.find((c) => c.id === clientId)?.name ?? clientId;
   const transformed = transformForClient(prepareWordSource(html), clientId, framework).html;
   const { width } = viewOf(clientId);
   const sharp = await loadSharp();
-  const sim = await drawSim(browser, transformed, clientId, width, sharp);
+  const sim = await drawSim(browser, transformed, clientId, width, sharp, assets);
   const { doc, fits } = designDoc(html, clientId, sim.frame.width);
   // Shots at 2x, as the app's server check takes them; 1x when not shot.
-  const design = await open(browser, doc, width, sharp ? 2 : 1);
+  const design = await open(browser, doc, width, sharp ? 2 : 1, assets);
   try {
     if (fits) await design.page.evaluate(`(${releaseImages})(document, ${sim.frame.width})`);
     const nodes = (await design.page.evaluate(
@@ -304,11 +352,13 @@ export async function checkDesignAcross(
   const browser = await openBrowser();
   try {
     const out = new Map<string, DesignResult>();
+    // One store for the run: every client sees the same images, fetched once.
+    const assets = sharedAssets();
     const queue = [...clientIds];
     let done = 0;
     const work = async () => {
       for (let id = queue.shift(); id; id = queue.shift()) {
-        const r = await checkDesign(browser, html, id, opts.framework);
+        const r = await checkOne(browser, html, id, opts.framework, assets);
         if (r) out.set(id, r);
         opts.onProgress?.(++done, clientIds.length);
       }
