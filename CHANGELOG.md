@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.19.1 - 2026-11-12
+
+### Fixed
+
+- The design check no longer reads the host's fonts as a change. The design
+  page now draws with the same metric-compatible stand-ins as the live
+  preview (Arimo for Arial and Helvetica, and so on). Before, a plain table
+  the client keeps read 0.015 on Windows and 0.033, "changed", on Linux,
+  where the GitHub Action runs.
+- `measureGap` also tries a 1:1 fit. On a short, mostly blank email its
+  coarse-to-fine search drifted to 1.0063x on two identical shots and read
+  them 0.011 apart.
+- When the stand-in fonts cannot be fetched, the design check now says so
+  once on stderr instead of falling back to the host's fonts silently.
+
 ## 0.19.0 - 2026-11-12
 
 ### Added
