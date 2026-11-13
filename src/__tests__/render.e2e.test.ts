@@ -16,6 +16,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { transformForClient, checkOverflow, checkVisual } from "../index";
+import { applyClientMutations } from "../design/shell";
 import type { Browser } from "playwright";
 
 const REMOTE_WS =
@@ -85,4 +86,41 @@ suite("real-render validation (Playwright / Chromium)", () => {
     // No real background remains → the missing-background-fallback warning is a true positive.
     expect(["rgba(0, 0, 0, 0)", "transparent"]).toContain(bg);
   }, 30000);
+  // Gmail Android's reflow, measured on the worker's Gmail app (2026-11-13,
+  // 396 CSS px view): a table that fits keeps its fixed image cells, and an
+  // overflowing 600px table is squeezed to the screen while its image keeps
+  // its width and only the text cell narrows. Our munge once shrank such
+  // images to 56px and 26px (customer preview scored 49 for a non-issue).
+  async function mungedImageWidths(html: string) {
+    const page = await browser!.newPage({ viewport: { width: 396, height: 900 } });
+    await page.setContent(applyClientMutations(html, "gmail-android"), { waitUntil: "load" });
+    const out = await page.evaluate(() => ({
+      imgs: [...document.images].map((i) => Math.round(i.getBoundingClientRect().width)),
+      scrollW: document.documentElement.scrollWidth,
+    }));
+    await page.close();
+    return out;
+  }
+  const IMG = (w: number, h: number) =>
+    `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" width="${w}" height="${h}" style="display:block;width:${w}px;height:${h}px;border:0;">`;
+  const TEXT = "<p>Body copy long enough to wrap over several lines in the text column next to the fixed image, so the column wants all the room it can get.</p>";
+
+  test("Gmail Android keeps fixed image cells in an email that fits", async () => {
+    // A loaded image with a % max-width counts as 0px wide when an auto table
+    // sizes itself, so the nested centred shell collapses around it.
+    const html = `<table width="100%"><tr><td align="center" style="padding:32px 12px"><table width="600" style="width:100%;max-width:600px"><tr><td style="padding:40px 7% 8px">
+<table width="100%"><tr><td width="132" style="width:132px">${IMG(132, 176)}</td></tr></table>
+</td></tr></table></td></tr></table>
+<table width="100%" style="max-width:600px"><tr><td width="132" style="width:132px">${IMG(132, 176)}</td><td width="22" style="width:22px"></td><td>${TEXT}</td></tr></table>
+<table width="100%" style="max-width:500px"><tr><td width="100" style="width:100px">${IMG(96, 96)}</td><td width="10" style="width:10px;border-left:1px solid #222"></td><td>longaddress.sales.department@example-company-domain.com</td></tr></table>`;
+    expect((await mungedImageWidths(html)).imgs).toEqual([132, 132, 96]);
+  }, 30000);
+
+  test("Gmail Android squeezes an overflowing table to the screen, image intact", async () => {
+    const html = `<table width="600" style="width:600px"><tr><td width="180" style="width:180px;padding:20px">${IMG(180, 180)}</td><td width="380" style="width:380px">${TEXT}</td></tr></table>`;
+    const { imgs, scrollW } = await mungedImageWidths(html);
+    expect(imgs).toEqual([180]);
+    expect(scrollW).toBeLessThanOrEqual(396);
+  }, 30000);
 });
+

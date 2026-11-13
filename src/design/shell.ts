@@ -466,7 +466,11 @@ export function isMungeClient(clientId: string): boolean {
 
 // Approximates Gmail Android's munge: reflow tables/cells to fit, wrap text,
 // keep images within the viewport. !important so it beats inline widths.
-const MUNGE_STYLE = `<style>table{width:auto!important;table-layout:auto!important;max-width:100%!important}td,th{width:auto!important;white-space:normal!important}img{max-width:100%!important;height:auto!important}</style>`;
+// Images are capped at 100vw, not 100%: a loaded image with a % max-width
+// counts as 0px wide when an auto table sizes itself, so fixed 132px and 96px
+// images drew at 59px and 27px. Real Gmail keeps them, and squeezes a 600px
+// table by narrowing its text cell only (worker probes, 2026-11-13).
+const MUNGE_STYLE = `<style>table{width:auto!important;table-layout:auto!important;max-width:100%!important}td,th{width:auto!important;white-space:normal!important}img{max-width:100vw!important;height:auto!important}</style>`;
 
 /** The width emails are conventionally built to. */
 const EMAIL_WIDTH = 600;
