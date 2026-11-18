@@ -24,6 +24,7 @@ const COMPILERS = [
   "@maizzle/framework",
   "@react-email/render",
   "@react-email/components",
+  "react-email",
 ] as const;
 
 const peers = pkg.peerDependencies as Record<string, string>;
@@ -102,7 +103,7 @@ describe("optional peer compilers", () => {
     // React Email majors. An upper bound would break consumers for no reason.
     // If one of them ships a breaking major, the test above starts failing on
     // the bump, which is when to decide.
-    for (const name of ["mjml", "@react-email/render", "@react-email/components"] as const) {
+    for (const name of ["mjml", "@react-email/render", "@react-email/components", "react-email"] as const) {
       expect([name, peers[name]]).toEqual([name, expect.stringMatching(/^>=/)]);
       expect([name, peers[name].includes("<")]).toEqual([name, false]);
     }

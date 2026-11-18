@@ -584,7 +584,7 @@ The versions these are tested against:
 | Format | Package | Supported |
 |---|---|---|
 | `mjml` | `mjml` | `>=4.0.0`, tested on 5.x |
-| `jsx` | `@react-email/render`, `@react-email/components`, `react` | `>=1.0.0` / `>=0.0.36`, tested on 2.x / 1.x |
+| `jsx` | `@react-email/render`, `react-email` or `@react-email/components`, `react` | render `>=1.0.0`; current components `react-email >=6.0.0`; legacy components `@react-email/components >=0.0.36` |
 | `maizzle` | `@maizzle/framework` | `>=5.0.0 <7.0.0` |
 
 Maizzle 5 compiles an HTML string. Maizzle 6 compiles a Vue single-file
@@ -624,7 +624,7 @@ const html = await compileReactEmail(jsxSource, {
 - `"isolated-vm"` (default): Separate V8 isolate. True heap isolation. Requires `isolated-vm` native addon.
 - `"vm"`: `node:vm` with hardened globals. Fast, zero-dependency, but NOT a true security boundary. Suitable for CLI/local use.
 
-**Peer dependencies:** `sucrase`, `react`, `@react-email/components`, `@react-email/render`. Plus `isolated-vm` for the default sandbox.
+**Peer dependencies:** `sucrase`, `react`, `@react-email/render`, and either the current `react-email` package or legacy `@react-email/components`. Plus `isolated-vm` for the default sandbox.
 
 ### `compileMjml(source): Promise<string>`
 

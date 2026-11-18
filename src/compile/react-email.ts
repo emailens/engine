@@ -41,8 +41,9 @@ export interface CompileReactEmailOptions {
  *  3. Execute inside a sandbox (configurable strategy)
  *  4. Render the exported component to a full HTML email string
  *
- * Requires peer dependencies: sucrase, react, @react-email/components,
- * @react-email/render. Additionally:
+ * Requires peer dependencies: sucrase, react, React Email components,
+ * @react-email/render. It prefers the current `react-email` package and
+ * falls back to `@react-email/components` for existing projects. Additionally:
  *  - sandbox "isolated-vm" requires `isolated-vm`
  */
 export async function compileReactEmail(
@@ -91,13 +92,19 @@ export async function compileReactEmail(
   }
 
   try {
-    ReactEmailComponents = await import("@react-email/components");
+    // React Email's current docs import components from `react-email`.
+    // Keep the older package as a fallback for existing projects.
+    ReactEmailComponents = (await import("react-email")) as typeof import("@react-email/components");
   } catch {
-    throw new CompileError(
-      'JSX compilation requires "@react-email/components". Install it:\n  npm install @react-email/components',
-      "jsx",
-      "transpile",
-    );
+    try {
+      ReactEmailComponents = await import("@react-email/components");
+    } catch {
+      throw new CompileError(
+        'JSX compilation requires React Email components. Install "react-email" (current) or "@react-email/components" (legacy):\n  npm install react-email',
+        "jsx",
+        "transpile",
+      );
+    }
   }
 
   try {
@@ -187,9 +194,8 @@ async function executeInVm(
 ): Promise<Record<string, unknown>> {
   const { createContext, Script } = await import("node:vm");
 
-  // React Email 6 exports the components from "react-email" itself.
-  // ponytail: served by @react-email/components, the same component set;
-  // load the react-email package if a v6-only export is ever needed.
+  // React Email components are loaded from the current package or its
+  // backwards-compatible component package and exposed under both import paths.
   const ALLOWED_MODULES: Record<string, unknown> = {
     react: React,
     "@react-email/components": ReactEmailComponents,

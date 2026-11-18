@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.19.2 - 2026-11-18
+
+### Added
+
+- React Email source compilation now loads components from the current
+  `react-email` package and keeps compatibility with
+  `@react-email/components` for existing projects.
+
+### Fixed
+
+- Design checks now use the same fetched images in both rendered pages, within
+  one shared deadline.
+- Design comparison chooses the placement with the least pixel difference while
+  keeping the established half-size match score, reducing capture noise.
+- Apple Mail's forced darkening is simulated for messages that do not opt out.
+- Gmail Android preserves fixed image widths while munging email markup.
+
 ## 0.19.1 - 2026-11-12
 
 ### Fixed

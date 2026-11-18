@@ -2,7 +2,7 @@ import type { SupportLevel } from "../types";
 
 /**
  * CSS/HTML feature support matrix, auto-generated from caniemail.com.
- * Last synced: 2026-11-09
+ * Last synced: 2026-11-18
  * caniemail last updated: 2026-09-16 13:05:00 +0000
  *
  * 300 features and 14 image formats across 21 email clients.

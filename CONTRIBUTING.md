@@ -185,14 +185,15 @@ Adding support data for a new CSS property (e.g., `aspect-ratio`):
 ## Framework versions we compile against
 
 Each compiler is an optional peer dependency, so the range in `package.json` is
-a compatibility claim we make to users. Verified 2026-09-02:
+a compatibility claim we make to users. Verified 2026-11-18:
 
 | Package | Peer range | Latest | Note |
 |---|---|---|---|
-| `mjml` | `>=4.0.0` | 5.4.0 | v4 returns synchronously and v5 returns a promise; `compileMjml` awaits either. Checked against 4.18.0 and 5.4.0. |
-| `@maizzle/framework` | `>=5.0.0 <7.0.0` | 6.1.7 | v5 compiles HTML. v6 compiles a Vue SFC string. |
-| `@react-email/components` | `>=0.0.36` | 1.0.12 | |
-| `@react-email/render` | `>=1.0.0` | 2.1.0 | |
+| `mjml` | `>=4.0.0` | 5.4.1 | v4 returns synchronously and v5 returns a promise; `compileMjml` awaits either. Tested with 5.4.1. |
+| `@maizzle/framework` | `>=5.0.0 <7.0.0` | 6.4.0 | Tested with v5.5.0 and v6.4.0. v5 compiles HTML; v6 compiles a Vue SFC string. |
+| `react-email` | `>=6.0.0` | 6.11.16 | Current React Email components import from `react-email`. |
+| `@react-email/components` | `>=0.0.36` | 1.0.12 | Legacy component import path remains supported. |
+| `@react-email/render` | `>=1.0.0` | 2.3.1 | Tested with 2.3.1. |
 
 Maizzle 6 `render()` accepts a Vue SFC string and runs the full pipeline.
 `compileMaizzle` sends that string through when it has a `<template>` element
